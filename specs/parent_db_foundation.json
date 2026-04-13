@@ -155,9 +155,9 @@
         "The `profiles` table is present in models and migrations.",
         "Focused tests and docker suite pass."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-13T18:17:14.9940619-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "pdb-035",

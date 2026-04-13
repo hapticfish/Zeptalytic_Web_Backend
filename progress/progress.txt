@@ -178,3 +178,24 @@
 - Next: Implement `pdb-030` for the parent-owned `profiles` table and its one-to-one relationship with `accounts`.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T18:17:14.9940619-05:00
+- Goal for this iteration: Complete `pdb-030` by adding the parent-owned `profiles` table, wiring its one-to-one account relationship, and validating the migration path.
+- What I found (repo search summary): `app/db/models/auth.py` was still the only concrete ORM module and already held all account/auth/security tables, so extending that module kept model registration narrow; `app/db/models/__init__.py`, `app/db/bootstrap.py`, and `alembic/env.py` were already the live metadata-loading path and needed no wiring changes; `alembic/versions/20260413_1835_pdb020_auth_tables.py` and `alembic/versions/20260413_1910_pdb025_security_tables.py` formed the existing revision chain, so `pdb-030` needed one direct follow-on migration; `tests/unit/test_auth_models.py` already covered metadata registration, SQLite persistence, foreign keys, defaults, and invalid inserts, and there was still no separate profile router/service/repository wiring in the repo.
+- What I changed: Added `Profile` to `app/db/models/auth.py` with a primary-key foreign key to `accounts`, nullable profile fields from the schema plan, and an ORM one-to-one relationship on `Account`; added Alembic revision `alembic/versions/20260413_1918_pdb030_profiles_table.py`; extended `tests/unit/test_auth_models.py` to include `profiles` in metadata setup, validate profile persistence through the one-to-one relationship, and cover missing-account and duplicate-profile invalid cases; marked `pdb-030` complete in the plan/spec.
+- Why I changed: The active schema plan places `profiles` immediately after the auth/security foundation, and this slice is fully parent-owned with no Pay commercial-truth overlap.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/auth.py
+  - progress/progress.txt
+  - specs/parent_db_foundation.json
+  - tests/unit/test_auth_models.py
+- New Files:
+  - alembic/versions/20260413_1918_pdb030_profiles_table.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml run --rm test pytest -q tests/unit/test_auth_models.py -vv` passed but only exercised the previously built image state (`8 passed in 0.51s`); the authoritative required command `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` rebuilt the image, applied Alembic revision `20260413_1918`, and passed with `13 passed in 0.89s`.
+- Notes / risks: Field lengths for `display_name`, `phone`, `timezone`, `profile_image_url`, and `discord_username` are pragmatic placeholders derived from the current schema plan because the repo does not yet include a separate locked profile-field decision record.
+- Next: Implement `pdb-035` for `profile_preferences`, `communication_preferences`, and `oauth_connections`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)

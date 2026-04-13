@@ -16,6 +16,7 @@ from app.db.models.auth import (
     EmailVerificationToken,
     MfaRecoveryCode,
     PasswordResetToken,
+    Profile,
 )
 
 
@@ -39,6 +40,7 @@ def _create_in_memory_schema() -> tuple[Session, MetaData]:
         AccountSecuritySettings.__table__,
         MfaRecoveryCode.__table__,
         AuthEvent.__table__,
+        Profile.__table__,
     ):
         table.to_metadata(metadata)
 
@@ -57,6 +59,7 @@ def test_auth_tables_are_registered_in_metadata() -> None:
         "account_security_settings",
         "mfa_recovery_codes",
         "auth_events",
+        "profiles",
     }.issubset(table_names)
 
 
@@ -127,8 +130,16 @@ def test_auth_and_security_persistence_round_trip() -> None:
         user_agent="pytest-agent",
         event_metadata={"source": "unit-test"},
     )
+    profile = Profile(
+        account_id=account.id,
+        display_name="Test Runner",
+        phone="+1-555-0100",
+        timezone="America/Chicago",
+        profile_image_url="https://cdn.example.com/avatar.png",
+        discord_username="testrunner",
+    )
 
-    session.add_all([auth_session, email_token, reset_token, security_settings, recovery_code, auth_event])
+    session.add_all([auth_session, email_token, reset_token, security_settings, recovery_code, auth_event, profile])
     session.commit()
 
     persisted_session = session.scalar(select(AuthSession).where(AuthSession.account_id == account.id))
@@ -145,6 +156,7 @@ def test_auth_and_security_persistence_round_trip() -> None:
         select(MfaRecoveryCode).where(MfaRecoveryCode.account_id == account.id)
     )
     persisted_auth_event = session.scalar(select(AuthEvent).where(AuthEvent.account_id == account.id))
+    persisted_profile = session.scalar(select(Profile).where(Profile.account_id == account.id))
 
     assert persisted_session is not None
     assert persisted_session.session_token_hash == "session-token-hash"
@@ -160,6 +172,12 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_auth_event is not None
     assert persisted_auth_event.event_type == "login_success"
     assert persisted_auth_event.event_metadata == {"source": "unit-test"}
+    assert persisted_profile is not None
+    assert persisted_profile.display_name == "Test Runner"
+    assert persisted_profile.timezone == "America/Chicago"
+    assert persisted_profile.account.id == account.id
+    assert account.profile is not None
+    assert account.profile.discord_username == "testrunner"
 
 
 def test_accounts_reject_duplicate_email() -> None:
@@ -242,6 +260,36 @@ def test_auth_events_require_event_type() -> None:
             event_metadata={},
         )
     )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_profiles_require_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(Profile(account_id=uuid4(), display_name="Orphan"))
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_profiles_enforce_one_to_one_account_mapping() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="profile-owner",
+        email="profile-owner@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add(account)
+    session.commit()
+
+    session.add(Profile(account_id=account.id, display_name="First Profile"))
+    session.commit()
+
+    session.add(Profile(account_id=account.id, display_name="Duplicate Profile"))
 
     with pytest.raises(IntegrityError):
         session.commit()
