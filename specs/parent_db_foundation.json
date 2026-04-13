@@ -33,9 +33,9 @@
         "Any authoritative command or topology drift is captured in docs.",
         "Authoritative docker test command has been run successfully or a valid blocker recorded."
       ],
-      "passes": true,
-      "completed_at": "2026-04-12T22:59:46.8083632-05:00",
-      "completed_by": "codex"
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
     },
     {
       "id": "pdb-005",
@@ -60,9 +60,9 @@
         "README.md and IMPLEMENTATION_PLAN.md match the actual command path.",
         "The authoritative docker suite passes."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-12T22:59:46.8083632-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "pdb-010",

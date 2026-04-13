@@ -67,7 +67,7 @@
 - Notes / risks: This is a repo-topology blocker, not a Docker-installation blocker. Because the compose topology does not exist yet, this run cannot satisfy the required authoritative test gate and must not mark any spec item `passes=true`.
 - Next: Implement `pdb-005` to add `docker-compose.yml` and `docker-compose.test.yml` with real `api`, `migrate`, and `test` services, then rerun the authoritative docker suite.
 - Sources used (only if needed; prefer official docs): none
-- Commit: none (no commit created)
+- Commit: 822f50f
 
 ## Iteration entry
 - Date/time: 2026-04-12T22:59:46.8083632-05:00
