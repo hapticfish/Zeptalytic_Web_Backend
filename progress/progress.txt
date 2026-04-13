@@ -135,3 +135,25 @@
 - Next: Implement `pdb-020` to add the first auth/account tables and register them through the new bootstrap hook.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T18:04:34.7477580-05:00
+- Goal for this iteration: Complete `pdb-020` by adding the first parent-owned identity/auth tables, wiring them into metadata discovery, and validating the migration path.
+- What I found (repo search summary): `app/db/base.py` remained the only declarative base; `app/db/bootstrap.py` and `alembic/env.py` already provided the single metadata-loading path; `app/db/models/__init__.py` was registered but still imported no model modules, so Alembic had no concrete tables to load; `alembic/versions/` was empty with no existing revision chain; current tests only covered `tests/unit/test_health.py`, `tests/unit/test_config.py`, and `tests/unit/test_db_bootstrap.py`, so there was no schema-level coverage yet.
+- What I changed: Added `app/db/models/auth.py` with `Account`, `AuthSession`, `EmailVerificationToken`, and `PasswordResetToken`; registered that module in `app/db/models/__init__.py`; added Alembic revision `alembic/versions/20260413_1835_pdb020_auth_tables.py` to create the four tables and indexes; added `tests/unit/test_auth_models.py` to verify metadata registration, table constraints/indexes, persistence round-trip behavior, and two invalid persistence cases.
+- Why I changed: `pdb-020` is the first launch-critical parent-owned schema slice in the plan, and the repo already had the bootstrap path needed to add concrete auth tables without crossing Pay ownership boundaries.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/__init__.py
+  - progress/progress.txt
+  - specs/parent_db_foundation.json
+- New Files:
+  - alembic/versions/20260413_1835_pdb020_auth_tables.py
+  - app/db/models/auth.py
+  - tests/unit/test_auth_models.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed. The `migrate` service applied revision `20260413_1835` successfully and the `test` service reported `8 passed in 0.81s`.
+- Notes / risks: `status` and `role` are currently modeled as required strings with TODO markers because the allowed vocabulary is not yet locked in the control artifacts. This keeps the schema usable without inventing business enums that are not yet approved.
+- Next: Implement `pdb-025` for `account_security_settings`, optional `mfa_recovery_codes`, and `auth_events` on top of the new `accounts` foundation.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)
