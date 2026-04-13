@@ -1,0 +1,249 @@
+{
+  "spec_id": "parent_db_foundation",
+  "title": "Zeptalytic parent-site DB foundation",
+  "status": "active",
+  "description": "First database-focused workstream for the Zeptalytic website backend / parent site repo. Build the launch-critical parent-owned schema foundation without duplicating Pay billing truth.",
+  "required_reference_docs": [
+    "docs/architecture/Zeptalytic_Website_Implementation_Control_Plan.md",
+    "docs/architecture/Zeptalytic_Feature_Ownership_Register.md",
+    "docs/architecture/Zeptalytic_Parent_vs_Pay_Data_Ownership_Matrix.md",
+    "docs/architecture/Zeptalytic_Agent_Harness_Development_Strategy.md",
+    "docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md"
+  ],
+  "items": [
+    {
+      "id": "pdb-001",
+      "category": "discovery",
+      "description": "Inventory the current repo reality for DB/bootstrap/model/Alembic/test surfaces, confirm the authoritative commands and current topology, and validate or create the parent DB schema plan doc from the controlling architecture docs.",
+      "expected_paths": [
+        "docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md",
+        "IMPLEMENTATION_PLAN.md",
+        "progress/progress.txt"
+      ],
+      "steps": [
+        "Search the repo for existing DB/bootstrap/model/Alembic wiring before changing anything.",
+        "Summarize what already exists: app/bootstrap/config, SQLAlchemy model registration, Alembic env wiring, docker migration path, and test harness surfaces.",
+        "Validate that the schema plan doc matches the current ownership docs; refine it if repo reality requires changes.",
+        "Record any command or topology drift in IMPLEMENTATION_PLAN.md or the schema plan doc.",
+        "Append a durable progress entry at EOF."
+      ],
+      "pass_criteria": [
+        "Repo discovery summary is recorded in progress/progress.txt.",
+        "Zeptalytic_Parent_DB_Schema_Plan.md exists and is aligned to the controlling docs.",
+        "Any authoritative command or topology drift is captured in docs.",
+        "Authoritative docker test command has been run successfully or a valid blocker recorded."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-010",
+      "category": "db_bootstrap",
+      "description": "Add or align shared parent-repo DB bootstrap surfaces so later table slices have a consistent model-registration and migration path.",
+      "expected_paths": [
+        "app/db/",
+        "alembic/",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "steps": [
+        "Use repo search to identify current DB session/base/model import patterns and Alembic metadata loading.",
+        "Implement the smallest safe bootstrap alignment needed for the parent repo.",
+        "Avoid introducing endpoint logic or unrelated app behavior in this slice.",
+        "Add or update focused tests if the repo already has DB bootstrap test patterns.",
+        "Run the authoritative docker suite and update durable artifacts."
+      ],
+      "pass_criteria": [
+        "There is one clear model-registration / Alembic path for the parent repo.",
+        "Changes are narrow and limited to DB/bootstrap foundations.",
+        "Focused tests and the authoritative docker suite pass."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-020",
+      "category": "schema",
+      "description": "Implement launch-critical identity/auth tables and migrations for the parent site.",
+      "expected_paths": [
+        "app/db/models/",
+        "app/db/repositories/",
+        "alembic/versions/",
+        "tests/"
+      ],
+      "steps": [
+        "Implement accounts/auth/security models and migrations per the schema plan.",
+        "Register models so Alembic sees them.",
+        "Add focused tests for constraints and expected persistence behavior.",
+        "Run the authoritative docker suite and update durable artifacts."
+      ],
+      "pass_criteria": [
+        "Identity/auth tables from the schema plan exist in models and migrations.",
+        "Focused tests exist and pass.",
+        "Authoritative docker suite passes."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-030",
+      "category": "schema",
+      "description": "Implement profile/settings/integration tables and migrations for the parent site.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/"
+      ],
+      "steps": [
+        "Implement profiles, preferences, communication preferences, and oauth/integration tables per the schema plan.",
+        "Add focused tests for uniqueness and relationship rules where relevant.",
+        "Run the authoritative docker suite and update durable artifacts."
+      ],
+      "pass_criteria": [
+        "Profile/settings/integration tables are present in models and migrations.",
+        "Focused tests and docker suite pass."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-040",
+      "category": "schema",
+      "description": "Implement the parent-owned international-ready addresses table and migration.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/"
+      ],
+      "steps": [
+        "Implement addresses table exactly as an international-ready parent-owned model.",
+        "Do not overfit the schema to a single address provider or US-only format.",
+        "Add focused tests and run the docker suite."
+      ],
+      "pass_criteria": [
+        "Addresses model and migration exist.",
+        "Schema is international-ready and parent-owned.",
+        "Focused tests and docker suite pass."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-050",
+      "category": "schema",
+      "description": "Implement support ticket, message, and attachment-metadata tables and migrations.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/"
+      ],
+      "steps": [
+        "Implement support tables per the schema plan.",
+        "Keep file storage out of Postgres; store attachment metadata only.",
+        "Add focused tests and run the docker suite."
+      ],
+      "pass_criteria": [
+        "Support tables exist in models and migrations.",
+        "Attachment handling is metadata-only in DB design.",
+        "Focused tests and docker suite pass."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-060",
+      "category": "schema",
+      "description": "Implement announcements and service-status tables and migrations.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/"
+      ],
+      "steps": [
+        "Implement announcements and service_statuses tables per the schema plan.",
+        "Add focused tests and run the docker suite."
+      ],
+      "pass_criteria": [
+        "Announcement/status tables exist in models and migrations.",
+        "Focused tests and docker suite pass."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-070",
+      "category": "schema",
+      "description": "Implement Pay-derived parent read-model tables for subscription/access/payment summaries without duplicating Pay commercial truth.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/",
+        "docs/architecture/Zeptalytic_Parent_vs_Pay_Data_Ownership_Matrix.md"
+      ],
+      "steps": [
+        "Implement the projection/read-model tables named in the schema plan.",
+        "Keep naming and semantics summary/projection-focused, not authoritative billing truth.",
+        "Add focused tests and run the docker suite."
+      ],
+      "pass_criteria": [
+        "Projection tables exist in models and migrations.",
+        "No duplicated Pay billing engine logic is introduced.",
+        "Focused tests and docker suite pass."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-080",
+      "category": "docs",
+      "description": "Align README/docs with actual DB topology, migration commands, and model-registration behavior once the schema foundation is in place.",
+      "expected_paths": [
+        "README.md",
+        "IMPLEMENTATION_PLAN.md",
+        "docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md"
+      ],
+      "steps": [
+        "Document actual migration/bootstrap commands and topology once verified in repo reality.",
+        "Record any drift discovered during DB implementation.",
+        "Run the docker suite and update durable artifacts."
+      ],
+      "pass_criteria": [
+        "Repo docs reflect actual DB topology and commands.",
+        "Docker suite passes."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-999",
+      "category": "quality_gate",
+      "description": "Run and confirm the authoritative docker test suite as the final quality gate for the parent DB foundation workstream.",
+      "expected_paths": [
+        "IMPLEMENTATION_PLAN.md",
+        "specs/parent_db_foundation.json",
+        "progress/progress.txt"
+      ],
+      "steps": [
+        "Run the authoritative full docker suite as a standalone final quality step.",
+        "Record the exact command and result.",
+        "Mark the spec and plan complete only after the suite is green."
+      ],
+      "pass_criteria": [
+        "Authoritative docker suite passes.",
+        "Spec and plan quality-gate markers are updated.",
+        "Progress log records the result."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}

@@ -1,16 +1,12 @@
-# This is a sample Python script.
+"""Compatibility entrypoint for local runs.
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+Keeps a simple root-level module while the real application lives in app.main.
+"""
 
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+from app.main import app
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+if __name__ == "__main__":
+    import uvicorn
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

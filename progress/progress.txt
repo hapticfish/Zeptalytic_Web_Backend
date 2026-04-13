@@ -1,0 +1,32 @@
+# Progress log (append-only)
+
+## Format for each iteration
+- Date/time (ISO 8601 with timezone):
+- Goal for this iteration:
+- What I found (repo search summary):
+- What I changed:
+- Why I changed:
+- Updated Files:
+- New Files:
+- Removed Files:
+
+- Tests run + results:
+- Notes / risks:
+- Next:
+- Sources used (only if needed; prefer official docs):
+- Commit:
+
+## First entry (bootstrap)
+- Date/time:
+- Goal for this iteration: Bootstrap the Zeptalytic website parent-site harness and start the parent DB foundation workstream.
+- What I found (repo search summary):
+- What I changed:
+- Why I changed:
+- Updated Files:
+- New Files:
+- Removed Files:
+- Tests run + results:
+- Notes / risks:
+- Next: Run `./scripts/ralph-loop.sh plan 1` for the first planning-only iteration, then `./scripts/ralph-loop.sh build 1` for the first build iteration.
+- Sources used (only if needed; prefer official docs): none
+- Commit:
