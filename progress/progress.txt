@@ -92,3 +92,22 @@
 - Next: Implement `pdb-010` to align model registration and Alembic/bootstrap wiring for upcoming schema slices.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T17:52:54.2112832-05:00
+- Goal for this iteration: Complete `pdb-001` by revalidating repo reality after compose alignment, correcting stale discovery docs, and rerunning the authoritative docker suite.
+- What I found (repo search summary): `app/main.py` is still the only runtime entrypoint and only exposes `/health`; `app/core/config.py` remains the live settings surface; `app/db/base.py`, `app/db/session.py`, and `alembic/env.py` are the only active DB/bootstrap path and `alembic/env.py` still targets `Base.metadata`; `app/db/models/__init__.py` is still just a placeholder so no ORM models are registered yet; `docker-compose.yml` and `docker-compose.test.yml` now exist and provide the documented `api`, `migrate`, and `test` services; test coverage currently consists of `tests/unit/test_health.py` and `tests/unit/test_config.py`, with no DB bootstrap or migration tests yet.
+- What I changed: Updated `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md` to reflect the real compose topology and current test harness, updated `IMPLEMENTATION_PLAN.md` to remove stale topology drift and point the next slice at DB bootstrap alignment, marked `pdb-001` complete in `specs/parent_db_foundation.json`, and checked off `pdb-001` in `IMPLEMENTATION_PLAN.md`.
+- Why I changed: `pdb-001` required the repo-reality audit and schema-plan documentation to match the current repository state after `pdb-005`; leaving the old "compose files do not exist" discovery notes in place would make the active plan inaccurate.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md
+  - specs/parent_db_foundation.json
+  - progress/progress.txt
+- New Files:
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed. The `migrate` service completed successfully and the `test` service reported `2 passed in 0.39s`.
+- Notes / risks: Discovery is now aligned, but the repo still has no registered ORM models and no Alembic revisions in `alembic/versions/`, so the next meaningful slice remains `pdb-010`.
+- Next: Implement `pdb-010` to establish a single clear model-registration and Alembic path before adding tables.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)

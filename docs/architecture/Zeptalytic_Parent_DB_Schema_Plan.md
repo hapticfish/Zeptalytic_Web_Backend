@@ -12,17 +12,17 @@ This document is intentionally scoped to the **parent site backend + parent DB**
 4. Stripe card capture is handled through Stripe.js / Elements + SetupIntents. Coinbase is treated as a checkout/payment rail, not a saved-card subsystem.
 5. This first DB workstream should focus on **launch-critical parent-owned tables** first.
 
-## Current repo reality audit (2026-04-12)
+## Current repo reality audit (2026-04-13)
 - Runtime entrypoint: `app/main.py` creates the FastAPI app directly and exposes only `/health`.
 - Config surface: `app/core/config.py` is the active settings module; there is no `app/settings.py` in this repo.
 - DB bootstrap: `app/db/base.py` defines `Base`, `app/db/session.py` defines `engine` and `SessionLocal`, and `alembic/env.py` points `target_metadata` at `Base.metadata`.
 - Model registration: `app/db/models/__init__.py` contains only a placeholder docstring, so Alembic currently has no model imports to discover.
 - Migration path: `alembic/versions/` exists but is empty.
-- Container topology: the repo does not yet contain `docker-compose.yml` or `docker-compose.test.yml`, so the documented `api` / `migrate` / `test` commands are target-state commands, not current-state commands.
-- Test harness: `tests/unit/test_health.py` is the only concrete test; there are no DB bootstrap, migration, or repository tests yet.
+- Container topology: `docker-compose.yml` and `docker-compose.test.yml` now exist and define the documented `api`, `migrate`, and `test` services used by the authoritative docker commands.
+- Test harness: concrete tests currently consist of `tests/unit/test_health.py` and `tests/unit/test_config.py`; there are still no DB bootstrap, migration, or repository tests yet.
 
 Planning implication:
-- the next implementation slice must establish compose topology and DB/bootstrap registration before table-by-table schema work can be validated against the authoritative docker command.
+- the next implementation slice should align DB/bootstrap registration before table-by-table schema work expands, because compose topology is now in place and the authoritative docker command is available.
 
 ## Launch-critical table groups for the first workstream
 

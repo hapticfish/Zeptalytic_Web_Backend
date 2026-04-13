@@ -31,16 +31,16 @@ Read before planning or building:
 - Migrations:
   - `docker compose run --rm migrate`
 
-Current repo reality audit on 2026-04-12:
-- `docker-compose.yml` and `docker-compose.test.yml` do not exist yet.
-- The next build slice must add or align the compose topology and service names needed for the target commands above (`api`, `migrate`, `test`).
-- Until that topology exists, later schema items must not claim the authoritative docker command has been satisfied.
+Current repo reality audit on 2026-04-13:
+- `docker-compose.yml` and `docker-compose.test.yml` now exist and expose the documented `api`, `migrate`, and `test` services.
+- The next build slice should align shared DB bootstrap/model-registration/Alembic wiring before table-by-table schema work expands.
+- Later schema items still may not claim completion unless the authoritative docker command passes for their slice.
 
 If these differ from repo reality, a planning run must update the docs/prompt/plan files before implementation continues.
 
 ## Work order for the active spec
 
-- [ ] `pdb-001` — Discovery + repo reality audit for the parent DB workstream; confirm current DB/bootstrap/model/alembic surfaces and create/validate the parent DB schema plan doc.
+- [x] `pdb-001` — Discovery + repo reality audit for the parent DB workstream; confirm current DB/bootstrap/model/alembic surfaces and create/validate the parent DB schema plan doc.
 - [x] `pdb-005` — Add or align container topology (`docker-compose.yml`, `docker-compose.test.yml`, `api`, `migrate`, `test`) so the repo has a real authoritative docker path.
 - [ ] `pdb-010` — Add or align shared DB bootstrap/model-registration/Alembic wiring for the parent site repo without implementing endpoint logic yet.
 - [ ] `pdb-020` — Implement `accounts`, `auth_sessions`, `email_verification_tokens`, and `password_reset_tokens` with focused tests.
