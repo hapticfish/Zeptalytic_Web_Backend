@@ -50,4 +50,13 @@ The first workstream is parent DB foundation. See:
 - DB bootstrap currently consists of `app/db/base.py`, `app/db/session.py`, and `alembic/env.py`.
 - `alembic/env.py` targets `Base.metadata`, but `app/db/models/__init__.py` does not import any models yet and `alembic/versions/` is empty.
 - Test coverage currently consists of `tests/unit/test_health.py`; there are no DB or migration tests yet.
-- Target docker commands are documented in the planning files, but the compose files needed for `api`, `migrate`, and `test` do not exist yet. The next build slice must add or align that topology before later schema items can satisfy the authoritative docker gate.
+- Compose topology now exists for the documented baseline commands:
+  - `docker compose up --build api`
+  - `docker compose run --rm migrate`
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test`
+
+## Docker workflow
+
+- `docker compose up --build api` starts Postgres and the FastAPI app on port `8000`.
+- `docker compose run --rm migrate` runs Alembic against the compose Postgres service.
+- `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` runs the authoritative test suite path for this repo.

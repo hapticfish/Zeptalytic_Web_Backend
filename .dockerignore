@@ -1,0 +1,13 @@
+.git
+.gitignore
+.idea
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.venv
+__pycache__
+*.py[cod]
+*.log
+.env
+progress/codex.log
+progress/last_message.txt

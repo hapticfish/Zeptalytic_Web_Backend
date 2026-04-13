@@ -68,3 +68,27 @@
 - Next: Implement `pdb-005` to add `docker-compose.yml` and `docker-compose.test.yml` with real `api`, `migrate`, and `test` services, then rerun the authoritative docker suite.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-12T22:59:46.8083632-05:00
+- Goal for this iteration: Complete `pdb-005` by adding the real compose topology for `api`, `migrate`, and `test` and proving the documented docker test path works.
+- What I found (repo search summary): `app/main.py` is the only active runtime entrypoint and exposes `/health`; `app/core/config.py` is the live env/settings surface; `app/db/session.py` and `alembic/env.py` already provide the DB/Alembic entrypoints the compose services needed to call; `app/db/models/__init__.py` still only contains a placeholder docstring so no ORM models are registered yet; `pyproject.toml` already defines FastAPI, Uvicorn, Alembic, Psycopg, and pytest so no new repo dependency was needed; there was no existing `Dockerfile`, `docker-compose.yml`, or `docker-compose.test.yml`; test coverage before this slice was only `tests/unit/test_health.py`.
+- What I changed: Added a minimal Python 3.12 + Poetry application image, added `docker-compose.yml` with `db`, `api`, and `migrate`, added `docker-compose.test.yml` with `db`, `migrate`, and `test`, documented the now-real docker workflow in `README.md`, added `tests/unit/test_config.py` for environment-driven settings coverage, and marked `pdb-005` complete in the plan/spec after the authoritative docker suite passed.
+- Why I changed: Later DB schema slices cannot truthfully satisfy the repo's required validation gate until the documented compose topology exists and the required docker test command runs successfully end to end.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - README.md
+  - specs/parent_db_foundation.json
+  - progress/progress.txt
+- New Files:
+  - .dockerignore
+  - Dockerfile
+  - docker-compose.test.yml
+  - docker-compose.yml
+  - tests/unit/test_config.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml config` passed; first authoritative run exposed `ModuleNotFoundError: No module named 'app'` inside the `migrate` container; after adding `PYTHONPATH=/app` in the image, `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with Alembic startup succeeding and `2 passed in 0.36s` from the `test` service. Local host-side pytest was not available (`pytest` not on PATH and `python -m pytest` used a Python install without pytest).
+- Notes / risks: The compose topology now exists, but the migration path is still effectively empty because `alembic/versions/` has no schema revisions and `app/db/models/__init__.py` still does not register models. The next slice should address DB bootstrap/model registration before any table work.
+- Next: Implement `pdb-010` to align model registration and Alembic/bootstrap wiring for upcoming schema slices.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)
