@@ -16,13 +16,13 @@ This document is intentionally scoped to the **parent site backend + parent DB**
 - Runtime entrypoint: `app/main.py` creates the FastAPI app directly and exposes only `/health`.
 - Config surface: `app/core/config.py` is the active settings module; there is no `app/settings.py` in this repo.
 - DB bootstrap: `app/db/base.py` defines `Base`, `app/db/session.py` defines `engine` and `SessionLocal`, and `alembic/env.py` points `target_metadata` at `Base.metadata`.
-- Model registration: `app/db/models/__init__.py` contains only a placeholder docstring, so Alembic currently has no model imports to discover.
+- Model registration: `app/db/bootstrap.py` is the shared metadata-loading path and calls `app/db/models/__init__.py` so Alembic and future schema work use one model-registration surface.
 - Migration path: `alembic/versions/` exists but is empty.
 - Container topology: `docker-compose.yml` and `docker-compose.test.yml` now exist and define the documented `api`, `migrate`, and `test` services used by the authoritative docker commands.
 - Test harness: concrete tests currently consist of `tests/unit/test_health.py` and `tests/unit/test_config.py`; there are still no DB bootstrap, migration, or repository tests yet.
 
 Planning implication:
-- the next implementation slice should align DB/bootstrap registration before table-by-table schema work expands, because compose topology is now in place and the authoritative docker command is available.
+- the next implementation slice should add the first concrete parent-owned tables and Alembic revisions on top of the now-aligned bootstrap path.
 
 ## Launch-critical table groups for the first workstream
 

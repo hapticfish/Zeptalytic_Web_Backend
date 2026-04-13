@@ -1,4 +1,5 @@
-"""ORM models package.
+"""Central model-registration path for SQLAlchemy metadata discovery."""
 
-Models are imported here as they are added so Alembic can see them.
-"""
+
+def import_models() -> None:
+    """Import concrete model modules here as they are added."""

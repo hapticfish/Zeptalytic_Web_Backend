@@ -42,7 +42,7 @@ If these differ from repo reality, a planning run must update the docs/prompt/pl
 
 - [x] `pdb-001` — Discovery + repo reality audit for the parent DB workstream; confirm current DB/bootstrap/model/alembic surfaces and create/validate the parent DB schema plan doc.
 - [x] `pdb-005` — Add or align container topology (`docker-compose.yml`, `docker-compose.test.yml`, `api`, `migrate`, `test`) so the repo has a real authoritative docker path.
-- [ ] `pdb-010` — Add or align shared DB bootstrap/model-registration/Alembic wiring for the parent site repo without implementing endpoint logic yet.
+- [x] `pdb-010` — Add or align shared DB bootstrap/model-registration/Alembic wiring for the parent site repo without implementing endpoint logic yet.
 - [ ] `pdb-020` — Implement `accounts`, `auth_sessions`, `email_verification_tokens`, and `password_reset_tokens` with focused tests.
 - [ ] `pdb-025` — Implement `account_security_settings`, optional `mfa_recovery_codes`, and `auth_events` with focused tests.
 - [ ] `pdb-030` — Implement `profiles` with focused tests.

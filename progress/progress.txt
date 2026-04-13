@@ -111,3 +111,27 @@
 - Next: Implement `pdb-010` to establish a single clear model-registration and Alembic path before adding tables.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T17:58:51.5764685-05:00
+- Goal for this iteration: Complete `pdb-010` by aligning the shared DB bootstrap/model-registration path so Alembic and future schema slices use one consistent metadata-loading surface.
+- What I found (repo search summary): `app/db/base.py` was the only SQLAlchemy declarative-base surface; `app/db/session.py` was the only engine/session wiring and is not yet consumed outside DB bootstrap; `alembic/env.py` imported `Base` directly and set `target_metadata = Base.metadata`; `app/db/models/__init__.py` was only a placeholder docstring with no registration hook; current wiring meant Alembic had no central model-import path; existing test coverage before this slice was `tests/unit/test_health.py` and `tests/unit/test_config.py` only, with no DB bootstrap tests.
+- What I changed: Added `app/db/bootstrap.py` with `get_target_metadata()` and a shared `target_metadata` export, turned `app/db/models/__init__.py` into the central model-registration hook via `import_models()`, pointed `alembic/env.py` at the shared bootstrap metadata path, added `tests/unit/test_db_bootstrap.py` to verify the helper imports models and returns `Base.metadata`, updated the schema-plan/README discovery notes to reflect the new bootstrap path, and marked `pdb-010` complete in the plan/spec.
+- Why I changed: Later schema slices need one explicit place for model-registration side effects so Alembic metadata loading stays predictable as concrete ORM models are introduced.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - README.md
+  - alembic/env.py
+  - app/db/models/__init__.py
+  - docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md
+  - specs/parent_db_foundation.json
+  - progress/progress.txt
+- New Files:
+  - app/db/bootstrap.py
+  - tests/unit/test_db_bootstrap.py
+- Removed Files:
+- Tests run + results: `python -m pytest tests/unit/test_db_bootstrap.py` could not run on the host because the active Python install does not have `pytest` installed (`No module named pytest`). `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `migrate` service completed successfully and the `test` service reported `3 passed in 0.72s`.
+- Notes / risks: The bootstrap path is now centralized, but there are still no concrete ORM tables or Alembic revisions in `alembic/versions/`. The new `import_models()` hook is intentionally empty until the next schema slice adds real model modules.
+- Next: Implement `pdb-020` to add the first auth/account tables and register them through the new bootstrap hook.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)
