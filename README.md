@@ -42,3 +42,12 @@ It does **not** own authoritative billing truth. The separate Pay service remain
 The first workstream is parent DB foundation. See:
 - `specs/parent_db_foundation.json`
 - `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md`
+
+## Current repo reality
+
+- Runtime entrypoint is `app/main.py` with a single `/health` route.
+- Config currently lives in `app/core/config.py`; there is no `app/settings.py`.
+- DB bootstrap currently consists of `app/db/base.py`, `app/db/session.py`, and `alembic/env.py`.
+- `alembic/env.py` targets `Base.metadata`, but `app/db/models/__init__.py` does not import any models yet and `alembic/versions/` is empty.
+- Test coverage currently consists of `tests/unit/test_health.py`; there are no DB or migration tests yet.
+- Target docker commands are documented in the planning files, but the compose files needed for `api`, `migrate`, and `test` do not exist yet. The next build slice must add or align that topology before later schema items can satisfy the authoritative docker gate.

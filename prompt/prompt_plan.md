@@ -33,6 +33,7 @@ Your job in this run is PLANNING ONLY.
   `docker compose run --rm migrate`
 
 If these differ from repo reality, update repo docs accordingly (planning/doc files only).
+If the compose files or named services do not exist yet, record that drift explicitly and refine the active spec so the next build slice creates or aligns the container topology before later schema work.
 
 ## 2) Durable artifacts check
 Ensure these exist (create if missing) and are internally consistent:

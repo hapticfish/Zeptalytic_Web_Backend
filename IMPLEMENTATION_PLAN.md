@@ -23,7 +23,7 @@ Read before planning or building:
 - Coinbase is a checkout/payment rail, not a Stripe-like saved-card subsystem.
 - Promo code logic belongs in Pay.
 
-## Authoritative commands (expected baseline)
+## Authoritative commands (target baseline)
 - Full tests:
   - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test`
 - API:
@@ -31,18 +31,28 @@ Read before planning or building:
 - Migrations:
   - `docker compose run --rm migrate`
 
+Current repo reality audit on 2026-04-12:
+- `docker-compose.yml` and `docker-compose.test.yml` do not exist yet.
+- The next build slice must add or align the compose topology and service names needed for the target commands above (`api`, `migrate`, `test`).
+- Until that topology exists, later schema items must not claim the authoritative docker command has been satisfied.
+
 If these differ from repo reality, a planning run must update the docs/prompt/plan files before implementation continues.
 
 ## Work order for the active spec
 
 - [ ] `pdb-001` — Discovery + repo reality audit for the parent DB workstream; confirm current DB/bootstrap/model/alembic surfaces and create/validate the parent DB schema plan doc.
+- [ ] `pdb-005` — Add or align container topology (`docker-compose.yml`, `docker-compose.test.yml`, `api`, `migrate`, `test`) so the repo has a real authoritative docker path.
 - [ ] `pdb-010` — Add or align shared DB bootstrap/model-registration/Alembic wiring for the parent site repo without implementing endpoint logic yet.
-- [ ] `pdb-020` — Implement launch-critical identity/auth tables and migrations (`accounts`, session/reset/verification/security/audit tables) with focused tests.
-- [ ] `pdb-030` — Implement profile/settings/integration tables and migrations (`profiles`, preferences, `oauth_connections`) with focused tests.
+- [ ] `pdb-020` — Implement `accounts`, `auth_sessions`, `email_verification_tokens`, and `password_reset_tokens` with focused tests.
+- [ ] `pdb-025` — Implement `account_security_settings`, optional `mfa_recovery_codes`, and `auth_events` with focused tests.
+- [ ] `pdb-030` — Implement `profiles` with focused tests.
+- [ ] `pdb-035` — Implement `profile_preferences`, `communication_preferences`, and `oauth_connections` with focused tests.
 - [ ] `pdb-040` — Implement international-ready parent-owned `addresses` table and migration with focused tests.
-- [ ] `pdb-050` — Implement support tables and migrations (`support_tickets`, `support_ticket_messages`, `support_ticket_attachments`) with focused tests.
+- [ ] `pdb-050` — Implement `support_tickets` and `support_ticket_messages` with focused tests.
+- [ ] `pdb-055` — Implement `support_ticket_attachments` metadata storage with focused tests.
 - [ ] `pdb-060` — Implement `announcements` and `service_statuses` tables and migrations with focused tests.
-- [ ] `pdb-070` — Implement Pay-derived read-model tables (`subscription_summaries`, `entitlement_summaries`, `product_access_states`, `payment_summaries`, optional `payment_method_summaries`) with focused tests.
+- [ ] `pdb-070` — Implement `subscription_summaries` and `entitlement_summaries` with focused tests.
+- [ ] `pdb-075` — Implement `product_access_states`, `payment_summaries`, and optional `payment_method_summaries` with focused tests.
 - [ ] `pdb-080` — Align README/docs with actual DB topology, migration commands, and model-registration behavior if needed.
 - [ ] `pdb-999` — Final authoritative docker test suite green for the parent DB foundation workstream.
 

@@ -38,6 +38,33 @@
       "completed_by": null
     },
     {
+      "id": "pdb-005",
+      "category": "infra",
+      "description": "Add or align the container topology required for the documented parent-backend commands so `api`, `migrate`, and `test` exist behind real compose services.",
+      "expected_paths": [
+        "docker-compose.yml",
+        "docker-compose.test.yml",
+        "README.md",
+        "IMPLEMENTATION_PLAN.md",
+        "progress/progress.txt"
+      ],
+      "steps": [
+        "Inspect the current repo for compose files, env examples, runtime entrypoints, and migration entrypoints before editing.",
+        "Create or align the minimal compose topology needed for `docker compose up --build api`, `docker compose run --rm migrate`, and `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test`.",
+        "Keep service names and environment wiring consistent with the existing settings module and Alembic entrypoint.",
+        "Document the topology in README.md if the command path changed or needed clarification.",
+        "Run the authoritative docker suite and update durable artifacts."
+      ],
+      "pass_criteria": [
+        "The repo contains a real compose topology for `api`, `migrate`, and `test`.",
+        "README.md and IMPLEMENTATION_PLAN.md match the actual command path.",
+        "The authoritative docker suite passes."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
       "id": "pdb-010",
       "category": "db_bootstrap",
       "description": "Add or align shared parent-repo DB bootstrap surfaces so later table slices have a consistent model-registration and migration path.",
@@ -65,21 +92,44 @@
     {
       "id": "pdb-020",
       "category": "schema",
-      "description": "Implement launch-critical identity/auth tables and migrations for the parent site.",
+      "description": "Implement the first launch-critical identity/auth persistence slice for the parent site.",
       "expected_paths": [
         "app/db/models/",
-        "app/db/repositories/",
         "alembic/versions/",
         "tests/"
       ],
       "steps": [
-        "Implement accounts/auth/security models and migrations per the schema plan.",
+        "Implement `accounts`, `auth_sessions`, `email_verification_tokens`, and `password_reset_tokens` per the schema plan.",
         "Register models so Alembic sees them.",
         "Add focused tests for constraints and expected persistence behavior.",
         "Run the authoritative docker suite and update durable artifacts."
       ],
       "pass_criteria": [
-        "Identity/auth tables from the schema plan exist in models and migrations.",
+        "The first auth tables from the schema plan exist in models and migrations.",
+        "Focused tests exist and pass.",
+        "Authoritative docker suite passes."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-025",
+      "category": "schema",
+      "description": "Implement the parent-owned security/settings audit tables for account security state.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/"
+      ],
+      "steps": [
+        "Implement `account_security_settings`, optional `mfa_recovery_codes`, and `auth_events` per the schema plan.",
+        "Register models so Alembic sees them.",
+        "Add focused tests for defaults, foreign keys, and expected audit/security persistence behavior.",
+        "Run the authoritative docker suite and update durable artifacts."
+      ],
+      "pass_criteria": [
+        "Security/audit tables from the schema plan exist in models and migrations.",
         "Focused tests exist and pass.",
         "Authoritative docker suite passes."
       ],
@@ -90,19 +140,41 @@
     {
       "id": "pdb-030",
       "category": "schema",
-      "description": "Implement profile/settings/integration tables and migrations for the parent site.",
+      "description": "Implement the base parent-owned profile table and migration.",
       "expected_paths": [
         "app/db/models/",
         "alembic/versions/",
         "tests/"
       ],
       "steps": [
-        "Implement profiles, preferences, communication preferences, and oauth/integration tables per the schema plan.",
+        "Implement `profiles` per the schema plan.",
+        "Add focused tests for one-to-one relationship and expected persistence behavior.",
+        "Run the authoritative docker suite and update durable artifacts."
+      ],
+      "pass_criteria": [
+        "The `profiles` table is present in models and migrations.",
+        "Focused tests and docker suite pass."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-035",
+      "category": "schema",
+      "description": "Implement the remaining launch-critical profile/settings/integration tables and migrations for the parent site.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/"
+      ],
+      "steps": [
+        "Implement `profile_preferences`, `communication_preferences`, and `oauth_connections` per the schema plan.",
         "Add focused tests for uniqueness and relationship rules where relevant.",
         "Run the authoritative docker suite and update durable artifacts."
       ],
       "pass_criteria": [
-        "Profile/settings/integration tables are present in models and migrations.",
+        "Preference and oauth/integration tables are present in models and migrations.",
         "Focused tests and docker suite pass."
       ],
       "passes": false,
@@ -135,19 +207,40 @@
     {
       "id": "pdb-050",
       "category": "schema",
-      "description": "Implement support ticket, message, and attachment-metadata tables and migrations.",
+      "description": "Implement support ticket and support message tables and migrations.",
       "expected_paths": [
         "app/db/models/",
         "alembic/versions/",
         "tests/"
       ],
       "steps": [
-        "Implement support tables per the schema plan.",
-        "Keep file storage out of Postgres; store attachment metadata only.",
+        "Implement `support_tickets` and `support_ticket_messages` per the schema plan.",
         "Add focused tests and run the docker suite."
       ],
       "pass_criteria": [
-        "Support tables exist in models and migrations.",
+        "Support ticket and message tables exist in models and migrations.",
+        "Focused tests and docker suite pass."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-055",
+      "category": "schema",
+      "description": "Implement support attachment metadata storage and migration without storing file contents in Postgres.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/"
+      ],
+      "steps": [
+        "Implement `support_ticket_attachments` per the schema plan.",
+        "Keep file storage out of Postgres and store attachment metadata only.",
+        "Add focused tests and run the docker suite."
+      ],
+      "pass_criteria": [
+        "Support attachment metadata table exists in models and migrations.",
         "Attachment handling is metadata-only in DB design.",
         "Focused tests and docker suite pass."
       ],
@@ -179,7 +272,7 @@
     {
       "id": "pdb-070",
       "category": "schema",
-      "description": "Implement Pay-derived parent read-model tables for subscription/access/payment summaries without duplicating Pay commercial truth.",
+      "description": "Implement the first Pay-derived parent read-model slice for subscriptions and entitlements without duplicating Pay commercial truth.",
       "expected_paths": [
         "app/db/models/",
         "alembic/versions/",
@@ -187,12 +280,36 @@
         "docs/architecture/Zeptalytic_Parent_vs_Pay_Data_Ownership_Matrix.md"
       ],
       "steps": [
-        "Implement the projection/read-model tables named in the schema plan.",
+        "Implement `subscription_summaries` and `entitlement_summaries` from the schema plan.",
         "Keep naming and semantics summary/projection-focused, not authoritative billing truth.",
         "Add focused tests and run the docker suite."
       ],
       "pass_criteria": [
-        "Projection tables exist in models and migrations.",
+        "Subscription and entitlement projection tables exist in models and migrations.",
+        "No duplicated Pay billing engine logic is introduced.",
+        "Focused tests and docker suite pass."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "pdb-075",
+      "category": "schema",
+      "description": "Implement the remaining Pay-derived access and payment summary read-model tables without introducing authoritative billing truth.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/",
+        "docs/architecture/Zeptalytic_Parent_vs_Pay_Data_Ownership_Matrix.md"
+      ],
+      "steps": [
+        "Implement `product_access_states`, `payment_summaries`, and optional `payment_method_summaries` from the schema plan.",
+        "Keep naming and semantics summary/projection-focused, not authoritative billing truth.",
+        "Add focused tests and run the docker suite."
+      ],
+      "pass_criteria": [
+        "Access and payment projection tables exist in models and migrations.",
         "No duplicated Pay billing engine logic is introduced.",
         "Focused tests and docker suite pass."
       ],

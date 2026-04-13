@@ -30,3 +30,25 @@
 - Next: Run `./scripts/ralph-loop.sh plan 1` for the first planning-only iteration, then `./scripts/ralph-loop.sh build 1` for the first build iteration.
 - Sources used (only if needed; prefer official docs): none
 - Commit:
+
+## Iteration entry
+- Date/time: 2026-04-12T22:42:48.5605699-05:00
+- Goal for this iteration: Planning-only refinement of the active parent DB foundation spec so the next build run starts with real repo prerequisites.
+- What I found (repo search summary): `app/main.py` is the active FastAPI entrypoint and only exposes `/health`; `app/core/config.py` is the live settings surface and there is no `app/settings.py`; DB bootstrap currently consists of `app/db/base.py`, `app/db/session.py`, and `alembic/env.py` targeting `Base.metadata`; `app/db/models/__init__.py` does not import any models; `alembic/versions/` is empty; there are no `docker-compose.yml` or `docker-compose.test.yml` files; existing tests are limited to `tests/unit/test_health.py`.
+- What I changed: Refined the active spec into smaller slices, inserted an explicit compose-topology prerequisite (`pdb-005`), documented current repo drift in the implementation plan/schema plan/README/prompt files, and aligned the planning/build prompts to require compose topology alignment before later DB schema items claim the authoritative docker gate.
+- Why I changed: The documented authoritative commands could not match repo reality because the compose topology does not exist yet. The workstream needed smaller, truthful prerequisite items so later build runs do not skip the container/bootstrap foundation.
+- Updated Files:
+  - M IMPLEMENTATION_PLAN.md
+  - M PROMPT.md
+  - M README.md
+  - M docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md
+  - M prompt/prompt_build.md
+  - M prompt/prompt_plan.md
+  - M specs/parent_db_foundation.json
+- New Files:
+- Removed Files:
+- Tests run + results: No application tests run in this planning-only iteration. Verified `specs/parent_db_foundation.json` parses successfully with `python` JSON loading. Verified docker itself is available, but the repo currently lacks the compose files required by the documented authoritative commands.
+- Notes / risks: The next build iteration should target `pdb-005` before any DB schema slice. Until compose services exist for `api`, `migrate`, and `test`, later items cannot honestly satisfy the authoritative docker command.
+- Next: Build `pdb-005` by adding or aligning `docker-compose.yml` and `docker-compose.test.yml`, then run the authoritative docker suite against the new topology.
+- Sources used (only if needed; prefer official docs): none
+- Commit: 66a1145

@@ -12,6 +12,18 @@ This document is intentionally scoped to the **parent site backend + parent DB**
 4. Stripe card capture is handled through Stripe.js / Elements + SetupIntents. Coinbase is treated as a checkout/payment rail, not a saved-card subsystem.
 5. This first DB workstream should focus on **launch-critical parent-owned tables** first.
 
+## Current repo reality audit (2026-04-12)
+- Runtime entrypoint: `app/main.py` creates the FastAPI app directly and exposes only `/health`.
+- Config surface: `app/core/config.py` is the active settings module; there is no `app/settings.py` in this repo.
+- DB bootstrap: `app/db/base.py` defines `Base`, `app/db/session.py` defines `engine` and `SessionLocal`, and `alembic/env.py` points `target_metadata` at `Base.metadata`.
+- Model registration: `app/db/models/__init__.py` contains only a placeholder docstring, so Alembic currently has no model imports to discover.
+- Migration path: `alembic/versions/` exists but is empty.
+- Container topology: the repo does not yet contain `docker-compose.yml` or `docker-compose.test.yml`, so the documented `api` / `migrate` / `test` commands are target-state commands, not current-state commands.
+- Test harness: `tests/unit/test_health.py` is the only concrete test; there are no DB bootstrap, migration, or repository tests yet.
+
+Planning implication:
+- the next implementation slice must establish compose topology and DB/bootstrap registration before table-by-table schema work can be validated against the authoritative docker command.
+
 ## Launch-critical table groups for the first workstream
 
 ### Group A — Identity and auth
@@ -303,14 +315,19 @@ These are parent-owned but can follow after the initial DB foundation if needed:
 - plan/bundle marketing metadata tables if kept as frontend config initially
 
 ## Recommended migration order
-1. base DB bootstrap / common model registration / alembic wiring cleanup if needed
-2. `accounts`, `auth_sessions`, `email_verification_tokens`, `password_reset_tokens`, `account_security_settings`, optional `mfa_recovery_codes`, `auth_events`
-3. `profiles`, `profile_preferences`, `communication_preferences`, `oauth_connections`
-4. `addresses`
-5. `support_tickets`, `support_ticket_messages`, `support_ticket_attachments`
-6. `announcements`, `service_statuses`
-7. `subscription_summaries`, `entitlement_summaries`, `product_access_states`, `payment_summaries`, optional `payment_method_summaries`
-8. later-phase content/rewards tables
+1. container topology / authoritative docker path (`docker-compose.yml`, `docker-compose.test.yml`, `api`, `migrate`, `test`)
+2. base DB bootstrap / common model registration / Alembic wiring cleanup if needed
+3. `accounts`, `auth_sessions`, `email_verification_tokens`, `password_reset_tokens`
+4. `account_security_settings`, optional `mfa_recovery_codes`, `auth_events`
+5. `profiles`
+6. `profile_preferences`, `communication_preferences`, `oauth_connections`
+7. `addresses`
+8. `support_tickets`, `support_ticket_messages`
+9. `support_ticket_attachments`
+10. `announcements`, `service_statuses`
+11. `subscription_summaries`, `entitlement_summaries`
+12. `product_access_states`, `payment_summaries`, optional `payment_method_summaries`
+13. later-phase content/rewards tables
 
 ## Constraints and implementation notes for the first spec
 - Verify exact table/column names before queries are written.

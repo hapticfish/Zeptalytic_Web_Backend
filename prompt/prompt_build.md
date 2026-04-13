@@ -56,6 +56,10 @@ Follow this exact routine every run:
 Run:
 `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test`
 
+Repo reality note:
+- if the current active item is the compose-topology/bootstrap prerequisite and the required compose files do not exist yet, that item must create or align the `docker-compose.yml` / `docker-compose.test.yml` topology first
+- later schema items may not claim completion until that topology exists and the authoritative docker command succeeds
+
 If docker is unavailable or the command cannot run:
 - record the blocker in `progress/progress.txt`
 - do NOT commit changes you cannot test
