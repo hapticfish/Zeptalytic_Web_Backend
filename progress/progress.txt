@@ -157,3 +157,24 @@
 - Next: Implement `pdb-025` for `account_security_settings`, optional `mfa_recovery_codes`, and `auth_events` on top of the new `accounts` foundation.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T18:11:52.1797615-05:00
+- Goal for this iteration: Complete `pdb-025` by adding the parent-owned account security settings, recovery-code, and auth-audit tables on top of the existing `accounts` slice.
+- What I found (repo search summary): `app/db/models/auth.py` was the only concrete ORM module and only contained `Account`, `AuthSession`, `EmailVerificationToken`, and `PasswordResetToken`; `app/db/models/__init__.py` was the only model-registration hook and already imported `app.db.models.auth`, so keeping the new tables in that module would automatically preserve Alembic discovery; `app/db/bootstrap.py` and `alembic/env.py` were already the live metadata-loading path; `alembic/versions/20260413_1835_pdb020_auth_tables.py` was the only existing revision so `pdb-025` needed to be a direct follow-on migration; test coverage for schema behavior was concentrated in `tests/unit/test_auth_models.py`, which already used an in-memory SQLite schema copied from the ORM tables.
+- What I changed: Extended `app/db/models/auth.py` with `AccountSecuritySettings`, `MfaRecoveryCode`, and `AuthEvent`; added follow-up migration `alembic/versions/20260413_1910_pdb025_security_tables.py`; expanded `tests/unit/test_auth_models.py` to cover metadata registration, defaults, indexes, persistence, and invalid security/audit inserts with SQLite foreign-key enforcement; marked `pdb-025` complete in the plan/spec.
+- Why I changed: The schema plan places parent-owned 2FA/security state and auth audit events immediately after the base account/auth tables, and this slice can be implemented without introducing any Pay-owned billing or payment truth.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/auth.py
+  - progress/progress.txt
+  - specs/parent_db_foundation.json
+  - tests/unit/test_auth_models.py
+- New Files:
+  - alembic/versions/20260413_1910_pdb025_security_tables.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml run --rm test pytest -q tests/unit/test_auth_models.py -vv` passed with `8 passed in 0.50s`. The first authoritative run of `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` applied migration `20260413_1910` successfully but the `test` container exited with code `137`; rerunning the same authoritative command passed cleanly with `11 passed in 0.84s`.
+- Notes / risks: `two_factor_method` and `auth_events.event_type` are still free-form strings because the controlling docs do not yet lock the exact vocabulary; this keeps the schema extensible while leaving room for a later decision record.
+- Next: Implement `pdb-030` for the parent-owned `profiles` table and its one-to-one relationship with `accounts`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)
