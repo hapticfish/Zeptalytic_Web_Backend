@@ -43,6 +43,20 @@ class Account(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    profile_preferences: Mapped["ProfilePreference | None"] = relationship(
+        back_populates="account",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    communication_preferences: Mapped["CommunicationPreference | None"] = relationship(
+        back_populates="account",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    oauth_connections: Mapped[list["OAuthConnection"]] = relationship(
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
 
 
 class AuthSession(Base):
@@ -215,3 +229,108 @@ class Profile(Base):
     )
 
     account: Mapped[Account] = relationship(back_populates="profile")
+
+
+class ProfilePreference(Base):
+    __tablename__ = "profile_preferences"
+
+    account_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    preferred_language: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    account: Mapped[Account] = relationship(back_populates="profile_preferences")
+
+
+class CommunicationPreference(Base):
+    __tablename__ = "communication_preferences"
+
+    account_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    marketing_emails_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    product_updates_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+    )
+    announcement_emails_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    account: Mapped[Account] = relationship(back_populates="communication_preferences")
+
+
+class OAuthConnection(Base):
+    __tablename__ = "oauth_connections"
+    __table_args__ = (
+        Index("ix_oauth_connections_account_id", "account_id"),
+        Index(
+            "uq_oauth_connections_provider_user",
+            "provider",
+            "provider_user_id",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    account_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # TODO(john): Lock the oauth/integration status vocabulary in the settings/integrations spec.
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    connected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    disconnected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    connection_metadata: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
+        JSON_VARIANT,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'"),
+    )
+
+    account: Mapped[Account] = relationship(back_populates="oauth_connections")

@@ -199,3 +199,24 @@
 - Next: Implement `pdb-035` for `profile_preferences`, `communication_preferences`, and `oauth_connections`.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T20:21:15.7802049-05:00
+- Goal for this iteration: Complete `pdb-035` by adding the remaining launch-critical profile/settings/integration tables and validating the migration/test path.
+- What I found (repo search summary): `app/db/models/auth.py` remained the only concrete ORM module and already defined `Account`, `Profile`, and the earlier auth/security tables, so extending that module preserved the current registration pattern; `app/db/models/__init__.py` still only imports `app.db.models.auth`, which means any new tables added there are automatically visible to `app/db/bootstrap.py` and `alembic/env.py`; the live migration chain was `20260413_1835_pdb020_auth_tables.py` -> `20260413_1910_pdb025_security_tables.py` -> `20260413_1918_pdb030_profiles_table.py`; focused schema coverage already existed in `tests/unit/test_auth_models.py`, while there were still no routers, services, or repositories wired for settings/integrations yet.
+- What I changed: Extended `app/db/models/auth.py` with `ProfilePreference`, `CommunicationPreference`, and `OAuthConnection`, plus the matching `Account` relationships; added Alembic revision `alembic/versions/20260413_1830_pdb035_profile_settings_tables.py` to create the three tables, defaults, foreign keys, and oauth uniqueness/indexes; expanded `tests/unit/test_auth_models.py` to cover metadata registration, preference defaults, round-trip persistence, oauth index presence, and invalid foreign-key/duplicate-oauth cases; marked `pdb-035` complete in `IMPLEMENTATION_PLAN.md` and `specs/parent_db_foundation.json`.
+- Why I changed: The schema plan places parent-owned profile preferences, communication preferences, and oauth/integration state immediately after `profiles`, and this slice stays inside parent-owned settings data without duplicating any Pay billing truth.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/auth.py
+  - progress/progress.txt
+  - specs/parent_db_foundation.json
+  - tests/unit/test_auth_models.py
+- New Files:
+  - alembic/versions/20260413_1830_pdb035_profile_settings_tables.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml run --rm test pytest -q tests/unit/test_auth_models.py -vv` passed with `10 passed in 0.50s`, but that used the already-built image and did not rebuild in the new code; `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` rebuilt the image, applied revision `20260413_1830`, and passed with `18 passed in 0.93s`.
+- Notes / risks: `preferred_language`, oauth `provider`, and oauth `status` remain free-form strings because the controlling artifacts still do not lock the exact allowed vocabularies. The migration revision ID is intentionally unique but not chronological, so future Alembic slices should continue to follow the explicit `down_revision` chain rather than filename ordering.
+- Next: Implement `pdb-040` for the parent-owned international-ready `addresses` table.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)

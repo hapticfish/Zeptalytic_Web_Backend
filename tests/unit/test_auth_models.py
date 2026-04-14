@@ -13,10 +13,13 @@ from app.db.models.auth import (
     AccountSecuritySettings,
     AuthEvent,
     AuthSession,
+    CommunicationPreference,
     EmailVerificationToken,
     MfaRecoveryCode,
+    OAuthConnection,
     PasswordResetToken,
     Profile,
+    ProfilePreference,
 )
 
 
@@ -41,6 +44,9 @@ def _create_in_memory_schema() -> tuple[Session, MetaData]:
         MfaRecoveryCode.__table__,
         AuthEvent.__table__,
         Profile.__table__,
+        ProfilePreference.__table__,
+        CommunicationPreference.__table__,
+        OAuthConnection.__table__,
     ):
         table.to_metadata(metadata)
 
@@ -60,6 +66,9 @@ def test_auth_tables_are_registered_in_metadata() -> None:
         "mfa_recovery_codes",
         "auth_events",
         "profiles",
+        "profile_preferences",
+        "communication_preferences",
+        "oauth_connections",
     }.issubset(table_names)
 
 
@@ -79,14 +88,25 @@ def test_accounts_table_has_expected_constraints_and_indexes() -> None:
 
 def test_security_tables_have_expected_defaults_and_indexes() -> None:
     security_table = AccountSecuritySettings.__table__
+    communication_table = CommunicationPreference.__table__
     recovery_code_indexes = {index.name for index in MfaRecoveryCode.__table__.indexes}
     auth_event_indexes = {index.name for index in AuthEvent.__table__.indexes}
 
     assert security_table.c.two_factor_enabled.server_default is not None
     assert security_table.c.recovery_methods_available_count.server_default is not None
+    assert communication_table.c.marketing_emails_enabled.server_default is not None
+    assert communication_table.c.product_updates_enabled.server_default is not None
+    assert communication_table.c.announcement_emails_enabled.server_default is not None
     assert "ix_mfa_recovery_codes_account_id" in recovery_code_indexes
     assert "ix_auth_events_account_id" in auth_event_indexes
     assert "ix_auth_events_event_type" in auth_event_indexes
+
+
+def test_oauth_connections_have_expected_indexes() -> None:
+    oauth_indexes = {index.name for index in OAuthConnection.__table__.indexes}
+
+    assert "ix_oauth_connections_account_id" in oauth_indexes
+    assert "uq_oauth_connections_provider_user" in oauth_indexes
 
 
 def test_auth_and_security_persistence_round_trip() -> None:
@@ -138,8 +158,34 @@ def test_auth_and_security_persistence_round_trip() -> None:
         profile_image_url="https://cdn.example.com/avatar.png",
         discord_username="testrunner",
     )
+    profile_preferences = ProfilePreference(
+        account_id=account.id,
+        preferred_language="en-US",
+    )
+    communication_preferences = CommunicationPreference(account_id=account.id)
+    oauth_connection = OAuthConnection(
+        account_id=account.id,
+        provider="discord",
+        provider_user_id="discord-user-123",
+        provider_username="testrunner#1234",
+        status="connected",
+        connection_metadata={"guilds": 2},
+    )
 
-    session.add_all([auth_session, email_token, reset_token, security_settings, recovery_code, auth_event, profile])
+    session.add_all(
+        [
+            auth_session,
+            email_token,
+            reset_token,
+            security_settings,
+            recovery_code,
+            auth_event,
+            profile,
+            profile_preferences,
+            communication_preferences,
+            oauth_connection,
+        ]
+    )
     session.commit()
 
     persisted_session = session.scalar(select(AuthSession).where(AuthSession.account_id == account.id))
@@ -157,6 +203,15 @@ def test_auth_and_security_persistence_round_trip() -> None:
     )
     persisted_auth_event = session.scalar(select(AuthEvent).where(AuthEvent.account_id == account.id))
     persisted_profile = session.scalar(select(Profile).where(Profile.account_id == account.id))
+    persisted_profile_preferences = session.scalar(
+        select(ProfilePreference).where(ProfilePreference.account_id == account.id)
+    )
+    persisted_communication_preferences = session.scalar(
+        select(CommunicationPreference).where(CommunicationPreference.account_id == account.id)
+    )
+    persisted_oauth_connection = session.scalar(
+        select(OAuthConnection).where(OAuthConnection.account_id == account.id)
+    )
 
     assert persisted_session is not None
     assert persisted_session.session_token_hash == "session-token-hash"
@@ -176,8 +231,24 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_profile.display_name == "Test Runner"
     assert persisted_profile.timezone == "America/Chicago"
     assert persisted_profile.account.id == account.id
+    assert persisted_profile_preferences is not None
+    assert persisted_profile_preferences.preferred_language == "en-US"
+    assert persisted_communication_preferences is not None
+    assert persisted_communication_preferences.marketing_emails_enabled is False
+    assert persisted_communication_preferences.product_updates_enabled is True
+    assert persisted_communication_preferences.announcement_emails_enabled is True
+    assert persisted_oauth_connection is not None
+    assert persisted_oauth_connection.provider == "discord"
+    assert persisted_oauth_connection.provider_user_id == "discord-user-123"
+    assert persisted_oauth_connection.connection_metadata == {"guilds": 2}
     assert account.profile is not None
     assert account.profile.discord_username == "testrunner"
+    assert account.profile_preferences is not None
+    assert account.profile_preferences.preferred_language == "en-US"
+    assert account.communication_preferences is not None
+    assert account.communication_preferences.product_updates_enabled is True
+    assert len(account.oauth_connections) == 1
+    assert account.oauth_connections[0].provider_username == "testrunner#1234"
 
 
 def test_accounts_reject_duplicate_email() -> None:
@@ -290,6 +361,98 @@ def test_profiles_enforce_one_to_one_account_mapping() -> None:
     session.commit()
 
     session.add(Profile(account_id=account.id, display_name="Duplicate Profile"))
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_profile_preferences_require_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(ProfilePreference(account_id=uuid4(), preferred_language="en-US"))
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_communication_preferences_enforce_one_to_one_account_mapping() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="prefs-owner",
+        email="prefs-owner@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add(account)
+    session.commit()
+
+    session.add(CommunicationPreference(account_id=account.id))
+    session.commit()
+
+    session.add(CommunicationPreference(account_id=account.id))
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_oauth_connections_require_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        OAuthConnection(
+            account_id=uuid4(),
+            provider="discord",
+            provider_user_id="missing-account-user",
+            status="connected",
+            connection_metadata={},
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_oauth_connections_enforce_provider_user_uniqueness() -> None:
+    session, _ = _create_in_memory_schema()
+    first_account = Account(
+        id=uuid4(),
+        username="oauth-owner-1",
+        email="oauth-owner-1@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    second_account = Account(
+        id=uuid4(),
+        username="oauth-owner-2",
+        email="oauth-owner-2@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add_all([first_account, second_account])
+    session.commit()
+
+    session.add(
+        OAuthConnection(
+            account_id=first_account.id,
+            provider="discord",
+            provider_user_id="discord-user-123",
+            status="connected",
+            connection_metadata={},
+        )
+    )
+    session.commit()
+
+    session.add(
+        OAuthConnection(
+            account_id=second_account.id,
+            provider="discord",
+            provider_user_id="discord-user-123",
+            status="connected",
+            connection_metadata={},
+        )
+    )
 
     with pytest.raises(IntegrityError):
         session.commit()
