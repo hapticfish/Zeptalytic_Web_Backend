@@ -220,3 +220,24 @@
 - Next: Implement `pdb-040` for the parent-owned international-ready `addresses` table.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T20:26:27.9073319-05:00
+- Goal for this iteration: Complete `pdb-040` by adding the parent-owned international-ready `addresses` table, migration, and focused schema tests.
+- What I found (repo search summary): `app/db/models/auth.py` was still the only concrete ORM module, so adding `Address` there preserved the existing metadata-registration path through `app/db/models/__init__.py`, `app/db/bootstrap.py`, and `alembic/env.py`; there was no existing address model, migration, repository, router, or schema wiring anywhere else in the repo; the active migration chain ended at `alembic/versions/20260413_1830_pdb035_profile_settings_tables.py`; focused schema coverage remained centralized in `tests/unit/test_auth_models.py`, which already enforced foreign keys, metadata registration, defaults, and uniqueness patterns against an in-memory SQLite schema.
+- What I changed: Extended `app/db/models/auth.py` with `Address` and `Account.addresses`; added `alembic/versions/20260413_2040_pdb040_addresses_table.py` to create `addresses` with the international-ready fields, `is_primary` default, and the required `account_id` / `(account_id, address_type)` indexes; expanded `tests/unit/test_auth_models.py` to include the new table in metadata setup, validate address indexes/defaults, verify address persistence through the account relationship, and cover two invalid cases (`missing account`, `missing country_code`); marked `pdb-040` complete in `IMPLEMENTATION_PLAN.md` and `specs/parent_db_foundation.json`.
+- Why I changed: The schema plan and ownership docs place billing and future mailing/shipping addresses in the parent DB, and this slice needed an extensible international-ready shape without introducing Pay-owned billing truth.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/auth.py
+  - progress/progress.txt
+  - specs/parent_db_foundation.json
+  - tests/unit/test_auth_models.py
+- New Files:
+  - alembic/versions/20260413_2040_pdb040_addresses_table.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml run --rm test pytest -q tests/unit/test_auth_models.py -vv` passed in the existing image state. `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` rebuilt the image, applied revision `20260413_2040`, and passed with `21 passed in 0.92s`.
+- Notes / risks: `address_type` remains a free-form string with a TODO because the controlling docs only lock the initial example (`billing`) and do not yet define the full vocabulary for future address use cases.
+- Next: Implement `pdb-050` for `support_tickets` and `support_ticket_messages`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)

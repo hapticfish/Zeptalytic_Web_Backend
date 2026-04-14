@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db.models.auth import (
     Account,
     AccountSecuritySettings,
+    Address,
     AuthEvent,
     AuthSession,
     CommunicationPreference,
@@ -47,6 +48,7 @@ def _create_in_memory_schema() -> tuple[Session, MetaData]:
         ProfilePreference.__table__,
         CommunicationPreference.__table__,
         OAuthConnection.__table__,
+        Address.__table__,
     ):
         table.to_metadata(metadata)
 
@@ -69,6 +71,7 @@ def test_auth_tables_are_registered_in_metadata() -> None:
         "profile_preferences",
         "communication_preferences",
         "oauth_connections",
+        "addresses",
     }.issubset(table_names)
 
 
@@ -107,6 +110,15 @@ def test_oauth_connections_have_expected_indexes() -> None:
 
     assert "ix_oauth_connections_account_id" in oauth_indexes
     assert "uq_oauth_connections_provider_user" in oauth_indexes
+
+
+def test_addresses_have_expected_defaults_and_indexes() -> None:
+    addresses_table = Address.__table__
+    address_indexes = {index.name for index in addresses_table.indexes}
+
+    assert addresses_table.c.is_primary.server_default is not None
+    assert "ix_addresses_account_id" in address_indexes
+    assert "ix_addresses_account_id_address_type" in address_indexes
 
 
 def test_auth_and_security_persistence_round_trip() -> None:
@@ -171,6 +183,21 @@ def test_auth_and_security_persistence_round_trip() -> None:
         status="connected",
         connection_metadata={"guilds": 2},
     )
+    address = Address(
+        account_id=account.id,
+        address_type="billing",
+        label="Primary billing",
+        full_name="Test Runner",
+        line1="100 Example Street",
+        line2="Suite 200",
+        city_or_locality="Chicago",
+        state_or_region="IL",
+        postal_code="60601",
+        country_code="US",
+        country_name="United States",
+        formatted_address="Test Runner, 100 Example Street, Suite 200, Chicago, IL 60601, United States",
+        is_primary=True,
+    )
 
     session.add_all(
         [
@@ -184,6 +211,7 @@ def test_auth_and_security_persistence_round_trip() -> None:
             profile_preferences,
             communication_preferences,
             oauth_connection,
+            address,
         ]
     )
     session.commit()
@@ -212,6 +240,7 @@ def test_auth_and_security_persistence_round_trip() -> None:
     persisted_oauth_connection = session.scalar(
         select(OAuthConnection).where(OAuthConnection.account_id == account.id)
     )
+    persisted_address = session.scalar(select(Address).where(Address.account_id == account.id))
 
     assert persisted_session is not None
     assert persisted_session.session_token_hash == "session-token-hash"
@@ -241,6 +270,10 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_oauth_connection.provider == "discord"
     assert persisted_oauth_connection.provider_user_id == "discord-user-123"
     assert persisted_oauth_connection.connection_metadata == {"guilds": 2}
+    assert persisted_address is not None
+    assert persisted_address.address_type == "billing"
+    assert persisted_address.country_code == "US"
+    assert persisted_address.is_primary is True
     assert account.profile is not None
     assert account.profile.discord_username == "testrunner"
     assert account.profile_preferences is not None
@@ -249,6 +282,8 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert account.communication_preferences.product_updates_enabled is True
     assert len(account.oauth_connections) == 1
     assert account.oauth_connections[0].provider_username == "testrunner#1234"
+    assert len(account.addresses) == 1
+    assert account.addresses[0].city_or_locality == "Chicago"
 
 
 def test_accounts_reject_duplicate_email() -> None:
@@ -451,6 +486,51 @@ def test_oauth_connections_enforce_provider_user_uniqueness() -> None:
             provider_user_id="discord-user-123",
             status="connected",
             connection_metadata={},
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_addresses_require_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        Address(
+            account_id=uuid4(),
+            address_type="billing",
+            full_name="Missing Account",
+            line1="100 Example Street",
+            city_or_locality="Chicago",
+            country_code="US",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_addresses_require_country_code() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="address-owner",
+        email="address-owner@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add(account)
+    session.commit()
+
+    session.add(
+        Address(
+            account_id=account.id,
+            address_type="billing",
+            full_name="Address Owner",
+            line1="100 Example Street",
+            city_or_locality="Chicago",
+            country_code=None,  # type: ignore[arg-type]
         )
     )
 

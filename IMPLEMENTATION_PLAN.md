@@ -47,7 +47,7 @@ If these differ from repo reality, a planning run must update the docs/prompt/pl
 - [x] `pdb-025` — Implement `account_security_settings`, optional `mfa_recovery_codes`, and `auth_events` with focused tests.
 - [x] `pdb-030` — Implement `profiles` with focused tests.
 - [x] `pdb-035` — Implement `profile_preferences`, `communication_preferences`, and `oauth_connections` with focused tests.
-- [ ] `pdb-040` — Implement international-ready parent-owned `addresses` table and migration with focused tests.
+- [x] `pdb-040` — Implement international-ready parent-owned `addresses` table and migration with focused tests.
 - [ ] `pdb-050` — Implement `support_tickets` and `support_ticket_messages` with focused tests.
 - [ ] `pdb-055` — Implement `support_ticket_attachments` metadata storage with focused tests.
 - [ ] `pdb-060` — Implement `announcements` and `service_statuses` tables and migrations with focused tests.
