@@ -503,3 +503,13 @@
 - Next: Execute `mdl-999` only: rerun the authoritative docker suite as the standalone final quality gate and then mark the spec complete if it stays green.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+
+## 2026-04-13 23:03:07 CDT - Iteration 18
+- Goal for this iteration: Complete `mdl-999` by rerunning the authoritative docker suite as the standalone final quality gate for the model file separation spec.
+- Search summary before edit: confirmed `docker-compose.test.yml` is still the authoritative test path; model registration still flows through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`; structural regression coverage already exists in `tests/unit/test_model_module_layout.py` and `tests/unit/test_model_metadata_registration.py`; and broader schema/bootstrap coverage remains in `tests/unit/test_auth_models.py` and `tests/unit/test_db_bootstrap.py`.
+- What I changed: Marked `mdl-999` complete in `specs/model_file_separation_refactor.json`, checked off the matching item in `IMPLEMENTATION_PLAN.md`, and recorded this final quality-gate iteration in the progress log.
+- Tests run + results: `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed. The `migrate` service exited with code `0` and the `test` service reported `53 passed in 1.51s`.
+- Notes / risks: The active spec is now fully complete. `app/db/models/auth.py` still exists as a backward-compatible shim, but current regression coverage asserts the real registry and metadata paths use the split per-table modules instead.
+- Next: Move to the queued spec `specs/parent_db_verification_and_regression.json` on the next iteration.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending

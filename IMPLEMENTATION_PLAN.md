@@ -36,7 +36,7 @@ The vocabulary decision record is the canonical source for parent-site enums and
 - [x] `mdl-050` split billing/read-model projection models into sensible per-file modules
 - [x] `mdl-060` align imports/metadata registration/Alembic discovery after split
 - [x] `mdl-070` add structural regression tests to prevent future model-dump regressions
-- [ ] `mdl-999` run the authoritative docker test suite and mark this spec complete only when green
+- [x] `mdl-999` run the authoritative docker test suite and mark this spec complete only when green
 
 ### C. Next queued workstream — DB verification and regression hardening
 Queued next spec after B is green:
