@@ -26,8 +26,8 @@ The vocabulary decision record is the canonical source for parent-site enums and
 - Parent DB foundation spec completed in the previous run sequence.
 
 ### B. Active workstream — model file separation refactor
-- Immediate next build target: `mdl-070`
-- Current repo reality to plan against: the identity/auth/account slice and the profile/settings/address/integration slice now live in per-file model modules, while the remaining support/content/status and billing projection tables still live in `app/db/models/auth.py`; registration continues to flow through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`.
+- Immediate next build target: `mdl-999`
+- Current repo reality to plan against: all concrete parent ORM tables now live in per-file model modules under `app/db/models/`; metadata registration continues to flow through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`; and structural regression coverage now exists for model-module layout plus metadata table registration.
 - [x] `mdl-001` inventory current model layout and confirm exact files/tables to split
 - [x] `mdl-010` lock vocabulary decision record into repo docs
 - [x] `mdl-020` split identity/auth/account models into sensible per-file modules
@@ -35,7 +35,7 @@ The vocabulary decision record is the canonical source for parent-site enums and
 - [x] `mdl-040` split support/content/status models into sensible per-file modules
 - [x] `mdl-050` split billing/read-model projection models into sensible per-file modules
 - [x] `mdl-060` align imports/metadata registration/Alembic discovery after split
-- [ ] `mdl-070` add structural regression tests to prevent future model-dump regressions
+- [x] `mdl-070` add structural regression tests to prevent future model-dump regressions
 - [ ] `mdl-999` run the authoritative docker test suite and mark this spec complete only when green
 
 ### C. Next queued workstream — DB verification and regression hardening

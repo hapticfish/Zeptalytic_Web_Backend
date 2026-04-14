@@ -189,9 +189,9 @@
         "Structural regression tests exist and pass.",
         "The tests would fail if unrelated models were collapsed back into one file without proper registration."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-13T22:56:58.2858630-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "mdl-999",

@@ -493,3 +493,13 @@
 - Next: Execute `mdl-070` to add structural regression tests that guard the per-file module layout and metadata registration contract.
 - Sources used (only if needed; prefer official docs): none
 - Commit:
+- 2026-04-13T22:56:58.2858630-05:00 | codex | spec=model_file_separation_refactor | item=mdl-070
+- Summary: Added dedicated structural regression tests for model-module layout and bootstrap metadata registration so a future collapse back into a generic model file breaks test coverage immediately.
+- Files touched: `IMPLEMENTATION_PLAN.md`, `specs/model_file_separation_refactor.json`, `progress/progress.txt`
+- New files: `tests/unit/test_model_module_layout.py`, `tests/unit/test_model_metadata_registration.py`
+- Search summary before edit: confirmed 21 concrete `Base` subclasses already lived in per-file modules under `app/db/models/`; `app/db/models/testimonials.py` existed only as a placeholder; metadata registration flowed through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`; existing regression coverage was limited to `tests/unit/test_db_bootstrap.py` and the broader schema tests in `tests/unit/test_auth_models.py`; and no test yet asserted the expected module layout or full registered table inventory.
+- Tests run + results: Host-side `pytest` was unavailable on `PATH`. The authoritative command `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with the `migrate` service exiting `0` and the `test` service reporting `53 passed in 1.56s`.
+- Notes / risks: `app/db/models/auth.py` still exists as a backward-compatible re-export shim, but the new tests assert that the registry does not use it and that concrete models live in their split modules. The only remaining incomplete item in this spec is the standalone `mdl-999` quality-gate run.
+- Next: Execute `mdl-999` only: rerun the authoritative docker suite as the standalone final quality gate and then mark the spec complete if it stays green.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
