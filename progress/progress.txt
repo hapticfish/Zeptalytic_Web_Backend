@@ -279,3 +279,24 @@
 - Next: Implement `pdb-055` for `support_ticket_attachments` without storing file contents in Postgres.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T20:39:18.9148025-05:00
+- Goal for this iteration: Complete `pdb-055` by adding metadata-only support attachment storage on top of the existing support ticket schema.
+- What I found (repo search summary): `app/db/models/auth.py` is still the only concrete ORM module and already contained the live support schema (`Account`, `SupportTicket`, `SupportTicketMessage`) plus the current relationships; model registration is still only through `app/db/models/__init__.py`, which is consumed by `app/db/bootstrap.py` and `alembic/env.py`, so keeping the attachment model in `auth.py` preserved Alembic discovery without new wiring; the migration chain ended at `alembic/versions/20260413_2105_pdb050_support_tables.py`; focused schema coverage already existed in `tests/unit/test_auth_models.py`, including support-table indexes, persistence, and invalid ticket/message cases, and there were still no support routers/services/repositories wired yet.
+- What I changed: Extended `app/db/models/auth.py` with `SupportTicketAttachment` plus the `Account` and `SupportTicket` relationships; added `alembic/versions/20260413_2055_pdb055_support_attachment_tables.py` to create `support_ticket_attachments` with metadata-only fields, foreign keys, storage-key uniqueness, and ticket/uploader/scan-status indexes; expanded `tests/unit/test_auth_models.py` to register the attachment table, verify indexes and uniqueness, persist an attachment round-trip, and cover invalid missing-ticket, missing-uploader, and duplicate-storage-key cases; marked `pdb-055` complete in `IMPLEMENTATION_PLAN.md` and `specs/parent_db_foundation.json`.
+- Why I changed: The schema plan and ownership docs make support attachments parent-owned while explicitly keeping file contents out of Postgres, so this slice needed only attachment metadata storage and integrity rules.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/auth.py
+  - progress/progress.txt
+  - specs/parent_db_foundation.json
+  - tests/unit/test_auth_models.py
+- New Files:
+  - alembic/versions/20260413_2055_pdb055_support_attachment_tables.py
+- Removed Files:
+- Tests run + results: `pytest -q tests/unit/test_auth_models.py -vv` was unavailable locally because neither the shell nor host Python exposed `pytest`; the authoritative required command `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` rebuilt the images, applied Alembic revision `20260413_2055`, and passed with `29 passed in 1.15s`.
+- Notes / risks: `scan_status` remains a free-form string with a TODO because the controlling docs still do not lock the attachment malware/scan vocabulary. The table stores object-storage metadata only and does not introduce file blobs into Postgres.
+- Next: Implement `pdb-060` for `announcements` and `service_statuses`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)

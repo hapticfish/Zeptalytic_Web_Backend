@@ -21,6 +21,7 @@ from app.db.models.auth import (
     PasswordResetToken,
     Profile,
     ProfilePreference,
+    SupportTicketAttachment,
     SupportTicket,
     SupportTicketMessage,
 )
@@ -53,6 +54,7 @@ def _create_in_memory_schema() -> tuple[Session, MetaData]:
         Address.__table__,
         SupportTicket.__table__,
         SupportTicketMessage.__table__,
+        SupportTicketAttachment.__table__,
     ):
         table.to_metadata(metadata)
 
@@ -78,6 +80,7 @@ def test_auth_tables_are_registered_in_metadata() -> None:
         "addresses",
         "support_tickets",
         "support_ticket_messages",
+        "support_ticket_attachments",
     }.issubset(table_names)
 
 
@@ -130,6 +133,7 @@ def test_addresses_have_expected_defaults_and_indexes() -> None:
 def test_support_tables_have_expected_defaults_constraints_and_indexes() -> None:
     support_ticket_table = SupportTicket.__table__
     support_message_table = SupportTicketMessage.__table__
+    support_attachment_table = SupportTicketAttachment.__table__
     ticket_constraint_columns = {
         tuple(sorted(column.name for column in constraint.columns))
         for constraint in support_ticket_table.constraints
@@ -137,6 +141,12 @@ def test_support_tables_have_expected_defaults_constraints_and_indexes() -> None
     }
     ticket_indexes = {index.name for index in support_ticket_table.indexes}
     message_indexes = {index.name for index in support_message_table.indexes}
+    attachment_constraint_columns = {
+        tuple(sorted(column.name for column in constraint.columns))
+        for constraint in support_attachment_table.constraints
+        if getattr(constraint, "columns", None)
+    }
+    attachment_indexes = {index.name for index in support_attachment_table.indexes}
 
     assert ("ticket_code",) in ticket_constraint_columns
     assert "ix_support_tickets_account_id" in ticket_indexes
@@ -144,6 +154,10 @@ def test_support_tables_have_expected_defaults_constraints_and_indexes() -> None
     assert support_message_table.c.is_internal_note.server_default is not None
     assert "ix_support_ticket_messages_ticket_id" in message_indexes
     assert "ix_support_ticket_messages_account_id" in message_indexes
+    assert ("storage_key",) in attachment_constraint_columns
+    assert "ix_support_ticket_attachments_ticket_id" in attachment_indexes
+    assert "ix_support_ticket_attachments_uploaded_by_account_id" in attachment_indexes
+    assert "ix_support_ticket_attachments_scan_status" in attachment_indexes
 
 
 def test_auth_and_security_persistence_round_trip() -> None:
@@ -265,7 +279,16 @@ def test_auth_and_security_persistence_round_trip() -> None:
         message_body="Reproduced locally and escalated.",
         is_internal_note=True,
     )
-    session.add_all([support_message, internal_note])
+    attachment = SupportTicketAttachment(
+        ticket_id=support_ticket.id,
+        uploaded_by_account_id=account.id,
+        storage_key="support/SUP-1001/attachment-1",
+        original_filename="billing-screenshot.png",
+        content_type="image/png",
+        file_size_bytes=24576,
+        scan_status="pending",
+    )
+    session.add_all([support_message, internal_note, attachment])
     session.commit()
 
     persisted_session = session.scalar(select(AuthSession).where(AuthSession.account_id == account.id))
@@ -297,6 +320,9 @@ def test_auth_and_security_persistence_round_trip() -> None:
     persisted_support_messages = session.scalars(
         select(SupportTicketMessage).where(SupportTicketMessage.ticket_id == support_ticket.id)
     ).all()
+    persisted_support_attachment = session.scalar(
+        select(SupportTicketAttachment).where(SupportTicketAttachment.ticket_id == support_ticket.id)
+    )
 
     assert persisted_session is not None
     assert persisted_session.session_token_hash == "session-token-hash"
@@ -339,6 +365,10 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_support_messages[0].author_account is not None
     assert persisted_support_messages[1].is_internal_note is True
     assert persisted_support_messages[1].author_account is None
+    assert persisted_support_attachment is not None
+    assert persisted_support_attachment.storage_key == "support/SUP-1001/attachment-1"
+    assert persisted_support_attachment.original_filename == "billing-screenshot.png"
+    assert persisted_support_attachment.uploaded_by_account.id == account.id
     assert account.profile is not None
     assert account.profile.discord_username == "testrunner"
     assert account.profile_preferences is not None
@@ -352,6 +382,9 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert len(account.support_tickets) == 1
     assert account.support_tickets[0].subject == "Need billing help"
     assert len(account.support_tickets[0].messages) == 2
+    assert len(account.support_tickets[0].attachments) == 1
+    assert account.support_tickets[0].attachments[0].scan_status == "pending"
+    assert len(account.uploaded_support_ticket_attachments) == 1
 
 
 def test_accounts_reject_duplicate_email() -> None:
@@ -717,6 +750,144 @@ def test_support_ticket_messages_require_message_body() -> None:
             account_id=account.id,
             author_type="account",
             message_body=None,  # type: ignore[arg-type]
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_support_ticket_attachments_require_existing_ticket() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="support-attachment-owner",
+        email="support-attachment-owner@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add(account)
+    session.commit()
+
+    session.add(
+        SupportTicketAttachment(
+            ticket_id=uuid4(),
+            uploaded_by_account_id=account.id,
+            storage_key="support/missing-ticket/attachment-1",
+            original_filename="missing-ticket.png",
+            content_type="image/png",
+            file_size_bytes=1024,
+            scan_status="pending",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_support_ticket_attachments_require_existing_uploader() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="support-attachment-ticket-owner",
+        email="support-attachment-ticket-owner@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    ticket = SupportTicket(
+        id=uuid4(),
+        account_id=account.id,
+        ticket_code="SUP-2004",
+        request_type="support",
+        priority="normal",
+        subject="Attachment uploader test",
+        description="Base ticket for invalid attachment uploader test.",
+        status="open",
+    )
+    session.add_all([account, ticket])
+    session.commit()
+
+    session.add(
+        SupportTicketAttachment(
+            ticket_id=ticket.id,
+            uploaded_by_account_id=uuid4(),
+            storage_key="support/SUP-2004/attachment-1",
+            original_filename="missing-uploader.png",
+            content_type="image/png",
+            file_size_bytes=2048,
+            scan_status="pending",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_support_ticket_attachments_enforce_unique_storage_key() -> None:
+    session, _ = _create_in_memory_schema()
+    first_account = Account(
+        id=uuid4(),
+        username="support-attachment-owner-1",
+        email="support-attachment-owner-1@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    second_account = Account(
+        id=uuid4(),
+        username="support-attachment-owner-2",
+        email="support-attachment-owner-2@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    first_ticket = SupportTicket(
+        id=uuid4(),
+        account_id=first_account.id,
+        ticket_code="SUP-2005",
+        request_type="support",
+        priority="normal",
+        subject="First attachment",
+        description="First attachment description.",
+        status="open",
+    )
+    second_ticket = SupportTicket(
+        id=uuid4(),
+        account_id=second_account.id,
+        ticket_code="SUP-2006",
+        request_type="support",
+        priority="normal",
+        subject="Second attachment",
+        description="Second attachment description.",
+        status="open",
+    )
+    session.add_all([first_account, second_account, first_ticket, second_ticket])
+    session.commit()
+
+    session.add(
+        SupportTicketAttachment(
+            ticket_id=first_ticket.id,
+            uploaded_by_account_id=first_account.id,
+            storage_key="support/shared/attachment-1",
+            original_filename="first.png",
+            content_type="image/png",
+            file_size_bytes=1024,
+            scan_status="clean",
+        )
+    )
+    session.commit()
+
+    session.add(
+        SupportTicketAttachment(
+            ticket_id=second_ticket.id,
+            uploaded_by_account_id=second_account.id,
+            storage_key="support/shared/attachment-1",
+            original_filename="second.png",
+            content_type="image/png",
+            file_size_bytes=2048,
+            scan_status="pending",
         )
     )
 
