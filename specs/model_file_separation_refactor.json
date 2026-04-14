@@ -96,9 +96,9 @@
         "Each profile/settings/address/integration model is in its own sensible file.",
         "The test suite remains green."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-13T22:38:23.8666588-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "mdl-040",

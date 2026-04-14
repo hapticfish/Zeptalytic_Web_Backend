@@ -8,19 +8,15 @@ from sqlalchemy import MetaData, create_engine, event, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.db.models.addresses import Address
 from app.db.models.account_security_settings import AccountSecuritySettings
 from app.db.models.accounts import Account
 from app.db.models.auth import (
-    Address,
     Announcement,
-    CommunicationPreference,
     EntitlementSummary,
-    OAuthConnection,
     PaymentMethodSummary,
     PaymentSummary,
     ProductAccessState,
-    Profile,
-    ProfilePreference,
     ServiceStatus,
     SubscriptionSummary,
     SupportTicket,
@@ -29,9 +25,13 @@ from app.db.models.auth import (
 )
 from app.db.models.auth_events import AuthEvent
 from app.db.models.auth_sessions import AuthSession
+from app.db.models.communication_preferences import CommunicationPreference
 from app.db.models.email_verification_tokens import EmailVerificationToken
 from app.db.models.mfa_recovery_codes import MfaRecoveryCode
+from app.db.models.oauth_connections import OAuthConnection
 from app.db.models.password_reset_tokens import PasswordResetToken
+from app.db.models.profile_preferences import ProfilePreference
+from app.db.models.profiles import Profile
 
 
 def _create_in_memory_schema() -> tuple[Session, MetaData]:
