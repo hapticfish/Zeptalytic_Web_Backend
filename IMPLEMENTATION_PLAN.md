@@ -54,7 +54,7 @@ If these differ from repo reality, a planning run must update the docs/prompt/pl
 - [x] `pdb-070` — Implement `subscription_summaries` and `entitlement_summaries` with focused tests.
 - [x] `pdb-075` — Implement `product_access_states`, `payment_summaries`, and optional `payment_method_summaries` with focused tests.
 - [x] `pdb-080` — Align README/docs with actual DB topology, migration commands, and model-registration behavior if needed.
-- [ ] `pdb-999` — Final authoritative docker test suite green for the parent DB foundation workstream.
+- [x] `pdb-999` — Final authoritative docker test suite green for the parent DB foundation workstream.
 
 ## Out-of-scope for this first spec
 These are intentionally deferred to later specs unless the active spec is explicitly expanded:
