@@ -321,3 +321,24 @@
 - Next: Implement `pdb-070` for `subscription_summaries` and `entitlement_summaries` without duplicating Pay commercial truth.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T20:47:38.3676250-05:00
+- Goal for this iteration: Complete `pdb-070` by adding the first Pay-derived subscription and entitlement projection tables without introducing parent-owned billing truth.
+- What I found (repo search summary): `app/db/models/auth.py` remained the only concrete ORM module and already held every completed schema slice, so extending that module preserved the existing registration path through `app/db/models/__init__.py`, `app/db/bootstrap.py`, and `alembic/env.py`; there were no existing subscription, entitlement, payment, product-access, repository, router, or service implementations anywhere under `app/`, `tests/`, or `alembic/`; the live Alembic chain ended at `alembic/versions/20260413_2108_pdb060_announcement_status_tables.py`; focused schema coverage was still centralized in `tests/unit/test_auth_models.py`, while the ownership docs and schema plan explicitly limited this slice to parent-side summary/projection storage derived from Pay truth rather than authoritative billing state.
+- What I changed: Extended `app/db/models/auth.py` with `SubscriptionSummary` and `EntitlementSummary` plus `Account` relationships; added `alembic/versions/20260413_2115_pdb070_subscription_entitlement_tables.py` to create both projection tables with foreign keys, summary-oriented fields, JSON metadata support for entitlements, and account/product indexes; expanded `tests/unit/test_auth_models.py` to register the new tables, verify defaults/indexes, persist subscription and entitlement projections in the round-trip test, and cover four invalid cases across missing accounts and required fields; marked `pdb-070` complete in `IMPLEMENTATION_PLAN.md` and `specs/parent_db_foundation.json`.
+- Why I changed: The control docs place subscriptions and entitlements in Pay as authoritative commercial truth, but allow parent-side read models for UX and aggregation. This slice adds only summary/projection persistence needed for later billing/dashboard/launcher work without duplicating pricing, checkout, or provider-finality logic.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/auth.py
+  - progress/progress.txt
+  - specs/parent_db_foundation.json
+  - tests/unit/test_auth_models.py
+- New Files:
+  - alembic/versions/20260413_2115_pdb070_subscription_entitlement_tables.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml run --rm test pytest -q tests/unit/test_auth_models.py -vv` reused the current image state and only collected `29` tests ending at the preexisting `service_statuses` cases, so it was treated as a non-authoritative smoke check. `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` rebuilt the images, applied Alembic revision `20260413_2115`, and passed with `37 passed in 1.26s`.
+- Notes / risks: `billing_interval`, `normalized_status`, and entitlement `status` remain free-form strings with TODO markers because the controlling artifacts still do not lock the exact Pay-facing vocabularies. The tables intentionally omit pricing amounts, provider IDs beyond raw status text, and any billing-engine logic so the parent DB remains projection-only for this domain.
+- Next: Implement `pdb-075` for `product_access_states`, `payment_summaries`, and optional `payment_method_summaries`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)

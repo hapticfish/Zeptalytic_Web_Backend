@@ -51,7 +51,7 @@ If these differ from repo reality, a planning run must update the docs/prompt/pl
 - [x] `pdb-050` — Implement `support_tickets` and `support_ticket_messages` with focused tests.
 - [x] `pdb-055` — Implement `support_ticket_attachments` metadata storage with focused tests.
 - [x] `pdb-060` — Implement `announcements` and `service_statuses` tables and migrations with focused tests.
-- [ ] `pdb-070` — Implement `subscription_summaries` and `entitlement_summaries` with focused tests.
+- [x] `pdb-070` — Implement `subscription_summaries` and `entitlement_summaries` with focused tests.
 - [ ] `pdb-075` — Implement `product_access_states`, `payment_summaries`, and optional `payment_method_summaries` with focused tests.
 - [ ] `pdb-080` — Align README/docs with actual DB topology, migration commands, and model-registration behavior if needed.
 - [ ] `pdb-999` — Final authoritative docker test suite green for the parent DB foundation workstream.

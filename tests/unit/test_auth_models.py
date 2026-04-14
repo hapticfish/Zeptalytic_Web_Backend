@@ -23,9 +23,11 @@ from app.db.models.auth import (
     Profile,
     ProfilePreference,
     ServiceStatus,
+    SubscriptionSummary,
     SupportTicketAttachment,
     SupportTicket,
     SupportTicketMessage,
+    EntitlementSummary,
 )
 
 
@@ -59,6 +61,8 @@ def _create_in_memory_schema() -> tuple[Session, MetaData]:
         SupportTicketAttachment.__table__,
         Announcement.__table__,
         ServiceStatus.__table__,
+        SubscriptionSummary.__table__,
+        EntitlementSummary.__table__,
     ):
         table.to_metadata(metadata)
 
@@ -87,6 +91,8 @@ def test_auth_tables_are_registered_in_metadata() -> None:
         "support_ticket_attachments",
         "announcements",
         "service_statuses",
+        "subscription_summaries",
+        "entitlement_summaries",
     }.issubset(table_names)
 
 
@@ -173,6 +179,20 @@ def test_content_status_tables_have_expected_defaults() -> None:
     assert announcement_table.c.created_at.server_default is not None
     assert announcement_table.c.updated_at.server_default is not None
     assert service_status_table.c.updated_at.server_default is not None
+
+
+def test_pay_projection_tables_have_expected_defaults_and_indexes() -> None:
+    subscription_table = SubscriptionSummary.__table__
+    entitlement_table = EntitlementSummary.__table__
+    subscription_indexes = {index.name for index in subscription_table.indexes}
+    entitlement_indexes = {index.name for index in entitlement_table.indexes}
+
+    assert subscription_table.c.cancel_at_period_end.server_default is not None
+    assert entitlement_table.c.metadata.server_default is not None
+    assert "ix_subscription_summaries_account_id" in subscription_indexes
+    assert "ix_subscription_summaries_product_code" in subscription_indexes
+    assert "ix_entitlement_summaries_account_id" in entitlement_indexes
+    assert "ix_entitlement_summaries_product_code" in entitlement_indexes
 
 
 def test_auth_and_security_persistence_round_trip() -> None:
@@ -276,6 +296,28 @@ def test_auth_and_security_persistence_round_trip() -> None:
         status="operational",
         message="All systems normal.",
     )
+    subscription_summary = SubscriptionSummary(
+        account_id=account.id,
+        product_code="zardbot",
+        plan_code="zardbot-pro",
+        billing_interval="monthly",
+        normalized_status="active",
+        provider_status_raw="active",
+        current_period_start_at=datetime.now(UTC) - timedelta(days=3),
+        current_period_end_at=datetime.now(UTC) + timedelta(days=27),
+        next_billing_at=datetime.now(UTC) + timedelta(days=27),
+        last_synced_at=datetime.now(UTC),
+    )
+    entitlement_summary = EntitlementSummary(
+        account_id=account.id,
+        product_code="zardbot",
+        plan_code="zardbot-pro",
+        status="granted",
+        starts_at=datetime.now(UTC) - timedelta(days=3),
+        ends_at=datetime.now(UTC) + timedelta(days=27),
+        entitlement_metadata={"source": "pay_projection"},
+        last_synced_at=datetime.now(UTC),
+    )
 
     session.add_all(
         [
@@ -293,6 +335,8 @@ def test_auth_and_security_persistence_round_trip() -> None:
             support_ticket,
             announcement,
             service_status,
+            subscription_summary,
+            entitlement_summary,
         ]
     )
     session.flush()
@@ -357,6 +401,12 @@ def test_auth_and_security_persistence_round_trip() -> None:
     persisted_service_status = session.scalar(
         select(ServiceStatus).where(ServiceStatus.product_code == "zardbot")
     )
+    persisted_subscription_summary = session.scalar(
+        select(SubscriptionSummary).where(SubscriptionSummary.account_id == account.id)
+    )
+    persisted_entitlement_summary = session.scalar(
+        select(EntitlementSummary).where(EntitlementSummary.account_id == account.id)
+    )
 
     assert persisted_session is not None
     assert persisted_session.session_token_hash == "session-token-hash"
@@ -409,6 +459,13 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_service_status is not None
     assert persisted_service_status.status == "operational"
     assert persisted_service_status.message == "All systems normal."
+    assert persisted_subscription_summary is not None
+    assert persisted_subscription_summary.product_code == "zardbot"
+    assert persisted_subscription_summary.cancel_at_period_end is False
+    assert persisted_subscription_summary.provider_status_raw == "active"
+    assert persisted_entitlement_summary is not None
+    assert persisted_entitlement_summary.status == "granted"
+    assert persisted_entitlement_summary.entitlement_metadata == {"source": "pay_projection"}
     assert account.profile is not None
     assert account.profile.discord_username == "testrunner"
     assert account.profile_preferences is not None
@@ -425,6 +482,10 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert len(account.support_tickets[0].attachments) == 1
     assert account.support_tickets[0].attachments[0].scan_status == "pending"
     assert len(account.uploaded_support_ticket_attachments) == 1
+    assert len(account.subscription_summaries) == 1
+    assert account.subscription_summaries[0].plan_code == "zardbot-pro"
+    assert len(account.entitlement_summaries) == 1
+    assert account.entitlement_summaries[0].status == "granted"
 
 
 def test_accounts_reject_duplicate_email() -> None:
@@ -958,6 +1019,98 @@ def test_service_statuses_require_product_code() -> None:
             product_code=None,  # type: ignore[arg-type]
             status="degraded",
             message="Missing product code should fail.",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_subscription_summaries_require_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        SubscriptionSummary(
+            account_id=uuid4(),
+            product_code="zardbot",
+            plan_code="zardbot-pro",
+            billing_interval="monthly",
+            normalized_status="active",
+            provider_status_raw="active",
+            last_synced_at=datetime.now(UTC),
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_subscription_summaries_require_product_code() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="subscription-owner",
+        email="subscription-owner@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add(account)
+    session.commit()
+
+    session.add(
+        SubscriptionSummary(
+            account_id=account.id,
+            product_code=None,  # type: ignore[arg-type]
+            plan_code="zardbot-pro",
+            billing_interval="monthly",
+            normalized_status="active",
+            provider_status_raw="active",
+            last_synced_at=datetime.now(UTC),
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_entitlement_summaries_require_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        EntitlementSummary(
+            account_id=uuid4(),
+            product_code="zardbot",
+            plan_code="zardbot-pro",
+            status="granted",
+            entitlement_metadata={},
+            last_synced_at=datetime.now(UTC),
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_entitlement_summaries_require_status() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="entitlement-owner",
+        email="entitlement-owner@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add(account)
+    session.commit()
+
+    session.add(
+        EntitlementSummary(
+            account_id=account.id,
+            product_code="zardbot",
+            plan_code="zardbot-pro",
+            status=None,  # type: ignore[arg-type]
+            entitlement_metadata={},
+            last_synced_at=datetime.now(UTC),
         )
     )
 

@@ -71,6 +71,14 @@ class Account(Base):
     uploaded_support_ticket_attachments: Mapped[list["SupportTicketAttachment"]] = relationship(
         back_populates="uploaded_by_account",
     )
+    subscription_summaries: Mapped[list["SubscriptionSummary"]] = relationship(
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
+    entitlement_summaries: Mapped[list["EntitlementSummary"]] = relationship(
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
 
 
 class Announcement(Base):
@@ -113,6 +121,72 @@ class ServiceStatus(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class SubscriptionSummary(Base):
+    __tablename__ = "subscription_summaries"
+    __table_args__ = (
+        Index("ix_subscription_summaries_account_id", "account_id"),
+        Index("ix_subscription_summaries_product_code", "product_code"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    account_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    product_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    plan_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    # TODO(john): Lock the billing-interval vocabulary in the Pay integration contract/spec.
+    billing_interval: Mapped[str] = mapped_column(String(32), nullable=False)
+    # TODO(john): Lock the normalized subscription-status vocabulary in the Pay integration contract/spec.
+    normalized_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_status_raw: Mapped[str] = mapped_column(String(64), nullable=False)
+    current_period_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    current_period_end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_at_period_end: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    canceled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_billing_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    account: Mapped[Account] = relationship(back_populates="subscription_summaries")
+
+
+class EntitlementSummary(Base):
+    __tablename__ = "entitlement_summaries"
+    __table_args__ = (
+        Index("ix_entitlement_summaries_account_id", "account_id"),
+        Index("ix_entitlement_summaries_product_code", "product_code"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    account_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    product_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    plan_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    # TODO(john): Lock the normalized entitlement-status vocabulary in the Pay integration contract/spec.
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    entitlement_metadata: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
+        JSON_VARIANT,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'"),
+    )
+    last_synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    account: Mapped[Account] = relationship(back_populates="entitlement_summaries")
 
 
 class AuthSession(Base):
