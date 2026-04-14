@@ -48,8 +48,9 @@ The first workstream is parent DB foundation. See:
 - Runtime entrypoint is `app/main.py` with a single `/health` route.
 - Config currently lives in `app/core/config.py`; there is no `app/settings.py`.
 - DB bootstrap currently consists of `app/db/base.py`, `app/db/session.py`, and `alembic/env.py`.
-- `app/db/bootstrap.py` is the shared metadata-loading surface used by Alembic, `app/db/models/__init__.py` is the central model-registration hook, and `alembic/versions/` is still empty.
-- Test coverage currently consists of `tests/unit/test_health.py`; there are no DB or migration tests yet.
+- `app/db/bootstrap.py` is the shared metadata-loading surface used by Alembic, `app/db/models/__init__.py` is the central model-registration hook, and `app/db/models/auth.py` currently registers the parent DB foundation tables.
+- `alembic/versions/` contains the parent DB foundation revision chain through `20260413_2128_pdb075_access_payment_summary_tables.py`.
+- Test coverage includes `tests/unit/test_health.py`, `tests/unit/test_config.py`, `tests/unit/test_db_bootstrap.py`, and `tests/unit/test_auth_models.py`.
 - Compose topology now exists for the documented baseline commands:
   - `docker compose up --build api`
   - `docker compose run --rm migrate`

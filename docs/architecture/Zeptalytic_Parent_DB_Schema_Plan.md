@@ -17,12 +17,13 @@ This document is intentionally scoped to the **parent site backend + parent DB**
 - Config surface: `app/core/config.py` is the active settings module; there is no `app/settings.py` in this repo.
 - DB bootstrap: `app/db/base.py` defines `Base`, `app/db/session.py` defines `engine` and `SessionLocal`, and `alembic/env.py` points `target_metadata` at `Base.metadata`.
 - Model registration: `app/db/bootstrap.py` is the shared metadata-loading path and calls `app/db/models/__init__.py` so Alembic and future schema work use one model-registration surface.
-- Migration path: `alembic/versions/` exists but is empty.
+- Current registered ORM module: `app/db/models/auth.py` contains the parent DB foundation tables imported by `app/db/models/__init__.py`.
+- Migration path: `alembic/versions/` now contains the parent DB foundation revision chain through `20260413_2128_pdb075_access_payment_summary_tables.py`.
 - Container topology: `docker-compose.yml` and `docker-compose.test.yml` now exist and define the documented `api`, `migrate`, and `test` services used by the authoritative docker commands.
-- Test harness: concrete tests currently consist of `tests/unit/test_health.py` and `tests/unit/test_config.py`; there are still no DB bootstrap, migration, or repository tests yet.
+- Test harness: concrete tests include `tests/unit/test_health.py`, `tests/unit/test_config.py`, `tests/unit/test_db_bootstrap.py`, and `tests/unit/test_auth_models.py`; the focused DB coverage currently lives in unit tests rather than separate integration/repository suites.
 
 Planning implication:
-- the next implementation slice should add the first concrete parent-owned tables and Alembic revisions on top of the now-aligned bootstrap path.
+- the next implementation slice after docs alignment is the standalone final quality-gate run for `pdb-999`.
 
 ## Launch-critical table groups for the first workstream
 

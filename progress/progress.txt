@@ -110,7 +110,7 @@
 - Notes / risks: Discovery is now aligned, but the repo still has no registered ORM models and no Alembic revisions in `alembic/versions/`, so the next meaningful slice remains `pdb-010`.
 - Next: Implement `pdb-010` to establish a single clear model-registration and Alembic path before adding tables.
 - Sources used (only if needed; prefer official docs): none
-- Commit: none (no commit created)
+- Commit: a32c645
 
 ## Iteration entry
 - Date/time: 2026-04-13T17:58:51.5764685-05:00
@@ -362,3 +362,23 @@
 - Next: Implement `pdb-080` to align `README.md` and docs with the actual DB topology, migration commands, and model-registration behavior now that the schema foundation is nearly complete.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T20:59:35.5668946-05:00
+- Goal for this iteration: Complete `pdb-080` by aligning the repo docs with the actual compose topology, migration chain, and model-registration behavior now that the parent DB foundation is implemented.
+- What I found (repo search summary): `README.md` already documented the compose commands but still claimed `alembic/versions/` was empty and that only `tests/unit/test_health.py` existed; `app/db/bootstrap.py:get_target_metadata()` is the live metadata-loading path, `app/db/models/__init__.py:import_models()` is the live registration hook, and `alembic/env.py` imports `target_metadata` from that bootstrap surface; `docker-compose.yml` and `docker-compose.test.yml` both define real `api`, `migrate`, and `test` services, with `test` depending on `migrate`; focused DB coverage already exists in `tests/unit/test_db_bootstrap.py` and `tests/unit/test_auth_models.py`, and the migration chain is populated through `alembic/versions/20260413_2128_pdb075_access_payment_summary_tables.py`.
+- What I changed: Updated `README.md` to reflect the real migration chain, current model-registration path, and existing DB/bootstrap tests; updated `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md` current-reality audit so it no longer describes an empty migration directory or missing DB tests and so it points the next slice at the final quality gate; updated `PROMPT.md` to remove the stale pre-compose note; marked `pdb-080` complete in `IMPLEMENTATION_PLAN.md` and `specs/parent_db_foundation.json`.
+- Why I changed: This spec item is explicitly about docs alignment, and the repo had drift between the current implementation and the durable docs/prompt artifacts that future iterations rehydrate from.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - PROMPT.md
+  - README.md
+  - docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md
+  - specs/parent_db_foundation.json
+- New Files:
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed. The `migrate` service completed successfully and the `test` service reported `43 passed in 1.43s`.
+- Notes / risks: `PROMPT.md` was outside the active spec's expected-path list, but updating it in the same slice removed a stale rehydrate instruction that would otherwise keep pointing future runs at already-completed compose/bootstrap work.
+- Next: Run `pdb-999`, the standalone final authoritative docker quality gate for the parent DB foundation workstream.
+- Sources used (only if needed; prefer official docs): none
+- Commit: a32c645
