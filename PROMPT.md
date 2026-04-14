@@ -5,7 +5,7 @@ Then follow the active prompt:
 - `prompt/prompt_build.md` for build runs
 
 Current active spec:
-- `specs/model_file_separation_refactor.json`
+- `specs/parent_db_verification_and_regression.json`
 
 Queued next spec after the active spec is complete:
-- `specs/parent_db_verification_and_regression.json`
+- not yet assigned

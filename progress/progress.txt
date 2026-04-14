@@ -14,7 +14,7 @@
 - Notes / risks:
 - Next:
 - Sources used (only if needed; prefer official docs):
-- Commit:
+- Commit: none (I did not create a mixed commit because the required durable-artifact files already contain prior uncommitted workstream changes in this worktree)
 
 ## First entry (bootstrap)
 - Date/time:
@@ -502,7 +502,7 @@
 - Notes / risks: `app/db/models/auth.py` still exists as a backward-compatible re-export shim, but the new tests assert that the registry does not use it and that concrete models live in their split modules. The only remaining incomplete item in this spec is the standalone `mdl-999` quality-gate run.
 - Next: Execute `mdl-999` only: rerun the authoritative docker suite as the standalone final quality gate and then mark the spec complete if it stays green.
 - Sources used (only if needed; prefer official docs): none
-- Commit: pending
+- Commit: none (I did not create a mixed commit because the required durable-artifact files already contain prior uncommitted workstream changes in this worktree)
 
 ## 2026-04-13 23:03:07 CDT - Iteration 18
 - Goal for this iteration: Complete `mdl-999` by rerunning the authoritative docker suite as the standalone final quality gate for the model file separation spec.
@@ -513,3 +513,248 @@
 - Next: Move to the queued spec `specs/parent_db_verification_and_regression.json` on the next iteration.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+
+## Iteration entry
+- Date/time: 2026-04-14T00:29:11.4622516-05:00
+- Goal for this iteration: Complete `dbv-050` by adding Postgres-backed uniqueness/index/constraint verification for key parent-owned and projection tables.
+- What I found (repo search summary): The current model wiring still registers all ORM modules through `app/db/models/__init__.py`, and the relevant Postgres-backed schema rules already lived in the model/migration pairs for `accounts.py` + `20260413_1835_pdb020_auth_tables.py`, `support_tickets.py` + `20260413_2105_pdb050_support_tables.py`, `support_ticket_attachments.py` + `20260413_2055_pdb055_support_attachment_tables.py`, `payment_method_summaries.py` + `20260413_2128_pdb075_access_payment_summary_tables.py`, and `addresses.py` + `20260413_2040_pdb040_addresses_table.py`. Existing coverage in `tests/unit/test_auth_models.py` already asserted metadata-level unique constraints and SQLite behavior for usernames, ticket codes, attachment storage keys, and the payment-method provider-method pair, while `tests/integration/test_parent_db_round_trips.py` only covered successful persistence and relationship loading. There was no integration file proving those constraints and index contracts survive the migrated Postgres schema, and `addresses.is_primary` was only a boolean default, not a uniqueness constraint.
+- What I changed: Added `tests/integration/test_parent_db_constraints.py` with Postgres-backed regression tests that verify duplicate usernames fail, duplicate support ticket codes fail, duplicate support attachment storage keys fail, duplicate `(provider, provider_payment_method_id)` payment-method pairs fail, and the expected Postgres index names exist on `support_tickets`, `subscription_summaries`, `payment_summaries`, and `payment_method_summaries`. The same file also locks in current address primacy behavior by proving a single account can persist multiple `is_primary=True` addresses because no DB uniqueness rule currently enforces primacy.
+- Why I changed: `dbv-050` requires database-backed proof that the constraints and indexes that matter actually exist in the authoritative migrated Postgres topology, not just in ORM metadata or SQLite unit tests. The new integration file makes drift in those rules visible while avoiding assertions about constraints the schema does not currently enforce.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+  - tests/integration/test_parent_db_constraints.py
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `test` service reported `68 passed in 2.01s`.
+- Notes / risks: The new regression file covers representative uniqueness and index contracts plus the current lack of address-primacy enforcement, but it does not yet validate the docker-compose topology contract itself; that remains for `dbv-060`.
+- Next: Execute `dbv-060` by adding regression coverage around the authoritative docker test topology contract.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+
+## Iteration entry
+- Date/time: 2026-04-14T12:51:50.2195555-05:00
+- Goal for this iteration: Complete `dbv-060` by adding explicit regression coverage for the authoritative docker test topology contract.
+- What I found (repo search summary): The active topology files were `docker-compose.yml` and `docker-compose.test.yml`. `docker-compose.test.yml` already defined the required `db`, `migrate`, and `test` services; `migrate` depended on `db` health, exposed a `/tmp/migrate-ready` health check, and ran `alembic upgrade head && touch /tmp/migrate-ready && tail -f /dev/null`; `test` depended on both healthy `db` and healthy `migrate` and ran `pytest -q`. Existing DB regression coverage lived in `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/integration/test_parent_db_constraints.py`, `tests/unit/test_model_module_layout.py`, and `tests/unit/test_parent_db_metadata_tables.py`, but there was no unit test that locked the compose topology itself.
+- What I changed: Added `tests/unit/test_test_topology_contract.py` to assert the repo keeps both compose files, preserves the dev `db`/`api`/`migrate` services, preserves the authoritative `db` -> `migrate` -> `test` dependency path in `docker-compose.test.yml`, and keeps the required migration readiness and pytest commands. Marked `dbv-060` complete in the active spec and advanced the implementation plan's immediate next target to `dbv-999`.
+- Why I changed: The previous `dbv-010` slice fixed an early-exit race in the docker test topology, but that contract was still only implicit in the compose file. The new regression test makes silent topology drift visible before the authoritative docker command breaks again.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+  - tests/unit/test_test_topology_contract.py
+- Removed Files:
+- Tests run + results:
+  - Host-side `pytest tests/unit/test_test_topology_contract.py -q` failed because `pytest` is not on the host PATH.
+  - Host-side `poetry run pytest tests/unit/test_test_topology_contract.py -q` failed because the local virtualenv does not have `pytest` installed as an executable.
+  - Host-side `poetry run python -m pytest tests/unit/test_test_topology_contract.py -q` failed because the local virtualenv does not have the `pytest` module installed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `test` service reported `72 passed in 2.33s`.
+- Notes / risks: The new topology contract test is intentionally text-based to avoid adding a YAML parser dependency. It locks the service graph and command strings that matter for this repo, so future compose refactors should update the test deliberately if the contract changes on purpose.
+- Next: Execute `dbv-999` by rerunning the authoritative docker suite as the final quality gate and marking the active spec complete only after that run stays green.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (I did not create a mixed commit because the required durable-artifact files already contain prior uncommitted workstream changes in this worktree)
+- Iteration: `dbv-999` quality gate
+- Timestamp: `2026-04-14T12:57:22.1741067-05:00`
+- Goal for this iteration: Run the authoritative docker test suite as the final quality gate for the active DB verification spec and mark the spec complete only if it stays green.
+- What I found (repo search summary): The repo already had the full DB verification surface in place. `docker-compose.test.yml` defined the authoritative `db` -> `migrate` -> `test` topology, with `migrate` running `alembic upgrade head` and exposing `/tmp/migrate-ready` for health. DB wiring remained in `app/db/session.py` (`SessionLocal`) and `app/db/bootstrap.py` (`Base.metadata`), while the active regression tests lived in `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/integration/test_parent_db_constraints.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_parent_domain_vocabularies.py`, and `tests/unit/test_test_topology_contract.py`.
+- What I changed: Marked `dbv-999` complete in `specs/parent_db_verification_and_regression.json` after the authoritative docker suite passed cleanly. No code or test files changed in this iteration.
+- Why I changed: `dbv-999` is explicitly the final quality gate for the active spec, so the only safe change after a green authoritative run is to record that completion durably.
+- Updated Files:
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `test` service reported `72 passed in 2.43s`.
+- Notes / risks: The compose log shows expected duplicate-key errors emitted by the database during negative constraint tests, but the pytest run stayed green and the compose command exited with code 0, so the quality gate passed as required.
+- Next: The active spec is fully complete. Choose the next workstream/spec before the next build iteration.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+
+## Iteration entry
+- Date/time: 2026-04-14T12:51:50.2195555-05:00
+- Goal for this iteration: Complete `dbv-060` by adding explicit regression coverage for the authoritative docker test topology contract.
+- What I found (repo search summary): The active topology files were `docker-compose.yml` and `docker-compose.test.yml`. `docker-compose.test.yml` already defined the required `db`, `migrate`, and `test` services; `migrate` depended on `db` health, exposed a `/tmp/migrate-ready` health check, and ran `alembic upgrade head && touch /tmp/migrate-ready && tail -f /dev/null`; `test` depended on both healthy `db` and healthy `migrate` and ran `pytest -q`. Existing DB regression coverage lived in `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/integration/test_parent_db_constraints.py`, `tests/unit/test_model_module_layout.py`, and `tests/unit/test_parent_db_metadata_tables.py`, but there was no unit test that locked the compose topology itself.
+- What I changed: Added `tests/unit/test_test_topology_contract.py` to assert the repo keeps both compose files, preserves the dev `db`/`api`/`migrate` services, preserves the authoritative `db` -> `migrate` -> `test` dependency path in `docker-compose.test.yml`, and keeps the required migration readiness and pytest commands. Marked `dbv-060` complete in the active spec and advanced the implementation plan's immediate next target to `dbv-999`.
+- Why I changed: The previous `dbv-010` slice fixed an early-exit race in the docker test topology, but that contract was still only implicit in the compose file. The new regression test makes silent topology drift visible before the authoritative docker command breaks again.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+  - tests/unit/test_test_topology_contract.py
+- Removed Files:
+- Tests run + results:
+  - Host-side `pytest tests/unit/test_test_topology_contract.py -q` failed because `pytest` is not on the host PATH.
+  - Host-side `poetry run pytest tests/unit/test_test_topology_contract.py -q` failed because the local virtualenv does not have `pytest` installed as an executable.
+  - Host-side `poetry run python -m pytest tests/unit/test_test_topology_contract.py -q` failed because the local virtualenv does not have the `pytest` module installed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `test` service reported `72 passed in 2.33s`.
+- Notes / risks: The new topology contract test is intentionally text-based to avoid adding a YAML parser dependency. It locks the service graph and command strings that matter for this repo, so future compose refactors should update the test deliberately if the contract changes on purpose.
+- Next: Execute `dbv-999` by rerunning the authoritative docker suite as the final quality gate and marking the active spec complete only after that run stays green.
+- Sources used (only if needed; prefer official docs): none
+- Commit:
+
+## 2026-04-13 23:51:34 CDT - Planning iteration
+- Goal for this iteration: Rehydrate context for the active `parent_db_verification_and_regression` workstream, confirm current DB verification reality, and tighten the planning artifacts before the first build slice.
+- Search summary before edit: confirmed `IMPLEMENTATION_PLAN.md` already points at `specs/parent_db_verification_and_regression.json` while `PROMPT.md` was still stale; confirmed the model registration path is now `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py` with 22 concrete per-table modules under `app/db/models/`; confirmed `app/db/session.py` exposes `engine` and `SessionLocal` but `app/db/repositories/` has no concrete repositories yet; confirmed `tests/` currently contains only unit-level DB coverage (`test_auth_models.py`, `test_db_bootstrap.py`, `test_model_metadata_registration.py`, `test_model_module_layout.py`, `test_domain_vocabulary_decision_record.py`) plus an empty `tests/integration/__init__.py`; and confirmed `docker-compose.test.yml` still defines the authoritative `db` -> `migrate` -> `test` topology with `pytest -q` as the test command.
+- What I changed: Updated `PROMPT.md` to point at the active DB verification spec, corrected `IMPLEMENTATION_PLAN.md` so the immediate next target is `dbv-001`, refined `specs/parent_db_verification_and_regression.json` to target the real repo surfaces (Postgres-backed migration/ORM verification and topology checks instead of non-existent repository classes), and refreshed `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md` with the current split-model registration path plus a `dbv-001` verification-gap audit.
+- Why I changed: The repo has already completed the model-split workstream, and the next build iteration needs planning artifacts that reflect the real verification gaps: broad SQLite-backed unit coverage already exists, but Postgres/integration, migration-smoke, vocabulary-to-model, and topology-contract checks are still missing.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - PROMPT.md
+  - docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+- Removed Files:
+- Tests run + results: Not run. This was a planning-only/docs-only iteration; I did not change runtime code, migrations, or the test topology, so I did not rerun the authoritative docker suite in this pass.
+- Notes / risks: The working tree already contained user-side planning/doc changes before this run, including `IMPLEMENTATION_PLAN.md` and `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md`, so I limited edits to active-spec alignment and verification-planning drift. The active spec previously assumed repository integration tests, but no concrete repository implementations exist yet in `app/db/repositories/`.
+- Next: Execute `dbv-001` only: record the verification surface inventory as the completed discovery slice, then stage `dbv-010` around a concrete Postgres-backed migration/bootstrap regression check.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (planning-only run; tests not run)
+
+## Iteration entry
+- Date/time: 2026-04-14T00:01:05.0510533-05:00
+- Goal for this iteration: Complete `dbv-001` by inventorying the current parent DB verification surface after the model split and recording the missing regression coverage.
+- What I found (repo search summary): `app/db/bootstrap.py` is the single metadata entrypoint and calls `app.db.models.import_models()`, while `alembic/env.py` consumes that shared `target_metadata`; `app/db/models/__init__.py` directly registers 22 split model modules and does not route through the legacy `app.db.models.auth` shim; unit DB coverage currently lives in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_auth_models.py`, and `tests/unit/test_domain_vocabulary_decision_record.py`; `docker-compose.test.yml` already defines the authoritative `db` -> `migrate` -> `test` topology with `alembic upgrade head` followed by `pytest -q`; `tests/integration/` has no real integration tests yet, and `app/db/repositories/` has no concrete repository implementations yet.
+- What I changed: Marked `dbv-001` complete in the active spec, advanced the implementation plan's immediate target to `dbv-010`, and recorded this verification-gap inventory in the durable progress log.
+- Why I changed: The active verification workstream needed a concrete discovery baseline before adding new regression coverage. Recording the current coverage split makes the next Postgres-backed bootstrap test slice target the actual missing surface instead of duplicating existing SQLite/unit checks.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+- Removed Files:
+- Tests run + results: Current SQLite-backed/unit coverage already proves model-module layout, metadata registration, bootstrap import wiring, and broad ORM behavior for the parent tables. Missing verification is concentrated in Postgres/docker-backed migration-bootstrap checks, dedicated metadata inventory grouping, vocabulary-to-implemented-model assertions, integration round trips, constraint behavior, and an explicit topology contract test. `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `migrate` service exited with code `0` and the `test` service reported `53 passed in 1.52s`.
+- Notes / risks: Discovery confirms the repo already has broad unit coverage, so `dbv-010` should focus on proving the real Postgres-backed compose topology migrates and boots cleanly rather than repeating metadata-only assertions. There are still no integration tests or repository classes in the current tree, so later spec items should continue targeting the actual ORM/session surfaces that exist.
+- Next: Execute `dbv-010` only by adding a Postgres-backed migration/bootstrap regression test under `tests/integration/`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (worktree already contained user-side planning/doc edits before this iteration, so I did not create a mixed commit)
+
+## Iteration entry
+- Date/time: 2026-04-14T00:05:41.2197074-05:00
+- Goal for this iteration: Complete `dbv-010` by adding a Postgres-backed migration/bootstrap regression check that runs inside the authoritative Docker test topology.
+- What I found (repo search summary): `app/db/bootstrap.py` is still the single metadata entrypoint, `alembic/env.py` still points at that shared `target_metadata`, `app/db/session.py` exposes the production `engine` and `SessionLocal`, and existing DB tests remained unit-scoped in `tests/unit/` with no real integration coverage under `tests/integration/`. `docker-compose.test.yml` still defined the expected `db` -> `migrate` -> `test` path, but the first run showed `migrate` exiting early under `--abort-on-container-exit`, which tears the stack down before a Postgres-backed test can safely use the database.
+- What I changed: Added `tests/integration/test_parent_db_bootstrap.py` to verify live Postgres connectivity through `SessionLocal`, confirm `alembic_version` matches the current Alembic head, and compare the migrated table set against bootstrap metadata with a readable missing/unexpected-table diff. Updated `docker-compose.test.yml` so `migrate` stays alive after a successful `alembic upgrade head` and exposes a health check marker that the `test` service waits on, preserving the `db` -> `migrate` -> `test` contract while making the authoritative command compatible with real integration tests. Marked `dbv-010` complete in the active spec and advanced the implementation plan to `dbv-020`.
+- Why I changed: The spec item required real migration/bootstrap verification in the containerized Postgres topology. The new test proves the migrated schema and runtime metadata stay aligned, and the compose adjustment closes a topology race that would otherwise make any DB-backed integration test unreliable under the mandated command.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - docker-compose.test.yml
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+  - tests/integration/test_parent_db_bootstrap.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed after the topology fix. The `test` service reported `54 passed in 1.86s`. The initial attempt failed because `migrate` exited before the Postgres-backed integration test could connect, which is now covered by the `migrate` readiness health check and long-lived process.
+- Notes / risks: This iteration intentionally changed the authoritative test topology to support real DB integration coverage; `dbv-060` should still add an explicit regression test around that compose contract so future edits cannot silently reintroduce the early-exit race.
+- Next: Execute `dbv-020` by adding a dedicated metadata/table registration verification file grouped by parent domain.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (the worktree already contained pre-existing user/doc changes, so I avoided creating a mixed commit)
+
+## Iteration entry
+- Date/time: 2026-04-14T00:08:07.0224749-05:00
+- Goal for this iteration: Complete `dbv-020` by adding a dedicated metadata/table registration verification file grouped by parent domain.
+- What I found (repo search summary): `app/db/bootstrap.py` still provides the single `Base.metadata` entrypoint and delegates imports to `app.db.models.import_models()` from `app/db/models/__init__.py`, which directly registers the split per-table modules. Existing metadata coverage already lived in `tests/unit/test_model_metadata_registration.py` as a flat table-set assertion, `tests/unit/test_db_bootstrap.py` as bootstrap wiring coverage, and `tests/integration/test_parent_db_bootstrap.py` as a migrated-Postgres-vs-metadata drift check. No dedicated test file yet grouped the registered parent tables by domain for readable failures.
+- What I changed: Added `tests/unit/test_parent_db_metadata_tables.py` with explicit domain-grouped metadata assertions for identity/security, profile/settings, support/content, and Pay-derived projection tables, plus an exact full-parent-table-set assertion. Marked `dbv-020` complete in the active spec and advanced the implementation plan's immediate target to `dbv-030`.
+- Why I changed: The spec item called for a dedicated metadata verification file with understandable failures by domain. The new test complements the existing flat registration and bootstrap checks without changing runtime wiring.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+  - tests/unit/test_parent_db_metadata_tables.py
+- Removed Files:
+- Tests run + results: Host-side `pytest tests/unit/test_parent_db_metadata_tables.py` could not run because `pytest` is not installed on the host PATH in this environment. The authoritative command `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `test` service reported `59 passed in 1.82s`.
+- Notes / risks: `tests/unit/test_model_metadata_registration.py` still exists and overlaps on full-table registration, but it covers the prior structural regression slice while the new file provides the spec-required domain grouping. No runtime or migration code changed in this iteration.
+- Next: Execute `dbv-030` by adding enum/vocabulary verification tests tied to the locked decision record and the implemented model-layer choices.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (the worktree already contained pre-existing user/doc changes, so I avoided creating a mixed commit)
+
+## Iteration entry
+- Date/time: 2026-04-14T00:21:10.2761167-05:00
+- Goal for this iteration: Complete `dbv-030` by adding locked vocabulary regression coverage tied to the decision record and model-layer fields.
+- What I found (repo search summary): The locked source document was `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md`. Existing tests only checked that the document existed and was referenced (`tests/unit/test_domain_vocabulary_decision_record.py`), while model registration and metadata coverage already lived in `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_model_metadata_registration.py`, and `app/db/models/__init__.py`. The model layer represented the relevant statuses and choice fields as plain non-null `String(32)` columns in `accounts.py`, `addresses.py`, `oauth_connections.py`, `support_tickets.py`, `support_ticket_messages.py`, `support_ticket_attachments.py`, `announcements.py`, `service_statuses.py`, `subscription_summaries.py`, `entitlement_summaries.py`, `product_access_states.py`, `payment_summaries.py`, and `payment_method_summaries.py`, but there was no shared in-repo canonical implementation of those locked values and no direct regression comparing implementation to the decision record.
+- What I changed: Added `app/db/vocabularies.py` as a non-behavioral locked vocabulary source and added `tests/unit/test_parent_domain_vocabularies.py` to parse the decision record, compare it against the implemented constants, verify the mapped ORM columns remain non-null `String(32)` fields, and confirm `PaymentMethodSummary` keeps `is_default` separate from the status vocabulary.
+- Why I changed: `dbv-030` requires a regression test that fails when locked parent-side vocabularies drift from the decision record. Centralizing the values in one small module makes that comparison explicit without changing schema or runtime behavior.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+  - app/db/vocabularies.py
+  - tests/unit/test_parent_domain_vocabularies.py
+- Removed Files:
+- Tests run + results:
+  - Host-side `pytest tests/unit/test_parent_domain_vocabularies.py` could not run because `pytest` is not installed on the host PATH, and `python -m pytest` also failed because the host Python environment does not have `pytest` installed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `test` service reported `62 passed in 1.85s`.
+- Notes / risks: The new vocabulary module does not enforce DB-level constraints or ORM defaults yet; it exists to provide a canonical, testable implementation anchor for the locked values defined by the decision record.
+- Next: Execute `dbv-040` by adding Postgres-backed ORM/session round-trip coverage for representative parent-owned domains.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (the worktree already contained pre-existing user/doc changes, so I avoided creating a mixed commit)
+
+## Iteration entry
+- Date/time: 2026-04-14T00:24:46.7539123-05:00
+- Goal for this iteration: Complete `dbv-040` by adding Postgres-backed ORM/session round-trip coverage for representative parent-owned domains.
+- What I found (repo search summary): `app/db/session.py` already exposes the shared `engine` and `SessionLocal` used by the existing Postgres schema bootstrap check in `tests/integration/test_parent_db_bootstrap.py`. Model registration still flows through `app/db/models/__init__.py` into `app/db/bootstrap.py`, and the representative domain models for this spec item already live in `app/db/models/accounts.py`, `addresses.py`, `support_tickets.py`, `support_ticket_messages.py`, `support_ticket_attachments.py`, `subscription_summaries.py`, `payment_summaries.py`, and `payment_method_summaries.py`. Existing DB tests remained unit-heavy (`tests/unit/test_auth_models.py`, `test_parent_db_metadata_tables.py`, `test_parent_domain_vocabularies.py`, `test_db_bootstrap.py`) with no ORM persistence coverage against the migrated Postgres schema.
+- What I changed: Added `tests/integration/test_parent_db_round_trips.py` with two focused `SessionLocal` integration tests. One verifies account, address, support ticket, support message, and attachment rows round-trip through the migrated Postgres database and relationship loading. The second verifies Pay-derived subscription, payment, and payment-method summary rows persist and reload correctly for a parent account. Both tests generate isolated identifiers and clean up by deleting the created account so later tests do not inherit state.
+- Why I changed: `dbv-040` requires representative ORM/session round-trip coverage against the real Postgres topology, not just metadata or unit checks. The new file exercises the existing runtime session wiring and proves the migrated schema supports end-to-end persistence across the requested parent-owned domains.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+  - tests/integration/test_parent_db_round_trips.py
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml run --rm test pytest -q tests/integration/test_parent_db_round_trips.py -vv` failed before rebuild because the pre-existing test image did not yet contain the new file (`file or directory not found`), so it was treated only as a stale-image smoke attempt.
+  - The authoritative command `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` rebuilt the images and passed; the `test` service reported `64 passed in 1.91s`.
+- Notes / risks: The new integration tests validate representative persistence and relationship loading, but they do not yet assert DB constraint failures or topology contract details; those remain for `dbv-050` and `dbv-060`.
+- Next: Execute `dbv-050` by adding Postgres-backed uniqueness/index/constraint verification for key parent-owned and projection tables.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+
+## Iteration entry
+- Date/time: 2026-04-14T00:29:11.4622516-05:00
+- Goal for this iteration: Complete `dbv-050` by adding Postgres-backed uniqueness/index/constraint verification for key parent-owned and projection tables.
+- What I found (repo search summary): The current model wiring still registers all ORM modules through `app/db/models/__init__.py`, and the relevant Postgres-backed schema rules already lived in the model/migration pairs for `accounts.py` + `20260413_1835_pdb020_auth_tables.py`, `support_tickets.py` + `20260413_2105_pdb050_support_tables.py`, `support_ticket_attachments.py` + `20260413_2055_pdb055_support_attachment_tables.py`, `payment_method_summaries.py` + `20260413_2128_pdb075_access_payment_summary_tables.py`, and `addresses.py` + `20260413_2040_pdb040_addresses_table.py`. Existing coverage in `tests/unit/test_auth_models.py` already asserted metadata-level unique constraints and SQLite behavior for usernames, ticket codes, attachment storage keys, and the payment-method provider-method pair, while `tests/integration/test_parent_db_round_trips.py` only covered successful persistence and relationship loading. There was no integration file proving those constraints and index contracts survive the migrated Postgres schema, and `addresses.is_primary` was only a boolean default, not a uniqueness constraint.
+- What I changed: Added `tests/integration/test_parent_db_constraints.py` with Postgres-backed regression tests that verify duplicate usernames fail, duplicate support ticket codes fail, duplicate support attachment storage keys fail, duplicate `(provider, provider_payment_method_id)` payment-method pairs fail, and the expected Postgres index names exist on `support_tickets`, `subscription_summaries`, `payment_summaries`, and `payment_method_summaries`. The same file also locks in current address primacy behavior by proving a single account can persist multiple `is_primary=True` addresses because no DB uniqueness rule currently enforces primacy.
+- Why I changed: `dbv-050` requires database-backed proof that the constraints and indexes that matter actually exist in the authoritative migrated Postgres topology, not just in ORM metadata or SQLite unit tests. The new integration file makes drift in those rules visible while avoiding assertions about constraints the schema does not currently enforce.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+  - tests/integration/test_parent_db_constraints.py
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `test` service reported `68 passed in 2.01s`.
+- Notes / risks: The new regression file covers representative uniqueness and index contracts plus the current lack of address-primacy enforcement, but it does not yet validate the docker-compose topology contract itself; that remains for `dbv-060`.
+- Next: Execute `dbv-060` by adding regression coverage around the authoritative docker test topology contract.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+
+## Iteration entry
+- Date/time: 2026-04-14T12:51:50.2195555-05:00
+- Goal for this iteration: Complete `dbv-060` by adding explicit regression coverage for the authoritative docker test topology contract.
+- What I found (repo search summary): The active topology files were `docker-compose.yml` and `docker-compose.test.yml`. `docker-compose.test.yml` already defined the required `db`, `migrate`, and `test` services; `migrate` depended on `db` health, exposed a `/tmp/migrate-ready` health check, and ran `alembic upgrade head && touch /tmp/migrate-ready && tail -f /dev/null`; `test` depended on both healthy `db` and healthy `migrate` and ran `pytest -q`. Existing DB regression coverage lived in `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/integration/test_parent_db_constraints.py`, `tests/unit/test_model_module_layout.py`, and `tests/unit/test_parent_db_metadata_tables.py`, but there was no unit test that locked the compose topology itself.
+- What I changed: Added `tests/unit/test_test_topology_contract.py` to assert the repo keeps both compose files, preserves the dev `db`/`api`/`migrate` services, preserves the authoritative `db` -> `migrate` -> `test` dependency path in `docker-compose.test.yml`, and keeps the required migration readiness and pytest commands. Marked `dbv-060` complete in the active spec and advanced the implementation plan's immediate next target to `dbv-999`.
+- Why I changed: The previous `dbv-010` slice fixed an early-exit race in the docker test topology, but that contract was still only implicit in the compose file. The new regression test makes silent topology drift visible before the authoritative docker command breaks again.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+  - tests/unit/test_test_topology_contract.py
+- Removed Files:
+- Tests run + results:
+  - Host-side `pytest tests/unit/test_test_topology_contract.py -q` failed because `pytest` is not on the host PATH.
+  - Host-side `poetry run pytest tests/unit/test_test_topology_contract.py -q` failed because the local virtualenv does not have `pytest` installed as an executable.
+  - Host-side `poetry run python -m pytest tests/unit/test_test_topology_contract.py -q` failed because the local virtualenv does not have the `pytest` module installed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `test` service reported `72 passed in 2.33s`.
+- Notes / risks: The new topology contract test is intentionally text-based to avoid adding a YAML parser dependency. It locks the service graph and command strings that matter for this repo, so future compose refactors should update the test deliberately if the contract changes on purpose.
+- Next: Execute `dbv-999` by rerunning the authoritative docker suite as the final quality gate and marking the active spec complete only after that run stays green.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (I did not create a mixed commit because the required durable-artifact files already contain prior uncommitted workstream changes in this worktree)

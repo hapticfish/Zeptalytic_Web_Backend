@@ -15,15 +15,95 @@ This document is intentionally scoped to the **parent site backend + parent DB**
 ## Current repo reality audit (2026-04-13)
 - Runtime entrypoint: `app/main.py` creates the FastAPI app directly and exposes only `/health`.
 - Config surface: `app/core/config.py` is the active settings module; there is no `app/settings.py` in this repo.
-- DB bootstrap: `app/db/base.py` defines `Base`, `app/db/session.py` defines `engine` and `SessionLocal`, and `alembic/env.py` points `target_metadata` at `Base.metadata`.
-- Model registration: `app/db/bootstrap.py` is the shared metadata-loading path and calls `app/db/models/__init__.py` so Alembic and future schema work use one model-registration surface.
-- Current registered ORM module: `app/db/models/auth.py` contains the parent DB foundation tables imported by `app/db/models/__init__.py`.
+- DB bootstrap: `app/db/base.py` defines `Base`, `app/db/session.py` defines `engine` and `SessionLocal`, `app/db/bootstrap.py` is the shared metadata-loading surface, and `alembic/env.py` imports `target_metadata` from that bootstrap path.
+- Model registration: `app/db/bootstrap.py` is the shared metadata-loading path and calls `app/db/models/__init__.py`, which now imports the split per-table model modules directly for Alembic/metadata discovery.
+- Current registered ORM surface: `app/db/models/` now contains one concrete table model per file for the 22 parent tables plus a backward-compatible `app/db/models/auth.py` re-export shim that is no longer part of the registry path.
 - Migration path: `alembic/versions/` now contains the parent DB foundation revision chain through `20260413_2128_pdb075_access_payment_summary_tables.py`.
 - Container topology: `docker-compose.yml` and `docker-compose.test.yml` now exist and define the documented `api`, `migrate`, and `test` services used by the authoritative docker commands.
-- Test harness: concrete tests include `tests/unit/test_health.py`, `tests/unit/test_config.py`, `tests/unit/test_db_bootstrap.py`, and `tests/unit/test_auth_models.py`; the focused DB coverage currently lives in unit tests rather than separate integration/repository suites.
+- Test harness: concrete tests include `tests/unit/test_db_bootstrap.py`, `tests/unit/test_auth_models.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_model_metadata_registration.py`, and `tests/unit/test_domain_vocabulary_decision_record.py`; DB coverage is still mostly unit-level and SQLite-backed, and `tests/integration/` has no concrete DB tests yet.
 
 Planning implication:
-- the next implementation slice after docs alignment is the standalone final quality-gate run for `pdb-999`.
+- the parent DB foundation and model-file-separation workstreams are complete; the active workstream is now `specs/parent_db_verification_and_regression.json`.
+- the next implementation slice should be `dbv-001`, starting with a durable gap inventory for metadata, migration, vocabulary, Postgres-backed CRUD/constraint coverage, and compose-topology verification.
+
+## DB verification surface audit for `dbv-001` (2026-04-13)
+- Existing DB verification is concentrated in unit tests:
+  - `tests/unit/test_auth_models.py` performs broad schema, relationship, default, and constraint checks plus SQLite-backed round trips across all 22 parent tables.
+  - `tests/unit/test_db_bootstrap.py` and `tests/unit/test_model_metadata_registration.py` verify bootstrap/model registration and the expected table inventory.
+  - `tests/unit/test_domain_vocabulary_decision_record.py` guards that the decision record remains explicitly wired into repo control docs, but it does not yet verify model defaults/value vocabularies against the record.
+- Current gaps relative to the active verification spec:
+  - no concrete `tests/integration/` coverage against the migrated Postgres schema
+  - no explicit migration smoke/regression test beyond the compose `migrate` service succeeding during full-suite runs
+  - no dedicated model-vocabulary regression tests comparing implemented defaults/value fields against `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md`
+  - no explicit topology contract test covering `docker-compose.test.yml` service names, dependency ordering, and `pytest -q` execution
+
+Historical note:
+- The `mdl-001` model split inventory below remains as a reference artifact from the completed prior workstream.
+
+## Model split inventory for `mdl-001` (2026-04-13)
+
+### Current overloaded module state
+- `app/db/models/auth.py` is the only concrete ORM module and currently defines all 22 table models:
+  - `Account` -> `accounts`
+  - `Announcement` -> `announcements`
+  - `ServiceStatus` -> `service_statuses`
+  - `SubscriptionSummary` -> `subscription_summaries`
+  - `EntitlementSummary` -> `entitlement_summaries`
+  - `ProductAccessState` -> `product_access_states`
+  - `PaymentSummary` -> `payment_summaries`
+  - `PaymentMethodSummary` -> `payment_method_summaries`
+  - `AuthSession` -> `auth_sessions`
+  - `EmailVerificationToken` -> `email_verification_tokens`
+  - `PasswordResetToken` -> `password_reset_tokens`
+  - `AccountSecuritySettings` -> `account_security_settings`
+  - `MfaRecoveryCode` -> `mfa_recovery_codes`
+  - `AuthEvent` -> `auth_events`
+  - `Profile` -> `profiles`
+  - `ProfilePreference` -> `profile_preferences`
+  - `CommunicationPreference` -> `communication_preferences`
+  - `OAuthConnection` -> `oauth_connections`
+  - `Address` -> `addresses`
+  - `SupportTicket` -> `support_tickets`
+  - `SupportTicketMessage` -> `support_ticket_messages`
+  - `SupportTicketAttachment` -> `support_ticket_attachments`
+
+### Current registration and discovery wiring
+- `app/db/models/__init__.py` exposes `import_models()` and currently imports only `app.db.models.auth`.
+- `app/db/bootstrap.py` calls `import_models()` inside `get_target_metadata()` and exports `target_metadata = get_target_metadata()`.
+- `alembic/env.py` imports `target_metadata` from `app.db.bootstrap`, so Alembic discovery depends on `app/db/models/__init__.py` remaining the central import-registration surface.
+- `tests/unit/test_auth_models.py` currently imports every concrete model from `app.db.models.auth`, so the later split will need import/test realignment.
+- `tests/unit/test_db_bootstrap.py` currently guards the shared bootstrap path and should remain valid after the split.
+
+### Exact target file map for the split
+| Current source | Model | Table | Target file |
+| --- | --- | --- | --- |
+| `app/db/models/auth.py` | `Account` | `accounts` | `app/db/models/accounts.py` |
+| `app/db/models/auth.py` | `AuthSession` | `auth_sessions` | `app/db/models/auth_sessions.py` |
+| `app/db/models/auth.py` | `EmailVerificationToken` | `email_verification_tokens` | `app/db/models/email_verification_tokens.py` |
+| `app/db/models/auth.py` | `PasswordResetToken` | `password_reset_tokens` | `app/db/models/password_reset_tokens.py` |
+| `app/db/models/auth.py` | `AccountSecuritySettings` | `account_security_settings` | `app/db/models/account_security_settings.py` |
+| `app/db/models/auth.py` | `MfaRecoveryCode` | `mfa_recovery_codes` | `app/db/models/mfa_recovery_codes.py` |
+| `app/db/models/auth.py` | `AuthEvent` | `auth_events` | `app/db/models/auth_events.py` |
+| `app/db/models/auth.py` | `Profile` | `profiles` | `app/db/models/profiles.py` |
+| `app/db/models/auth.py` | `ProfilePreference` | `profile_preferences` | `app/db/models/profile_preferences.py` |
+| `app/db/models/auth.py` | `CommunicationPreference` | `communication_preferences` | `app/db/models/communication_preferences.py` |
+| `app/db/models/auth.py` | `OAuthConnection` | `oauth_connections` | `app/db/models/oauth_connections.py` |
+| `app/db/models/auth.py` | `Address` | `addresses` | `app/db/models/addresses.py` |
+| `app/db/models/auth.py` | `SupportTicket` | `support_tickets` | `app/db/models/support_tickets.py` |
+| `app/db/models/auth.py` | `SupportTicketMessage` | `support_ticket_messages` | `app/db/models/support_ticket_messages.py` |
+| `app/db/models/auth.py` | `SupportTicketAttachment` | `support_ticket_attachments` | `app/db/models/support_ticket_attachments.py` |
+| `app/db/models/auth.py` | `Announcement` | `announcements` | `app/db/models/announcements.py` |
+| `app/db/models/auth.py` | `ServiceStatus` | `service_statuses` | `app/db/models/service_statuses.py` |
+| `app/db/models/auth.py` | `SubscriptionSummary` | `subscription_summaries` | `app/db/models/subscription_summaries.py` |
+| `app/db/models/auth.py` | `EntitlementSummary` | `entitlement_summaries` | `app/db/models/entitlement_summaries.py` |
+| `app/db/models/auth.py` | `ProductAccessState` | `product_access_states` | `app/db/models/product_access_states.py` |
+| `app/db/models/auth.py` | `PaymentSummary` | `payment_summaries` | `app/db/models/payment_summaries.py` |
+| `app/db/models/auth.py` | `PaymentMethodSummary` | `payment_method_summaries` | `app/db/models/payment_method_summaries.py` |
+
+### Known split risks to address in later items
+- `Account` is the relationship anchor for most other tables, so later per-file moves will need careful import ordering or string-based relationships to avoid circular imports.
+- `tests/unit/test_auth_models.py` is intentionally broad and will need staged updates as models move out of `app.db.models.auth`.
+- `app/db/models/__init__.py` must remain the single registration hub while files are split so `app/db/bootstrap.py` and `alembic/env.py` do not change behavior mid-refactor.
 
 ## Launch-critical table groups for the first workstream
 

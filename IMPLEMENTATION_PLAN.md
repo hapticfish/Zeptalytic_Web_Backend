@@ -1,9 +1,9 @@
 # Zeptalytic Web Backend Implementation Plan
 
-Active spec: specs/model_file_separation_refactor.json
+Active spec: specs/parent_db_verification_and_regression.json
 
 ## Current workstream
-Refactor the parent DB model layout into sensible per-table files and harden the DB verification test layer before moving on to parent backend route work.
+Harden the parent DB verification and regression layer now that the per-table model split is complete, then move on to parent backend route work.
 
 ## Locked architecture references
 Read these before every planning/build run:
@@ -24,25 +24,13 @@ The vocabulary decision record is the canonical source for parent-site enums and
 ## Workstreams
 ### A. Completed prior workstream
 - Parent DB foundation spec completed in the previous run sequence.
+- Model file separation refactor spec completed.
 
-### B. Active workstream — model file separation refactor
-- Immediate next build target: `mdl-999`
-- Current repo reality to plan against: all concrete parent ORM tables now live in per-file model modules under `app/db/models/`; metadata registration continues to flow through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`; and structural regression coverage now exists for model-module layout plus metadata table registration.
-- [x] `mdl-001` inventory current model layout and confirm exact files/tables to split
-- [x] `mdl-010` lock vocabulary decision record into repo docs
-- [x] `mdl-020` split identity/auth/account models into sensible per-file modules
-- [x] `mdl-030` split profile/settings/address/integration models into sensible per-file modules
-- [x] `mdl-040` split support/content/status models into sensible per-file modules
-- [x] `mdl-050` split billing/read-model projection models into sensible per-file modules
-- [x] `mdl-060` align imports/metadata registration/Alembic discovery after split
-- [x] `mdl-070` add structural regression tests to prevent future model-dump regressions
-- [x] `mdl-999` run the authoritative docker test suite and mark this spec complete only when green
+### B. Active workstream — DB verification and regression hardening
+- Immediate next build target: `dbv-999`
+- Active spec: `specs/parent_db_verification_and_regression.json`
 
-### C. Next queued workstream — DB verification and regression hardening
-Queued next spec after B is green:
-- `specs/parent_db_verification_and_regression.json`
-
-### D. Later workstreams
+### C. Later workstreams
 After the DB verification workstream is green:
 1. parent backend route list and contract buildout
 2. Pay integration contract
