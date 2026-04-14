@@ -448,3 +448,9 @@
 - Next: Execute `mdl-020` to split identity/auth/account models into per-file modules while preserving the existing metadata registration path.
 - Sources used (only if needed; prefer official docs): none
 - Commit: `mdl-010: align vocabulary control docs`
+- Iteration: Completed `mdl-020` by moving `Account`, `AuthSession`, `EmailVerificationToken`, `PasswordResetToken`, `AccountSecuritySettings`, `MfaRecoveryCode`, and `AuthEvent` into per-file modules under `app/db/models/`, keeping shared JSON typing in `app/db/models/_json.py`, and updating `app/db/models/__init__.py` plus test imports to preserve metadata discovery.
+- Tests run + results: `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed. The `migrate` service exited with code `0` and the `test` service reported `45 passed in 1.62s`.
+- Notes / risks: The host Python environment lacks local `pytest` and `sqlalchemy`, so validation depended on the required Docker topology. `app/db/models/auth.py` still contains the remaining non-`mdl-020` tables and will be reduced further in later spec items.
+- Next: Execute `mdl-030` to split profile/settings/address/integration models into per-file modules while preserving the existing bootstrap path.
+- Sources used (only if needed; prefer official docs): none
+- Commit: `mdl-020: split identity auth account models`
