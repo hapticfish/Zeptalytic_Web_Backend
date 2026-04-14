@@ -1,23 +1,35 @@
 """Central model-registration path for SQLAlchemy metadata discovery."""
 
+from importlib import import_module
+
+
+MODEL_MODULES = (
+    "app.db.models.addresses",
+    "app.db.models.account_security_settings",
+    "app.db.models.accounts",
+    "app.db.models.announcements",
+    "app.db.models.auth_events",
+    "app.db.models.auth_sessions",
+    "app.db.models.communication_preferences",
+    "app.db.models.email_verification_tokens",
+    "app.db.models.entitlement_summaries",
+    "app.db.models.mfa_recovery_codes",
+    "app.db.models.oauth_connections",
+    "app.db.models.password_reset_tokens",
+    "app.db.models.payment_method_summaries",
+    "app.db.models.payment_summaries",
+    "app.db.models.product_access_states",
+    "app.db.models.profile_preferences",
+    "app.db.models.profiles",
+    "app.db.models.service_statuses",
+    "app.db.models.subscription_summaries",
+    "app.db.models.support_ticket_attachments",
+    "app.db.models.support_ticket_messages",
+    "app.db.models.support_tickets",
+)
+
 
 def import_models() -> None:
     """Import concrete model modules here as they are added."""
-    from app.db.models import addresses  # noqa: F401
-    from app.db.models import account_security_settings  # noqa: F401
-    from app.db.models import accounts  # noqa: F401
-    from app.db.models import announcements  # noqa: F401
-    from app.db.models import auth_events  # noqa: F401
-    from app.db.models import auth_sessions  # noqa: F401
-    from app.db.models import auth  # noqa: F401
-    from app.db.models import communication_preferences  # noqa: F401
-    from app.db.models import email_verification_tokens  # noqa: F401
-    from app.db.models import mfa_recovery_codes  # noqa: F401
-    from app.db.models import oauth_connections  # noqa: F401
-    from app.db.models import password_reset_tokens  # noqa: F401
-    from app.db.models import profile_preferences  # noqa: F401
-    from app.db.models import profiles  # noqa: F401
-    from app.db.models import service_statuses  # noqa: F401
-    from app.db.models import support_ticket_attachments  # noqa: F401
-    from app.db.models import support_ticket_messages  # noqa: F401
-    from app.db.models import support_tickets  # noqa: F401
+    for module_name in MODEL_MODULES:
+        import_module(module_name)

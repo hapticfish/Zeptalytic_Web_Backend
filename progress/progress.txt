@@ -484,3 +484,12 @@
 - Next: Execute `mdl-060` to import the split model modules directly through the registration path and verify Alembic discovery remains intact.
 - Sources used (only if needed; prefer official docs): none
 - Commit:
+- 2026-04-13T22:53:41.9896492-05:00 | codex | spec=model_file_separation_refactor | item=mdl-060
+- Summary: Replaced the indirect `app.db.models.auth` registration shim with explicit split-module imports in the model registry and added bootstrap regression coverage for direct module registration plus full metadata table discovery.
+- Files touched: `IMPLEMENTATION_PLAN.md`, `specs/model_file_separation_refactor.json`, `progress/progress.txt`, `app/db/models/__init__.py`, `tests/unit/test_db_bootstrap.py`
+- Search summary before edit: confirmed model registration flowed through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`; `app/db/models/__init__.py` still imported `app.db.models.auth` instead of the five split billing projection modules directly; `app/db/models/auth.py` was only a backward-compatible re-export shim; `app/db/models/testimonials.py` is currently just a placeholder with no model class; and the relevant existing tests were `tests/unit/test_db_bootstrap.py` and `tests/unit/test_auth_models.py`.
+- Tests run + results: Host-side `pytest` was unavailable on `PATH`, and `python -m pytest` failed because the host Python install does not include `pytest`. The authoritative command `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with the `migrate` service exiting `0` and the `test` service reporting `48 passed in 1.49s`.
+- Notes / risks: `app/db/models/auth.py` still exists as a compatibility shim but is no longer part of the metadata registration path. Structural layout guardrails are still pending in `mdl-070`.
+- Next: Execute `mdl-070` to add structural regression tests that guard the per-file module layout and metadata registration contract.
+- Sources used (only if needed; prefer official docs): none
+- Commit:
