@@ -556,24 +556,6 @@
 - Next: Execute `dbv-999` by rerunning the authoritative docker suite as the final quality gate and marking the active spec complete only after that run stays green.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (I did not create a mixed commit because the required durable-artifact files already contain prior uncommitted workstream changes in this worktree)
-- Iteration: `dbv-999` quality gate
-- Timestamp: `2026-04-14T12:57:22.1741067-05:00`
-- Goal for this iteration: Run the authoritative docker test suite as the final quality gate for the active DB verification spec and mark the spec complete only if it stays green.
-- What I found (repo search summary): The repo already had the full DB verification surface in place. `docker-compose.test.yml` defined the authoritative `db` -> `migrate` -> `test` topology, with `migrate` running `alembic upgrade head` and exposing `/tmp/migrate-ready` for health. DB wiring remained in `app/db/session.py` (`SessionLocal`) and `app/db/bootstrap.py` (`Base.metadata`), while the active regression tests lived in `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/integration/test_parent_db_constraints.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_parent_domain_vocabularies.py`, and `tests/unit/test_test_topology_contract.py`.
-- What I changed: Marked `dbv-999` complete in `specs/parent_db_verification_and_regression.json` after the authoritative docker suite passed cleanly. No code or test files changed in this iteration.
-- Why I changed: `dbv-999` is explicitly the final quality gate for the active spec, so the only safe change after a green authoritative run is to record that completion durably.
-- Updated Files:
-  - progress/progress.txt
-  - specs/parent_db_verification_and_regression.json
-- New Files:
-- Removed Files:
-- Tests run + results:
-  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `test` service reported `72 passed in 2.43s`.
-- Notes / risks: The compose log shows expected duplicate-key errors emitted by the database during negative constraint tests, but the pytest run stayed green and the compose command exited with code 0, so the quality gate passed as required.
-- Next: The active spec is fully complete. Choose the next workstream/spec before the next build iteration.
-- Sources used (only if needed; prefer official docs): none
-- Commit: pending
-
 ## Iteration entry
 - Date/time: 2026-04-14T12:51:50.2195555-05:00
 - Goal for this iteration: Complete `dbv-060` by adding explicit regression coverage for the authoritative docker test topology contract.
@@ -758,3 +740,21 @@
 - Next: Execute `dbv-999` by rerunning the authoritative docker suite as the final quality gate and marking the active spec complete only after that run stays green.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (I did not create a mixed commit because the required durable-artifact files already contain prior uncommitted workstream changes in this worktree)
+
+## Iteration entry
+- Date/time: 2026-04-14T12:57:22.1741067-05:00
+- Goal for this iteration: Run the authoritative docker test suite as the final quality gate for the active DB verification spec and mark the spec complete only if it stays green.
+- What I found (repo search summary): The repo already had the full DB verification surface in place. `docker-compose.test.yml` defined the authoritative `db` -> `migrate` -> `test` topology, with `migrate` running `alembic upgrade head` and exposing `/tmp/migrate-ready` for health. DB wiring remained in `app/db/session.py` (`SessionLocal`) and `app/db/bootstrap.py` (`Base.metadata`), while the active regression tests lived in `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/integration/test_parent_db_constraints.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_parent_domain_vocabularies.py`, and `tests/unit/test_test_topology_contract.py`.
+- What I changed: Marked `dbv-999` complete in `specs/parent_db_verification_and_regression.json` after the authoritative docker suite passed cleanly. No code or test files changed in this iteration.
+- Why I changed: `dbv-999` is explicitly the final quality gate for the active spec, so the only safe change after a green authoritative run is to record that completion durably.
+- Updated Files:
+  - progress/progress.txt
+  - specs/parent_db_verification_and_regression.json
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the `test` service reported `72 passed in 2.43s`.
+- Notes / risks: The compose log shows expected duplicate-key errors emitted by the database during negative constraint tests, but the pytest run stayed green and the compose command exited with code 0, so the quality gate passed as required.
+- Next: The active spec is fully complete. Choose the next workstream/spec before the next build iteration.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
