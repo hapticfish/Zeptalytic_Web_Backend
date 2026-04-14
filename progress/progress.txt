@@ -262,3 +262,20 @@
 - Next: Implement `pdb-055` for `support_ticket_attachments` as metadata-only storage on top of the new support tables.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T20:35:34.7228945-05:00
+- Goal for this iteration: Verify the already-landed `pdb-050` support-ticket schema slice and align the active spec state with repo reality.
+- What I found (repo search summary): `app/db/models/auth.py` already defines `SupportTicket` and `SupportTicketMessage` plus `Account.support_tickets` / `Account.support_ticket_messages`; registration is still driven only through `app/db/models/__init__.py`, which is consumed by `app/db/bootstrap.py` and `alembic/env.py`; `alembic/versions/20260413_2105_pdb050_support_tables.py` already creates the support tables, foreign keys, uniqueness, and indexes; `tests/unit/test_auth_models.py` already covers support metadata/indexes, persistence, and invalid cases for missing account, duplicate ticket code, missing ticket, and missing message body. There are still no support routers, services, or repositories wired yet, which matches this DB-foundation spec slice.
+- What I changed: Updated `specs/parent_db_foundation.json` to mark `pdb-050` as passed after re-verifying the existing implementation; appended this durable progress entry.
+- Why I changed: The support schema work was already present in code, migration history, tests, `IMPLEMENTATION_PLAN.md`, and prior progress entries, but the active spec still lagged behind and incorrectly showed `pdb-050` as incomplete.
+- Updated Files:
+  - progress/progress.txt
+  - specs/parent_db_foundation.json
+- New Files:
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed. The `migrate` container exited successfully and the `test` container reported `26 passed in 1.00s`.
+- Notes / risks: This iteration only aligned durable artifacts for an already-implemented slice. The next unfinished schema item remains `pdb-055` for metadata-only support attachments.
+- Next: Implement `pdb-055` for `support_ticket_attachments` without storing file contents in Postgres.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)
