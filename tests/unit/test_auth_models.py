@@ -12,7 +12,7 @@ from app.db.models.addresses import Address
 from app.db.models.account_security_settings import AccountSecuritySettings
 from app.db.models.accounts import Account
 from app.db.models.announcements import Announcement
-from app.db.models.auth import EntitlementSummary, PaymentMethodSummary, PaymentSummary, ProductAccessState, SubscriptionSummary
+from app.db.models.entitlement_summaries import EntitlementSummary
 from app.db.models.auth_events import AuthEvent
 from app.db.models.auth_sessions import AuthSession
 from app.db.models.communication_preferences import CommunicationPreference
@@ -20,9 +20,13 @@ from app.db.models.email_verification_tokens import EmailVerificationToken
 from app.db.models.mfa_recovery_codes import MfaRecoveryCode
 from app.db.models.oauth_connections import OAuthConnection
 from app.db.models.password_reset_tokens import PasswordResetToken
+from app.db.models.payment_method_summaries import PaymentMethodSummary
+from app.db.models.payment_summaries import PaymentSummary
 from app.db.models.profile_preferences import ProfilePreference
 from app.db.models.profiles import Profile
+from app.db.models.product_access_states import ProductAccessState
 from app.db.models.service_statuses import ServiceStatus
+from app.db.models.subscription_summaries import SubscriptionSummary
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
 from app.db.models.support_ticket_messages import SupportTicketMessage
 from app.db.models.support_tickets import SupportTicket
@@ -212,6 +216,14 @@ def test_pay_projection_tables_have_expected_defaults_and_indexes() -> None:
     assert "ix_payment_summaries_payment_rail" in payment_summary_indexes
     assert "ix_payment_method_summaries_account_id" in payment_method_indexes
     assert "uq_payment_method_summaries_provider_method" in payment_method_indexes
+
+
+def test_pay_projection_models_live_in_per_table_modules() -> None:
+    assert SubscriptionSummary.__module__ == "app.db.models.subscription_summaries"
+    assert EntitlementSummary.__module__ == "app.db.models.entitlement_summaries"
+    assert ProductAccessState.__module__ == "app.db.models.product_access_states"
+    assert PaymentSummary.__module__ == "app.db.models.payment_summaries"
+    assert PaymentMethodSummary.__module__ == "app.db.models.payment_method_summaries"
 
 
 def test_auth_and_security_persistence_round_trip() -> None:

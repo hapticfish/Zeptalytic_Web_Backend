@@ -474,3 +474,13 @@
 - Next: Execute `mdl-050` to split the remaining billing/read-model projection tables into per-file modules while preserving the bootstrap registration path.
 - Sources used (only if needed; prefer official docs): none
 - Commit:
+- 2026-04-13T22:50:24.5093253-05:00 | codex | spec=model_file_separation_refactor | item=mdl-050
+- Summary: Split the five remaining billing/read-model projection classes into per-file model modules, converted `app/db/models/auth.py` into a backward-compatible re-export shim, and added a regression test that asserts the projections now live in their own files.
+- Files touched: `IMPLEMENTATION_PLAN.md`, `specs/model_file_separation_refactor.json`, `progress/progress.txt`, `app/db/models/auth.py`, `tests/unit/test_auth_models.py`
+- New files: `app/db/models/subscription_summaries.py`, `app/db/models/entitlement_summaries.py`, `app/db/models/product_access_states.py`, `app/db/models/payment_summaries.py`, `app/db/models/payment_method_summaries.py`
+- Search summary before edit: confirmed `SubscriptionSummary`, `EntitlementSummary`, `ProductAccessState`, `PaymentSummary`, and `PaymentMethodSummary` were the only remaining classes defined in `app/db/models/auth.py`; `Account` relationship wiring already existed in `app/db/models/accounts.py`; metadata registration still flowed through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`; and the affected coverage was concentrated in `tests/unit/test_auth_models.py` plus `tests/unit/test_db_bootstrap.py`.
+- Tests run + results: Host-side `pytest` was unavailable on `PATH`, and `python -m pytest` failed because the host Python install does not include `pytest`. `docker compose -f docker-compose.test.yml run --rm test pytest tests/unit/test_auth_models.py tests/unit/test_db_bootstrap.py -q -vv` passed with `42 passed in 1.18s`. The authoritative command `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with `46 passed in 1.47s`.
+- Notes / risks: `app/db/models/__init__.py` still imports the `auth` shim rather than the five new modules directly, so the metadata-registration cleanup remains for `mdl-060`. An unrelated user change remains in `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md` and was not touched.
+- Next: Execute `mdl-060` to import the split model modules directly through the registration path and verify Alembic discovery remains intact.
+- Sources used (only if needed; prefer official docs): none
+- Commit:
