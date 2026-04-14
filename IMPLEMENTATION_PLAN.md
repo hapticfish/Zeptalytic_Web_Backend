@@ -13,6 +13,8 @@ Read these before every planning/build run:
 - `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md`
 - `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md`
 
+The vocabulary decision record is the canonical source for parent-site enums and status values.
+
 ## Locked decisions
 - Parent backend owns auth/settings/addresses/support/rewards/announcements/testimonials/dashboard aggregation.
 - Pay remains source of truth for pricing, checkout, orders, payments, refunds, subscriptions, entitlements, disputes, and risk.
@@ -24,8 +26,10 @@ Read these before every planning/build run:
 - Parent DB foundation spec completed in the previous run sequence.
 
 ### B. Active workstream — model file separation refactor
-- [ ] `mdl-001` inventory current model layout and confirm exact files/tables to split
-- [ ] `mdl-010` lock vocabulary decision record into repo docs
+- Immediate next build target: `mdl-020`
+- Current repo reality to plan against: all concrete ORM tables still live in `app/db/models/auth.py`, with registration flowing through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`.
+- [x] `mdl-001` inventory current model layout and confirm exact files/tables to split
+- [x] `mdl-010` lock vocabulary decision record into repo docs
 - [ ] `mdl-020` split identity/auth/account models into sensible per-file modules
 - [ ] `mdl-030` split profile/settings/address/integration models into sensible per-file modules
 - [ ] `mdl-040` split support/content/status models into sensible per-file modules

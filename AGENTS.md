@@ -34,7 +34,7 @@ It is NOT the source of truth for commercial billing lifecycle logic. The Zeptal
 - Card data must never pass through this service; Stripe.js / Elements + SetupIntents is the intended card-update path.
 
 ## File organization rules (always)
-- Do NOT dump unrelated models into one file.
+- Do NOT dump unrelated models or any code generation into one large file always follow good coding convention and separation.
 - One SQLAlchemy model/table per file by default.
 - Group files into sensible directories when the project needs it; create missing directories rather than collapsing concerns into a generic file.
 - Acceptable model layout examples:
@@ -49,6 +49,7 @@ It is NOT the source of truth for commercial billing lifecycle logic. The Zeptal
 Use the canonical vocabularies from:
 - `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md`
 
+Treat that decision record as the canonical source for parent-site enums and status values.
 Do not invent alternate status values during implementation.
 
 ## Required “rehydrate context” behavior (every run)

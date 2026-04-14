@@ -70,8 +70,12 @@ Lock the following before implementation starts:
 - required signup fields
 - initial launch scope vs post-launch scope
 
+Canonical source for the currently locked parent-site enums and status values:
+- `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md`
+
 **Exit gate**
-- one written decision record exists for each of the above
+- the vocabulary decision record above is treated as authoritative for parent-site enums/status values
+- one written decision record exists for each remaining identifier set above
 
 ### Phase 1 — Build control artifacts
 Create and maintain:

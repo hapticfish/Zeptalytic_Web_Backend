@@ -401,3 +401,50 @@
 - Next: Start the next spec/workstream after updating the active spec pointer in `IMPLEMENTATION_PLAN.md` / `PROMPT.md`.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T21:18:00-05:00
+- Goal for this iteration: Planning-only refinement for the active `model_file_separation_refactor` workstream so the next build run can start with the correct repo reality and file split map.
+- What I found (repo search summary): `IMPLEMENTATION_PLAN.md` and `PROMPT.md` already point at `specs/model_file_separation_refactor.json`; the current ORM layout is still a single overloaded module, `app/db/models/auth.py`, containing all 22 concrete model classes/tables for accounts/auth, profile/settings, addresses, support, content/status, and Pay-derived summaries; `app/db/models/__init__.py` only imports `app.db.models.auth`, `app/db/bootstrap.py` calls that import hook and returns `Base.metadata`, and `alembic/env.py` imports `target_metadata` from the bootstrap surface, so metadata wiring is centralized but fragile during the split; test coverage remains concentrated in `tests/unit/test_auth_models.py` and `tests/unit/test_db_bootstrap.py`, while `docker-compose.test.yml` still provides the authoritative `db` -> `migrate` -> `test` topology. I also found doc drift in `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md`, which still said Alembic pointed at raw `Base.metadata` and that the next slice was `pdb-999`.
+- What I changed: Refined `specs/model_file_separation_refactor.json` so `mdl-001` explicitly inventories the current single-file `app/db/models/auth.py` state and so `mdl-060` explicitly preserves the existing bootstrap registration path; updated `IMPLEMENTATION_PLAN.md` to make `mdl-001` the immediate next build target and to restate the live registration flow; corrected `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md` so it reflects the bootstrap-based metadata path and the active model-file-separation workstream.
+- Why I changed: The repo is no longer in the DB-foundation phase, and the next build iteration needs durable planning artifacts that point at the real refactor starting point instead of stale `pdb-999` guidance.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md
+  - progress/progress.txt
+  - specs/model_file_separation_refactor.json
+- New Files:
+- Removed Files:
+- Tests run + results: Not run. This was a planning-only/docs-only iteration and I did not change runtime code or test topology.
+- Notes / risks: `AGENTS.md` is already modified in the worktree from outside this run, so I did not touch it. The next build iteration should still search the repo before editing because the actual split may expose circular-import pressure once relationships are moved across modules.
+- Next: Execute `mdl-001` only: produce the exact current-model to target-file inventory in progress/docs without changing runtime code yet.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T22:23:49.1891722-05:00
+- Goal for this iteration: Complete `mdl-001` by inventorying every model currently overloaded into `app/db/models/auth.py` and recording the exact target file map for the split.
+- What I found (repo search summary): `git ls-files`, `git grep`, `rg`, `find`, and `grep -R` all confirmed that `app/db/models/auth.py` is still the only concrete ORM module and currently defines all 22 models: `Account`, `Announcement`, `ServiceStatus`, `SubscriptionSummary`, `EntitlementSummary`, `ProductAccessState`, `PaymentSummary`, `PaymentMethodSummary`, `AuthSession`, `EmailVerificationToken`, `PasswordResetToken`, `AccountSecuritySettings`, `MfaRecoveryCode`, `AuthEvent`, `Profile`, `ProfilePreference`, `CommunicationPreference`, `OAuthConnection`, `Address`, `SupportTicket`, `SupportTicketMessage`, and `SupportTicketAttachment`. Registration currently flows through `app/db/models/__init__.py:import_models()` -> `app/db/bootstrap.py:get_target_metadata()` -> `alembic/env.py:target_metadata`. Existing test coverage is still concentrated in `tests/unit/test_auth_models.py`, which imports every concrete model from `app.db.models.auth`, plus `tests/unit/test_db_bootstrap.py`, which checks the bootstrap path.
+- What I changed: Added a `mdl-001` inventory section to `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md` capturing the current overloaded-module state, the current registration/discovery wiring, the exact current-source-to-target-file map for all 22 models, and the known circular-import/test-update risks for later split items. Marked `mdl-001` complete in `specs/model_file_separation_refactor.json` and checked it off in `IMPLEMENTATION_PLAN.md` after the authoritative docker suite passed.
+- Why I changed: The active refactor spec requires a durable discovery artifact before runtime code moves, so later model-split iterations have an exact table-to-file map and a clear view of the current metadata-registration path.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md
+  - progress/progress.txt
+  - specs/model_file_separation_refactor.json
+- New Files:
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed. The `migrate` service exited with code `0` and the `test` service reported `43 passed in 1.48s`.
+- Notes / risks: This iteration intentionally made no runtime/model/test code changes. The later split items will need to update `tests/unit/test_auth_models.py` in lockstep with the model moves because it currently imports all concrete models from `app.db.models.auth`.
+- Next: Execute `mdl-010` to align the locked vocabulary decision record references across the repo before moving concrete models into per-file modules.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)
+- 2026-04-13T22:28:09.0288299-05:00 | codex | spec=model_file_separation_refactor | item=mdl-010
+- Summary: Aligned the vocabulary decision record as the canonical parent-site enum/status source in the repo control docs and added a regression test to keep those references explicit.
+- Files touched: `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, `docs/architecture/Zeptalytic_Website_Implementation_Control_Plan.md`, `tests/unit/test_domain_vocabulary_decision_record.py`, `specs/model_file_separation_refactor.json`
+- Search summary before edit: confirmed the vocabulary decision record already existed at `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md`; `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, and `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md` already referenced it; `docs/architecture/Zeptalytic_Website_Implementation_Control_Plan.md` still needed an explicit canonical-source reference; current model/metadata wiring remained `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`; existing DB tests were `tests/unit/test_auth_models.py` and `tests/unit/test_db_bootstrap.py`; no test guarded the decision-record wiring.
+- Tests run + results: `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed. The `migrate` service exited with code `0` and the `test` service reported `45 passed in 1.46s`.
+- Notes / risks: The host shell did not have `pytest` available, so validation relied on the authoritative Docker path. Runtime model TODO markers still reference this decision record and will be addressed by later refactor/test items.
+- Next: Execute `mdl-020` to split identity/auth/account models into per-file modules while preserving the existing metadata registration path.
+- Sources used (only if needed; prefer official docs): none
+- Commit: `mdl-010: align vocabulary control docs`

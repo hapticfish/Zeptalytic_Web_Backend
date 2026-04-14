@@ -6,7 +6,7 @@
     {
       "id": "mdl-001",
       "category": "discovery",
-      "description": "Inventory the current model layout, identify every table/model currently living in generic or overloaded files, and produce the exact target file map for the split.",
+      "description": "Inventory the current model layout, identify every table/model currently living in generic or overloaded files, and produce the exact target file map for the split starting from the current single-module `app/db/models/auth.py` reality.",
       "expected_paths": [
         "app/db/models/",
         "app/db/base.py",
@@ -15,17 +15,18 @@
       ],
       "steps": [
         "Search the repo for all SQLAlchemy model classes and current model module files.",
+        "Record the current overloaded-module state, including the exact model classes still defined in `app/db/models/auth.py`.",
         "List each current table/model and the file it lives in.",
         "Propose the exact target file path for each model after refactor.",
         "Record any blockers such as circular imports or metadata-registration risks."
       ],
       "pass_criteria": [
-        "The progress log contains a discovery summary mapping current model locations to target files.",
+        "The progress log contains a discovery summary mapping current model locations to target files, including the current `auth.py` source module for each table.",
         "No runtime code behavior is changed in this item."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-13T22:23:49.1891722-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "mdl-010",
@@ -45,9 +46,9 @@
         "The vocabulary decision record exists and matches the locked decisions.",
         "Repo control docs reference it explicitly."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-13T22:28:09.0288299-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "mdl-020",
@@ -151,7 +152,7 @@
     {
       "id": "mdl-060",
       "category": "wiring",
-      "description": "Align model package imports, Base metadata registration, and Alembic discovery after the file split.",
+      "description": "Align model package imports, Base metadata registration, and Alembic discovery after the file split while preserving the existing bootstrap path through `app/db/bootstrap.py`.",
       "expected_paths": [
         "app/db/models/__init__.py",
         "app/db/base.py",
