@@ -241,3 +241,24 @@
 - Next: Implement `pdb-050` for `support_tickets` and `support_ticket_messages`.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T20:31:44.3015583-05:00
+- Goal for this iteration: Complete `pdb-050` by adding the parent-owned support ticket and support message tables, wiring their relationships, and validating the migration path.
+- What I found (repo search summary): `app/db/models/auth.py` was still the only concrete ORM module and already carried every completed schema slice, so extending it kept the existing metadata-registration path intact through `app/db/models/__init__.py`, `app/db/bootstrap.py`, and `alembic/env.py`; there was no existing support-domain model, repository, service, router, or migration anywhere under `app/` or `alembic/`; the live revision chain ended at `alembic/versions/20260413_2040_pdb040_addresses_table.py`; focused schema coverage remained centralized in `tests/unit/test_auth_models.py`, with no separate support-specific test module yet.
+- What I changed: Extended `app/db/models/auth.py` with `SupportTicket`, `SupportTicketMessage`, and the matching `Account` relationships; added `alembic/versions/20260413_2105_pdb050_support_tables.py` to create `support_tickets` and `support_ticket_messages` with the required foreign keys, ticket-code uniqueness, status/account/ticket indexes, and `is_internal_note` default; expanded `tests/unit/test_auth_models.py` to include the new tables in metadata setup, verify their defaults/constraints/indexes, persist a ticket plus account/internal-note messages, and cover four invalid cases (`missing account`, `duplicate ticket_code`, `missing ticket`, `missing message_body`); marked `pdb-050` complete in `IMPLEMENTATION_PLAN.md` and `specs/parent_db_foundation.json`.
+- Why I changed: The schema plan places parent-owned support persistence immediately after addresses, and this slice can be implemented entirely inside the parent-owned support domain without crossing into Pay-owned commercial truth.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/auth.py
+  - progress/progress.txt
+  - specs/parent_db_foundation.json
+  - tests/unit/test_auth_models.py
+- New Files:
+  - alembic/versions/20260413_2105_pdb050_support_tables.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml run --rm test pytest -q tests/unit/test_auth_models.py -vv` passed but used the already-built image state and only collected `18` tests, so it did not validate the new support cases. `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` rebuilt the image, applied revision `20260413_2105`, and passed with `26 passed in 1.00s`.
+- Notes / risks: `request_type`, `priority`, `status`, and `author_type` remain free-form strings with TODO markers because the controlling docs still do not lock the support-domain vocabularies. `support_ticket_messages.account_id` is nullable by design so internal/support-authored notes can exist before a separate staff-identity model is introduced.
+- Next: Implement `pdb-055` for `support_ticket_attachments` as metadata-only storage on top of the new support tables.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)

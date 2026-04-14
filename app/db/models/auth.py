@@ -61,6 +61,13 @@ class Account(Base):
         back_populates="account",
         cascade="all, delete-orphan",
     )
+    support_tickets: Mapped[list["SupportTicket"]] = relationship(
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
+    support_ticket_messages: Mapped[list["SupportTicketMessage"]] = relationship(
+        back_populates="author_account",
+    )
 
 
 class AuthSession(Base):
@@ -384,3 +391,83 @@ class Address(Base):
     )
 
     account: Mapped[Account] = relationship(back_populates="addresses")
+
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+    __table_args__ = (
+        Index("ix_support_tickets_account_id", "account_id"),
+        Index("ix_support_tickets_status", "status"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    ticket_code: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    account_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # TODO(john): Lock the support request-type vocabulary in the support spec.
+    request_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    related_product_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # TODO(john): Lock the support priority vocabulary in the support spec.
+    priority: Mapped[str] = mapped_column(String(32), nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(String(4000), nullable=False)
+    # TODO(john): Lock the support ticket status vocabulary in the support spec.
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    estimated_response_sla_label: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    account: Mapped[Account] = relationship(back_populates="support_tickets")
+    messages: Mapped[list["SupportTicketMessage"]] = relationship(
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+    )
+
+
+class SupportTicketMessage(Base):
+    __tablename__ = "support_ticket_messages"
+    __table_args__ = (
+        Index("ix_support_ticket_messages_ticket_id", "ticket_id"),
+        Index("ix_support_ticket_messages_account_id", "account_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    ticket_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("support_tickets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    account_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # TODO(john): Lock the support message author-type vocabulary in the support spec.
+    author_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    message_body: Mapped[str] = mapped_column(String(8000), nullable=False)
+    is_internal_note: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    ticket: Mapped[SupportTicket] = relationship(back_populates="messages")
+    author_account: Mapped[Account | None] = relationship(back_populates="support_ticket_messages")

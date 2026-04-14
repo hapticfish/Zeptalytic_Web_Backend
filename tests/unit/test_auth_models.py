@@ -21,6 +21,8 @@ from app.db.models.auth import (
     PasswordResetToken,
     Profile,
     ProfilePreference,
+    SupportTicket,
+    SupportTicketMessage,
 )
 
 
@@ -49,6 +51,8 @@ def _create_in_memory_schema() -> tuple[Session, MetaData]:
         CommunicationPreference.__table__,
         OAuthConnection.__table__,
         Address.__table__,
+        SupportTicket.__table__,
+        SupportTicketMessage.__table__,
     ):
         table.to_metadata(metadata)
 
@@ -72,6 +76,8 @@ def test_auth_tables_are_registered_in_metadata() -> None:
         "communication_preferences",
         "oauth_connections",
         "addresses",
+        "support_tickets",
+        "support_ticket_messages",
     }.issubset(table_names)
 
 
@@ -119,6 +125,25 @@ def test_addresses_have_expected_defaults_and_indexes() -> None:
     assert addresses_table.c.is_primary.server_default is not None
     assert "ix_addresses_account_id" in address_indexes
     assert "ix_addresses_account_id_address_type" in address_indexes
+
+
+def test_support_tables_have_expected_defaults_constraints_and_indexes() -> None:
+    support_ticket_table = SupportTicket.__table__
+    support_message_table = SupportTicketMessage.__table__
+    ticket_constraint_columns = {
+        tuple(sorted(column.name for column in constraint.columns))
+        for constraint in support_ticket_table.constraints
+        if getattr(constraint, "columns", None)
+    }
+    ticket_indexes = {index.name for index in support_ticket_table.indexes}
+    message_indexes = {index.name for index in support_message_table.indexes}
+
+    assert ("ticket_code",) in ticket_constraint_columns
+    assert "ix_support_tickets_account_id" in ticket_indexes
+    assert "ix_support_tickets_status" in ticket_indexes
+    assert support_message_table.c.is_internal_note.server_default is not None
+    assert "ix_support_ticket_messages_ticket_id" in message_indexes
+    assert "ix_support_ticket_messages_account_id" in message_indexes
 
 
 def test_auth_and_security_persistence_round_trip() -> None:
@@ -198,6 +223,17 @@ def test_auth_and_security_persistence_round_trip() -> None:
         formatted_address="Test Runner, 100 Example Street, Suite 200, Chicago, IL 60601, United States",
         is_primary=True,
     )
+    support_ticket = SupportTicket(
+        account_id=account.id,
+        ticket_code="SUP-1001",
+        request_type="billing",
+        related_product_code="zardbot",
+        priority="normal",
+        subject="Need billing help",
+        description="I need help updating my billing address.",
+        status="open",
+        estimated_response_sla_label="Within 24 hours",
+    )
 
     session.add_all(
         [
@@ -212,8 +248,24 @@ def test_auth_and_security_persistence_round_trip() -> None:
             communication_preferences,
             oauth_connection,
             address,
+            support_ticket,
         ]
     )
+    session.flush()
+
+    support_message = SupportTicketMessage(
+        ticket_id=support_ticket.id,
+        account_id=account.id,
+        author_type="account",
+        message_body="The issue happens when I try to save the billing form.",
+    )
+    internal_note = SupportTicketMessage(
+        ticket_id=support_ticket.id,
+        author_type="support_agent",
+        message_body="Reproduced locally and escalated.",
+        is_internal_note=True,
+    )
+    session.add_all([support_message, internal_note])
     session.commit()
 
     persisted_session = session.scalar(select(AuthSession).where(AuthSession.account_id == account.id))
@@ -241,6 +293,10 @@ def test_auth_and_security_persistence_round_trip() -> None:
         select(OAuthConnection).where(OAuthConnection.account_id == account.id)
     )
     persisted_address = session.scalar(select(Address).where(Address.account_id == account.id))
+    persisted_support_ticket = session.scalar(select(SupportTicket).where(SupportTicket.account_id == account.id))
+    persisted_support_messages = session.scalars(
+        select(SupportTicketMessage).where(SupportTicketMessage.ticket_id == support_ticket.id)
+    ).all()
 
     assert persisted_session is not None
     assert persisted_session.session_token_hash == "session-token-hash"
@@ -274,6 +330,15 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_address.address_type == "billing"
     assert persisted_address.country_code == "US"
     assert persisted_address.is_primary is True
+    assert persisted_support_ticket is not None
+    assert persisted_support_ticket.ticket_code == "SUP-1001"
+    assert persisted_support_ticket.related_product_code == "zardbot"
+    assert len(persisted_support_messages) == 2
+    assert persisted_support_messages[0].ticket.id == support_ticket.id
+    assert persisted_support_messages[0].author_type == "account"
+    assert persisted_support_messages[0].author_account is not None
+    assert persisted_support_messages[1].is_internal_note is True
+    assert persisted_support_messages[1].author_account is None
     assert account.profile is not None
     assert account.profile.discord_username == "testrunner"
     assert account.profile_preferences is not None
@@ -284,6 +349,9 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert account.oauth_connections[0].provider_username == "testrunner#1234"
     assert len(account.addresses) == 1
     assert account.addresses[0].city_or_locality == "Chicago"
+    assert len(account.support_tickets) == 1
+    assert account.support_tickets[0].subject == "Need billing help"
+    assert len(account.support_tickets[0].messages) == 2
 
 
 def test_accounts_reject_duplicate_email() -> None:
@@ -531,6 +599,124 @@ def test_addresses_require_country_code() -> None:
             line1="100 Example Street",
             city_or_locality="Chicago",
             country_code=None,  # type: ignore[arg-type]
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_support_tickets_require_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        SupportTicket(
+            account_id=uuid4(),
+            ticket_code="SUP-2001",
+            request_type="support",
+            priority="high",
+            subject="Missing account",
+            description="This ticket should fail.",
+            status="open",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_support_tickets_enforce_unique_ticket_code() -> None:
+    session, _ = _create_in_memory_schema()
+    first_account = Account(
+        id=uuid4(),
+        username="support-owner-1",
+        email="support-owner-1@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    second_account = Account(
+        id=uuid4(),
+        username="support-owner-2",
+        email="support-owner-2@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add_all([first_account, second_account])
+    session.commit()
+
+    session.add(
+        SupportTicket(
+            account_id=first_account.id,
+            ticket_code="SUP-2002",
+            request_type="support",
+            priority="high",
+            subject="First ticket",
+            description="First description.",
+            status="open",
+        )
+    )
+    session.commit()
+
+    session.add(
+        SupportTicket(
+            account_id=second_account.id,
+            ticket_code="SUP-2002",
+            request_type="support",
+            priority="low",
+            subject="Duplicate code",
+            description="Second description.",
+            status="open",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_support_ticket_messages_require_existing_ticket() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        SupportTicketMessage(
+            ticket_id=uuid4(),
+            author_type="account",
+            message_body="This message should fail.",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_support_ticket_messages_require_message_body() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="support-message-owner",
+        email="support-message-owner@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    ticket = SupportTicket(
+        id=uuid4(),
+        account_id=account.id,
+        ticket_code="SUP-2003",
+        request_type="support",
+        priority="normal",
+        subject="Message body test",
+        description="Base ticket for invalid message test.",
+        status="open",
+    )
+    session.add_all([account, ticket])
+    session.commit()
+
+    session.add(
+        SupportTicketMessage(
+            ticket_id=ticket.id,
+            account_id=account.id,
+            author_type="account",
+            message_body=None,  # type: ignore[arg-type]
         )
     )
 

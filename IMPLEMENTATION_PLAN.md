@@ -48,7 +48,7 @@ If these differ from repo reality, a planning run must update the docs/prompt/pl
 - [x] `pdb-030` — Implement `profiles` with focused tests.
 - [x] `pdb-035` — Implement `profile_preferences`, `communication_preferences`, and `oauth_connections` with focused tests.
 - [x] `pdb-040` — Implement international-ready parent-owned `addresses` table and migration with focused tests.
-- [ ] `pdb-050` — Implement `support_tickets` and `support_ticket_messages` with focused tests.
+- [x] `pdb-050` — Implement `support_tickets` and `support_ticket_messages` with focused tests.
 - [ ] `pdb-055` — Implement `support_ticket_attachments` metadata storage with focused tests.
 - [ ] `pdb-060` — Implement `announcements` and `service_statuses` tables and migrations with focused tests.
 - [ ] `pdb-070` — Implement `subscription_summaries` and `entitlement_summaries` with focused tests.
@@ -75,3 +75,4 @@ Do not mark an item complete unless:
 4. the authoritative docker suite passes
 5. the active spec item is updated with `passes=true`, timestamp, and `completed_by="codex"`
 6. `progress/progress.txt` is updated at EOF
+
