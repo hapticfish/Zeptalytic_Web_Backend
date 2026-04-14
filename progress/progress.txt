@@ -464,3 +464,13 @@
 - Next: Execute `mdl-040` to split support/content/status models into per-file modules while preserving the current bootstrap registration path.
 - Sources used (only if needed; prefer official docs): none
 - Commit:
+- 2026-04-13T22:44:38.8158182-05:00 | codex | spec=model_file_separation_refactor | item=mdl-040
+- Summary: Split `Announcement`, `ServiceStatus`, `SupportTicket`, `SupportTicketMessage`, and `SupportTicketAttachment` into per-file model modules, registered those modules through `app/db/models/__init__.py`, retargeted unit-test imports, and added a placeholder `app/db/models/testimonials.py` module to match the active spec path without inventing a testimonial table.
+- Files touched: `IMPLEMENTATION_PLAN.md`, `specs/model_file_separation_refactor.json`, `progress/progress.txt`, `app/db/models/__init__.py`, `app/db/models/auth.py`, `tests/unit/test_auth_models.py`
+- New files: `app/db/models/announcements.py`, `app/db/models/service_statuses.py`, `app/db/models/support_tickets.py`, `app/db/models/support_ticket_messages.py`, `app/db/models/support_ticket_attachments.py`, `app/db/models/testimonials.py`
+- Search summary before edit: confirmed the five `mdl-040` classes still lived in `app/db/models/auth.py`; `Account` relationship wiring already existed in `app/db/models/accounts.py`; metadata registration still flowed through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`; affected tests were concentrated in `tests/unit/test_auth_models.py`; and no `Testimonial` model existed anywhere in the repo beyond docs/spec references.
+- Tests run + results: Host-side `pytest` was unavailable on `PATH`, and `python -m pytest` failed because the host Python install does not include `pytest`. The authoritative command `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed after the final tree update; the `migrate` service exited with code `0` and the `test` service reported `45 passed in 1.53s`.
+- Notes / risks: `app/db/models/auth.py` still contains the billing/read-model projection tables targeted by `mdl-050`. `app/db/models/testimonials.py` is intentionally a placeholder only; there is still no testimonial table/model implemented in this repo state.
+- Next: Execute `mdl-050` to split the remaining billing/read-model projection tables into per-file modules while preserving the bootstrap registration path.
+- Sources used (only if needed; prefer official docs): none
+- Commit:

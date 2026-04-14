@@ -6,6 +6,7 @@ def import_models() -> None:
     from app.db.models import addresses  # noqa: F401
     from app.db.models import account_security_settings  # noqa: F401
     from app.db.models import accounts  # noqa: F401
+    from app.db.models import announcements  # noqa: F401
     from app.db.models import auth_events  # noqa: F401
     from app.db.models import auth_sessions  # noqa: F401
     from app.db.models import auth  # noqa: F401
@@ -16,3 +17,7 @@ def import_models() -> None:
     from app.db.models import password_reset_tokens  # noqa: F401
     from app.db.models import profile_preferences  # noqa: F401
     from app.db.models import profiles  # noqa: F401
+    from app.db.models import service_statuses  # noqa: F401
+    from app.db.models import support_ticket_attachments  # noqa: F401
+    from app.db.models import support_ticket_messages  # noqa: F401
+    from app.db.models import support_tickets  # noqa: F401

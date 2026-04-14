@@ -26,13 +26,13 @@ The vocabulary decision record is the canonical source for parent-site enums and
 - Parent DB foundation spec completed in the previous run sequence.
 
 ### B. Active workstream — model file separation refactor
-- Immediate next build target: `mdl-040`
+- Immediate next build target: `mdl-050`
 - Current repo reality to plan against: the identity/auth/account slice and the profile/settings/address/integration slice now live in per-file model modules, while the remaining support/content/status and billing projection tables still live in `app/db/models/auth.py`; registration continues to flow through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`.
 - [x] `mdl-001` inventory current model layout and confirm exact files/tables to split
 - [x] `mdl-010` lock vocabulary decision record into repo docs
 - [x] `mdl-020` split identity/auth/account models into sensible per-file modules
 - [x] `mdl-030` split profile/settings/address/integration models into sensible per-file modules
-- [ ] `mdl-040` split support/content/status models into sensible per-file modules
+- [x] `mdl-040` split support/content/status models into sensible per-file modules
 - [ ] `mdl-050` split billing/read-model projection models into sensible per-file modules
 - [ ] `mdl-060` align imports/metadata registration/Alembic discovery after split
 - [ ] `mdl-070` add structural regression tests to prevent future model-dump regressions
