@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db.models.auth import (
     Account,
     AccountSecuritySettings,
+    Announcement,
     Address,
     AuthEvent,
     AuthSession,
@@ -21,6 +22,7 @@ from app.db.models.auth import (
     PasswordResetToken,
     Profile,
     ProfilePreference,
+    ServiceStatus,
     SupportTicketAttachment,
     SupportTicket,
     SupportTicketMessage,
@@ -55,6 +57,8 @@ def _create_in_memory_schema() -> tuple[Session, MetaData]:
         SupportTicket.__table__,
         SupportTicketMessage.__table__,
         SupportTicketAttachment.__table__,
+        Announcement.__table__,
+        ServiceStatus.__table__,
     ):
         table.to_metadata(metadata)
 
@@ -81,6 +85,8 @@ def test_auth_tables_are_registered_in_metadata() -> None:
         "support_tickets",
         "support_ticket_messages",
         "support_ticket_attachments",
+        "announcements",
+        "service_statuses",
     }.issubset(table_names)
 
 
@@ -158,6 +164,15 @@ def test_support_tables_have_expected_defaults_constraints_and_indexes() -> None
     assert "ix_support_ticket_attachments_ticket_id" in attachment_indexes
     assert "ix_support_ticket_attachments_uploaded_by_account_id" in attachment_indexes
     assert "ix_support_ticket_attachments_scan_status" in attachment_indexes
+
+
+def test_content_status_tables_have_expected_defaults() -> None:
+    announcement_table = Announcement.__table__
+    service_status_table = ServiceStatus.__table__
+
+    assert announcement_table.c.created_at.server_default is not None
+    assert announcement_table.c.updated_at.server_default is not None
+    assert service_status_table.c.updated_at.server_default is not None
 
 
 def test_auth_and_security_persistence_round_trip() -> None:
@@ -248,6 +263,19 @@ def test_auth_and_security_persistence_round_trip() -> None:
         status="open",
         estimated_response_sla_label="Within 24 hours",
     )
+    announcement = Announcement(
+        scope="global",
+        product_code="zardbot",
+        title="Planned maintenance",
+        body="Short maintenance window tonight.",
+        severity="info",
+        published_at=datetime.now(UTC),
+    )
+    service_status = ServiceStatus(
+        product_code="zardbot",
+        status="operational",
+        message="All systems normal.",
+    )
 
     session.add_all(
         [
@@ -263,6 +291,8 @@ def test_auth_and_security_persistence_round_trip() -> None:
             oauth_connection,
             address,
             support_ticket,
+            announcement,
+            service_status,
         ]
     )
     session.flush()
@@ -323,6 +353,10 @@ def test_auth_and_security_persistence_round_trip() -> None:
     persisted_support_attachment = session.scalar(
         select(SupportTicketAttachment).where(SupportTicketAttachment.ticket_id == support_ticket.id)
     )
+    persisted_announcement = session.scalar(select(Announcement).where(Announcement.scope == "global"))
+    persisted_service_status = session.scalar(
+        select(ServiceStatus).where(ServiceStatus.product_code == "zardbot")
+    )
 
     assert persisted_session is not None
     assert persisted_session.session_token_hash == "session-token-hash"
@@ -369,6 +403,12 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_support_attachment.storage_key == "support/SUP-1001/attachment-1"
     assert persisted_support_attachment.original_filename == "billing-screenshot.png"
     assert persisted_support_attachment.uploaded_by_account.id == account.id
+    assert persisted_announcement is not None
+    assert persisted_announcement.title == "Planned maintenance"
+    assert persisted_announcement.severity == "info"
+    assert persisted_service_status is not None
+    assert persisted_service_status.status == "operational"
+    assert persisted_service_status.message == "All systems normal."
     assert account.profile is not None
     assert account.profile.discord_username == "testrunner"
     assert account.profile_preferences is not None
@@ -888,6 +928,36 @@ def test_support_ticket_attachments_enforce_unique_storage_key() -> None:
             content_type="image/png",
             file_size_bytes=2048,
             scan_status="pending",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_announcements_require_title() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        Announcement(
+            scope="global",
+            title=None,  # type: ignore[arg-type]
+            body="Missing title should fail.",
+            severity="info",
+            published_at=datetime.now(UTC),
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_service_statuses_require_product_code() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        ServiceStatus(
+            product_code=None,  # type: ignore[arg-type]
+            status="degraded",
+            message="Missing product code should fail.",
         )
     )
 

@@ -300,3 +300,24 @@
 - Next: Implement `pdb-060` for `announcements` and `service_statuses`.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T20:43:22.9587877-05:00
+- Goal for this iteration: Complete `pdb-060` by adding the parent-owned `announcements` and `service_statuses` tables, migration, and focused schema tests.
+- What I found (repo search summary): `app/db/models/auth.py` remained the only concrete ORM module and already held every completed schema slice, so extending that module preserved the live registration path through `app/db/models/__init__.py`, `app/db/bootstrap.py`, and `alembic/env.py`; there was no existing announcement or service-status model, migration, repository, router, or service wiring anywhere else in the repo; the live Alembic chain ended at `alembic/versions/20260413_2055_pdb055_support_attachment_tables.py`; focused schema coverage was still centralized in `tests/unit/test_auth_models.py`, which already exercised metadata registration, defaults, persistence, and invalid inserts for the earlier slices.
+- What I changed: Extended `app/db/models/auth.py` with `Announcement` and `ServiceStatus`; added `alembic/versions/20260413_2108_pdb060_announcement_status_tables.py` to create both tables as parent-owned content/status persistence; expanded `tests/unit/test_auth_models.py` to register the new tables, verify timestamp defaults, persist announcement/status records in the existing round-trip test, and deny two invalid cases (`announcement` without `title`, `service_status` without `product_code`); marked `pdb-060` complete in `IMPLEMENTATION_PLAN.md` and `specs/parent_db_foundation.json`.
+- Why I changed: The schema plan places website announcements and service-status state immediately after support attachments, and both domains are explicitly parent-owned in the control docs and ownership matrix.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/auth.py
+  - progress/progress.txt
+  - specs/parent_db_foundation.json
+  - tests/unit/test_auth_models.py
+- New Files:
+  - alembic/versions/20260413_2108_pdb060_announcement_status_tables.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml run --rm test pytest -q tests/unit/test_auth_models.py -vv` passed but reused the current image state and only reported `26 passed in 0.76s`, so it was treated as a non-authoritative smoke check; `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` rebuilt the images, applied Alembic revision `20260413_2108`, and passed with `32 passed in 1.19s`.
+- Notes / risks: `scope`, `severity`, and `service_status.status` remain free-form strings with TODO markers because the controlling docs still do not lock those vocabularies. This slice intentionally adds storage only and does not yet introduce announcement/status API wiring.
+- Next: Implement `pdb-070` for `subscription_summaries` and `entitlement_summaries` without duplicating Pay commercial truth.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)
