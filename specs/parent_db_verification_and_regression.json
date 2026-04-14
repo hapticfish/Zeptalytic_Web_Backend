@@ -1,0 +1,165 @@
+{
+  "spec_id": "parent_db_verification_and_regression",
+  "title": "Parent DB verification and regression hardening",
+  "summary": "Verify that parent DB models, metadata, migrations, enums, repo/database wiring, and docker test topology are correct and resistant to future regressions after the model-layout refactor.",
+  "items": [
+    {
+      "id": "dbv-001",
+      "category": "discovery",
+      "description": "Inventory the current verification surface for the parent DB layer and list what is already covered versus missing.",
+      "expected_paths": [
+        "tests/",
+        "alembic/",
+        "app/db/",
+        "docker-compose.test.yml"
+      ],
+      "steps": [
+        "Search for existing DB model, metadata, migration, and repo tests.",
+        "List what is already covered and what still needs verification.",
+        "Record the discovery summary in progress/progress.txt."
+      ],
+      "pass_criteria": [
+        "A clear test-gap inventory exists in the progress log."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "dbv-010",
+      "category": "tests",
+      "description": "Add migration/bootstrap verification tests proving that the parent DB can be created and migrated cleanly in the containerized test topology.",
+      "expected_paths": [
+        "tests/integration/test_parent_db_bootstrap.py",
+        "alembic/",
+        "docker-compose.test.yml"
+      ],
+      "steps": [
+        "Add a test or integration check that exercises migration/bootstrap behavior in the test environment.",
+        "Ensure failures are readable when metadata and migration state drift."
+      ],
+      "pass_criteria": [
+        "Migration/bootstrap verification exists and passes in docker."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "dbv-020",
+      "category": "tests",
+      "description": "Add metadata/table registration verification for the full parent DB surface.",
+      "expected_paths": [
+        "tests/unit/test_parent_db_metadata_tables.py"
+      ],
+      "steps": [
+        "Assert the expected parent tables are present in SQLAlchemy metadata.",
+        "Group assertions by domain so failures are understandable."
+      ],
+      "pass_criteria": [
+        "The test proves the expected parent tables are registered."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "dbv-030",
+      "category": "tests",
+      "description": "Add enum/vocabulary verification tests for locked parent-side vocabularies.",
+      "expected_paths": [
+        "tests/unit/test_parent_domain_vocabularies.py",
+        "docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md"
+      ],
+      "steps": [
+        "Verify the implemented enum/choice sets match the locked decision record.",
+        "Focus on account status, roles, support statuses, announcement severity/scope, service status, address types, integration status, and projection status fields."
+      ],
+      "pass_criteria": [
+        "Vocabulary tests would fail if code drifts from the locked decision record."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "dbv-040",
+      "category": "tests",
+      "description": "Add repository/database CRUD tests for key parent-owned domains.",
+      "expected_paths": [
+        "tests/integration/test_account_profile_repos.py",
+        "tests/integration/test_addresses_repo.py",
+        "tests/integration/test_support_repo.py",
+        "tests/integration/test_projection_repos.py"
+      ],
+      "steps": [
+        "Add focused integration tests for representative CRUD/read-model behavior across identity, addresses, support, and Pay-derived projections.",
+        "Keep tests isolated and deterministic."
+      ],
+      "pass_criteria": [
+        "Representative parent-owned repo/database tests exist and pass."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "dbv-050",
+      "category": "tests",
+      "description": "Add uniqueness/index/constraint verification where it matters for parent-owned tables and projection tables.",
+      "expected_paths": [
+        "tests/integration/test_parent_db_constraints.py"
+      ],
+      "steps": [
+        "Verify key uniqueness and constraint behavior such as immutable/unique usernames, address primacy assumptions if enforced, support ticket code uniqueness, and projection-table uniqueness where applicable."
+      ],
+      "pass_criteria": [
+        "Constraint/uniqueness behavior is covered by integration tests."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "dbv-060",
+      "category": "tests",
+      "description": "Add docker-topology verification tests/checks ensuring the authoritative test path remains valid for this repo.",
+      "expected_paths": [
+        "docker-compose.yml",
+        "docker-compose.test.yml",
+        "tests/unit/test_test_topology_contract.py"
+      ],
+      "steps": [
+        "Verify the test topology files exist and match the expected repo contract.",
+        "Add a light regression check for required services/commands if that can be done robustly."
+      ],
+      "pass_criteria": [
+        "The repo has explicit regression coverage or validation around the authoritative test topology."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "dbv-999",
+      "category": "quality_gate",
+      "description": "Run the authoritative docker test suite and mark the spec complete only after the full suite is green.",
+      "expected_paths": [
+        "docker-compose.test.yml",
+        "tests/"
+      ],
+      "steps": [
+        "Run the authoritative docker command.",
+        "Record exact results in progress/progress.txt.",
+        "Only then mark the spec complete."
+      ],
+      "pass_criteria": [
+        "The authoritative docker suite exits green.",
+        "All prior items in this spec are complete."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}

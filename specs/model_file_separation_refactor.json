@@ -1,0 +1,217 @@
+{
+  "spec_id": "model_file_separation_refactor",
+  "title": "Model file separation refactor",
+  "summary": "Refactor parent DB models into sensible per-table files, lock vocabulary decisions into repo docs, and add structural regression coverage so unrelated models are never dumped into one generic file again.",
+  "items": [
+    {
+      "id": "mdl-001",
+      "category": "discovery",
+      "description": "Inventory the current model layout, identify every table/model currently living in generic or overloaded files, and produce the exact target file map for the split.",
+      "expected_paths": [
+        "app/db/models/",
+        "app/db/base.py",
+        "alembic/env.py",
+        "docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md"
+      ],
+      "steps": [
+        "Search the repo for all SQLAlchemy model classes and current model module files.",
+        "List each current table/model and the file it lives in.",
+        "Propose the exact target file path for each model after refactor.",
+        "Record any blockers such as circular imports or metadata-registration risks."
+      ],
+      "pass_criteria": [
+        "The progress log contains a discovery summary mapping current model locations to target files.",
+        "No runtime code behavior is changed in this item."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "mdl-010",
+      "category": "docs",
+      "description": "Add the locked vocabulary decision record to the repo and align architecture docs to reference it as the canonical source for parent-site enums/status values.",
+      "expected_paths": [
+        "docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md",
+        "AGENTS.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "steps": [
+        "Create the vocabulary decision record using the locked values provided by John.",
+        "Update repo docs to tell future runs not to invent alternate vocabularies.",
+        "Update AGENTS.md if needed to enforce the new vocabulary source."
+      ],
+      "pass_criteria": [
+        "The vocabulary decision record exists and matches the locked decisions.",
+        "Repo control docs reference it explicitly."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "mdl-020",
+      "category": "refactor",
+      "description": "Split identity/auth/account models out of any generic file into per-table modules with sensible names.",
+      "expected_paths": [
+        "app/db/models/accounts.py",
+        "app/db/models/auth_sessions.py",
+        "app/db/models/email_verification_tokens.py",
+        "app/db/models/password_reset_tokens.py",
+        "app/db/models/account_security_settings.py",
+        "app/db/models/mfa_recovery_codes.py",
+        "app/db/models/auth_events.py"
+      ],
+      "steps": [
+        "Move each identity/auth table model into its own file.",
+        "Keep metadata and table names unchanged unless the current spec explicitly requires otherwise.",
+        "Update imports and model package exports cleanly."
+      ],
+      "pass_criteria": [
+        "Each identity/auth model lives in its own sensible file.",
+        "The test suite remains green."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "mdl-030",
+      "category": "refactor",
+      "description": "Split profile/settings/address/integration models into per-table modules with sensible names.",
+      "expected_paths": [
+        "app/db/models/profiles.py",
+        "app/db/models/profile_preferences.py",
+        "app/db/models/communication_preferences.py",
+        "app/db/models/oauth_connections.py",
+        "app/db/models/addresses.py"
+      ],
+      "steps": [
+        "Move each profile/settings/address/integration table model into its own file.",
+        "Use the locked vocabulary decision record for any enum/status fields touched during the refactor.",
+        "Update imports and exports cleanly."
+      ],
+      "pass_criteria": [
+        "Each profile/settings/address/integration model is in its own sensible file.",
+        "The test suite remains green."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "mdl-040",
+      "category": "refactor",
+      "description": "Split support/content/status models into per-table modules with sensible names.",
+      "expected_paths": [
+        "app/db/models/support_tickets.py",
+        "app/db/models/support_ticket_messages.py",
+        "app/db/models/support_ticket_attachments.py",
+        "app/db/models/announcements.py",
+        "app/db/models/service_statuses.py",
+        "app/db/models/testimonials.py"
+      ],
+      "steps": [
+        "Move each support/content/status table model into its own file.",
+        "Ensure attachment-related status fields use the locked scan-status vocabulary.",
+        "Update imports and exports cleanly."
+      ],
+      "pass_criteria": [
+        "Each support/content/status model is in its own sensible file.",
+        "The test suite remains green."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "mdl-050",
+      "category": "refactor",
+      "description": "Split billing/read-model projection models into per-table modules with sensible names.",
+      "expected_paths": [
+        "app/db/models/subscription_summaries.py",
+        "app/db/models/entitlement_summaries.py",
+        "app/db/models/payment_summaries.py",
+        "app/db/models/payment_method_summaries.py",
+        "app/db/models/product_access_states.py"
+      ],
+      "steps": [
+        "Move each billing/read-model projection table into its own file.",
+        "Use canonical Pay-mirrored vocabularies where the decision record requires exact reuse.",
+        "Keep the payment-method summary status separate from the `is_default` boolean."
+      ],
+      "pass_criteria": [
+        "Each billing/read-model projection model is in its own sensible file.",
+        "The test suite remains green."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "mdl-060",
+      "category": "wiring",
+      "description": "Align model package imports, Base metadata registration, and Alembic discovery after the file split.",
+      "expected_paths": [
+        "app/db/models/__init__.py",
+        "app/db/base.py",
+        "alembic/env.py"
+      ],
+      "steps": [
+        "Ensure all model modules are imported for metadata registration.",
+        "Confirm Alembic still sees the full metadata set.",
+        "Avoid circular-import regressions."
+      ],
+      "pass_criteria": [
+        "Model metadata registration still works after the split.",
+        "Alembic discovery is intact.",
+        "The authoritative docker test suite is green."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "mdl-070",
+      "category": "tests",
+      "description": "Add structural regression tests that guard against future model-dump regressions and verify the intended model module layout is preserved.",
+      "expected_paths": [
+        "tests/unit/test_model_module_layout.py",
+        "tests/unit/test_model_metadata_registration.py"
+      ],
+      "steps": [
+        "Add a test that verifies expected model modules exist and are importable.",
+        "Add a test that verifies metadata contains the expected tables after model imports.",
+        "Do not rely on brittle exact file-count assertions if the project may legitimately grow."
+      ],
+      "pass_criteria": [
+        "Structural regression tests exist and pass.",
+        "The tests would fail if unrelated models were collapsed back into one file without proper registration."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "mdl-999",
+      "category": "quality_gate",
+      "description": "Run the authoritative docker test suite and mark the spec complete only after the full suite is green.",
+      "expected_paths": [
+        "docker-compose.test.yml",
+        "tests/"
+      ],
+      "steps": [
+        "Run the authoritative docker test command.",
+        "Record the exact result in progress/progress.txt.",
+        "Only then mark the spec complete."
+      ],
+      "pass_criteria": [
+        "The authoritative docker suite exits green.",
+        "All prior items in this spec are complete."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}

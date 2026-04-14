@@ -1,29 +1,11 @@
-# Zeptalytic Website Backend / Parent Site Harness Prompt
+Read AGENTS.md, IMPLEMENTATION_PLAN.md, and progress/progress.txt.
 
-Active spec: specs/parent_db_foundation.json
+Then follow the active prompt:
+- `prompt/prompt_plan.md` for planning runs
+- `prompt/prompt_build.md` for build runs
 
-Before every build run, rehydrate context from:
-- `AGENTS.md`
-- `IMPLEMENTATION_PLAN.md`
-- `progress/progress.txt`
-- the active spec
-- the architecture docs referenced in `IMPLEMENTATION_PLAN.md`
+Current active spec:
+- `specs/model_file_separation_refactor.json`
 
-For build iterations, follow:
-- `prompt/prompt_build.md`
-
-For planning-only iterations, follow:
-- `prompt/prompt_plan.md`
-
-Current first workstream:
-- Parent DB foundation for the Zeptalytic website backend / parent site repo.
-
-Current implementation objective:
-- establish the parent-owned database foundation in a way that preserves the locked ownership split between parent site and Pay
-- avoid duplicating Pay billing truth
-- prepare the repo for later backend route/API workstreams
-
-Current repo reality note:
-- the repo now contains `docker-compose.yml` and `docker-compose.test.yml` with the documented `api`, `migrate`, and `test` services
-- shared DB bootstrap/model registration is wired through `app/db/bootstrap.py` -> `app/db/models/__init__.py` -> `app/db/models/auth.py`
-- the remaining work in the active DB-foundation spec is docs alignment plus the final standalone authoritative docker quality gate
+Queued next spec after the active spec is complete:
+- `specs/parent_db_verification_and_regression.json`
