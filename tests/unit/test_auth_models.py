@@ -20,8 +20,11 @@ from app.db.models.auth import (
     MfaRecoveryCode,
     OAuthConnection,
     PasswordResetToken,
+    PaymentMethodSummary,
+    PaymentSummary,
     Profile,
     ProfilePreference,
+    ProductAccessState,
     ServiceStatus,
     SubscriptionSummary,
     SupportTicketAttachment,
@@ -63,6 +66,9 @@ def _create_in_memory_schema() -> tuple[Session, MetaData]:
         ServiceStatus.__table__,
         SubscriptionSummary.__table__,
         EntitlementSummary.__table__,
+        ProductAccessState.__table__,
+        PaymentSummary.__table__,
+        PaymentMethodSummary.__table__,
     ):
         table.to_metadata(metadata)
 
@@ -93,6 +99,9 @@ def test_auth_tables_are_registered_in_metadata() -> None:
         "service_statuses",
         "subscription_summaries",
         "entitlement_summaries",
+        "product_access_states",
+        "payment_summaries",
+        "payment_method_summaries",
     }.issubset(table_names)
 
 
@@ -184,15 +193,31 @@ def test_content_status_tables_have_expected_defaults() -> None:
 def test_pay_projection_tables_have_expected_defaults_and_indexes() -> None:
     subscription_table = SubscriptionSummary.__table__
     entitlement_table = EntitlementSummary.__table__
+    access_state_table = ProductAccessState.__table__
+    payment_summary_table = PaymentSummary.__table__
+    payment_method_table = PaymentMethodSummary.__table__
     subscription_indexes = {index.name for index in subscription_table.indexes}
     entitlement_indexes = {index.name for index in entitlement_table.indexes}
+    access_state_indexes = {index.name for index in access_state_table.indexes}
+    payment_summary_indexes = {index.name for index in payment_summary_table.indexes}
+    payment_method_indexes = {index.name for index in payment_method_table.indexes}
 
     assert subscription_table.c.cancel_at_period_end.server_default is not None
     assert entitlement_table.c.metadata.server_default is not None
+    assert access_state_table.c.updated_at.server_default is not None
+    assert payment_summary_table.c.updated_at.server_default is not None
+    assert payment_method_table.c.is_default.server_default is not None
     assert "ix_subscription_summaries_account_id" in subscription_indexes
     assert "ix_subscription_summaries_product_code" in subscription_indexes
     assert "ix_entitlement_summaries_account_id" in entitlement_indexes
     assert "ix_entitlement_summaries_product_code" in entitlement_indexes
+    assert "ix_product_access_states_account_id" in access_state_indexes
+    assert "ix_product_access_states_product_code" in access_state_indexes
+    assert "ix_payment_summaries_account_id" in payment_summary_indexes
+    assert "ix_payment_summaries_product_code" in payment_summary_indexes
+    assert "ix_payment_summaries_payment_rail" in payment_summary_indexes
+    assert "ix_payment_method_summaries_account_id" in payment_method_indexes
+    assert "uq_payment_method_summaries_provider_method" in payment_method_indexes
 
 
 def test_auth_and_security_persistence_round_trip() -> None:
@@ -318,6 +343,39 @@ def test_auth_and_security_persistence_round_trip() -> None:
         entitlement_metadata={"source": "pay_projection"},
         last_synced_at=datetime.now(UTC),
     )
+    product_access_state = ProductAccessState(
+        account_id=account.id,
+        product_code="zardbot",
+        access_state="launchable",
+        launch_url="https://launcher.example.com/zardbot",
+        external_account_reference="zardbot-user-123",
+    )
+    payment_summary = PaymentSummary(
+        account_id=account.id,
+        product_code="zardbot",
+        payment_rail="stripe",
+        normalized_status="paid",
+        provider_status_raw="succeeded",
+        amount_cents=4900,
+        currency="USD",
+        paid_at=datetime.now(UTC) - timedelta(hours=1),
+        provider_payment_reference="pi_12345",
+    )
+    payment_method_summary = PaymentMethodSummary(
+        account_id=account.id,
+        provider="stripe",
+        provider_customer_id="cus_12345",
+        provider_payment_method_id="pm_12345",
+        brand="visa",
+        last4="4242",
+        exp_month=12,
+        exp_year=2030,
+        billing_name="Test Runner",
+        billing_country="US",
+        is_default=True,
+        status="active",
+        last_synced_at=datetime.now(UTC),
+    )
 
     session.add_all(
         [
@@ -337,6 +395,9 @@ def test_auth_and_security_persistence_round_trip() -> None:
             service_status,
             subscription_summary,
             entitlement_summary,
+            product_access_state,
+            payment_summary,
+            payment_method_summary,
         ]
     )
     session.flush()
@@ -407,6 +468,15 @@ def test_auth_and_security_persistence_round_trip() -> None:
     persisted_entitlement_summary = session.scalar(
         select(EntitlementSummary).where(EntitlementSummary.account_id == account.id)
     )
+    persisted_product_access_state = session.scalar(
+        select(ProductAccessState).where(ProductAccessState.account_id == account.id)
+    )
+    persisted_payment_summary = session.scalar(
+        select(PaymentSummary).where(PaymentSummary.account_id == account.id)
+    )
+    persisted_payment_method_summary = session.scalar(
+        select(PaymentMethodSummary).where(PaymentMethodSummary.account_id == account.id)
+    )
 
     assert persisted_session is not None
     assert persisted_session.session_token_hash == "session-token-hash"
@@ -466,6 +536,17 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_entitlement_summary is not None
     assert persisted_entitlement_summary.status == "granted"
     assert persisted_entitlement_summary.entitlement_metadata == {"source": "pay_projection"}
+    assert persisted_product_access_state is not None
+    assert persisted_product_access_state.access_state == "launchable"
+    assert persisted_product_access_state.launch_url == "https://launcher.example.com/zardbot"
+    assert persisted_payment_summary is not None
+    assert persisted_payment_summary.payment_rail == "stripe"
+    assert persisted_payment_summary.amount_cents == 4900
+    assert persisted_payment_summary.currency == "USD"
+    assert persisted_payment_method_summary is not None
+    assert persisted_payment_method_summary.provider_payment_method_id == "pm_12345"
+    assert persisted_payment_method_summary.last4 == "4242"
+    assert persisted_payment_method_summary.is_default is True
     assert account.profile is not None
     assert account.profile.discord_username == "testrunner"
     assert account.profile_preferences is not None
@@ -486,6 +567,12 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert account.subscription_summaries[0].plan_code == "zardbot-pro"
     assert len(account.entitlement_summaries) == 1
     assert account.entitlement_summaries[0].status == "granted"
+    assert len(account.product_access_states) == 1
+    assert account.product_access_states[0].external_account_reference == "zardbot-user-123"
+    assert len(account.payment_summaries) == 1
+    assert account.payment_summaries[0].normalized_status == "paid"
+    assert len(account.payment_method_summaries) == 1
+    assert account.payment_method_summaries[0].billing_country == "US"
 
 
 def test_accounts_reject_duplicate_email() -> None:
@@ -1110,6 +1197,167 @@ def test_entitlement_summaries_require_status() -> None:
             plan_code="zardbot-pro",
             status=None,  # type: ignore[arg-type]
             entitlement_metadata={},
+            last_synced_at=datetime.now(UTC),
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_product_access_states_require_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        ProductAccessState(
+            account_id=uuid4(),
+            product_code="zardbot",
+            access_state="launchable",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_product_access_states_require_access_state() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="access-owner",
+        email="access-owner@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add(account)
+    session.commit()
+
+    session.add(
+        ProductAccessState(
+            account_id=account.id,
+            product_code="zardbot",
+            access_state=None,  # type: ignore[arg-type]
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_payment_summaries_require_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        PaymentSummary(
+            account_id=uuid4(),
+            product_code="zardbot",
+            payment_rail="stripe",
+            normalized_status="paid",
+            amount_cents=4900,
+            currency="USD",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_payment_summaries_require_currency() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="payment-owner",
+        email="payment-owner@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add(account)
+    session.commit()
+
+    session.add(
+        PaymentSummary(
+            account_id=account.id,
+            product_code="zardbot",
+            payment_rail="stripe",
+            normalized_status="paid",
+            amount_cents=4900,
+            currency=None,  # type: ignore[arg-type]
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_payment_method_summaries_require_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        PaymentMethodSummary(
+            account_id=uuid4(),
+            provider="stripe",
+            provider_customer_id="cus_missing",
+            provider_payment_method_id="pm_missing",
+            brand="visa",
+            last4="4242",
+            exp_month=12,
+            exp_year=2030,
+            status="active",
+            last_synced_at=datetime.now(UTC),
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_payment_method_summaries_enforce_provider_method_uniqueness() -> None:
+    session, _ = _create_in_memory_schema()
+    first_account = Account(
+        id=uuid4(),
+        username="payment-method-owner-1",
+        email="payment-method-owner-1@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    second_account = Account(
+        id=uuid4(),
+        username="payment-method-owner-2",
+        email="payment-method-owner-2@example.com",
+        password_hash="hashed-password",
+        status="active",
+        role="member",
+    )
+    session.add_all([first_account, second_account])
+    session.commit()
+
+    session.add(
+        PaymentMethodSummary(
+            account_id=first_account.id,
+            provider="stripe",
+            provider_customer_id="cus_1",
+            provider_payment_method_id="pm_shared",
+            brand="visa",
+            last4="4242",
+            exp_month=12,
+            exp_year=2030,
+            status="active",
+            last_synced_at=datetime.now(UTC),
+        )
+    )
+    session.commit()
+
+    session.add(
+        PaymentMethodSummary(
+            account_id=second_account.id,
+            provider="stripe",
+            provider_customer_id="cus_2",
+            provider_payment_method_id="pm_shared",
+            brand="mastercard",
+            last4="4444",
+            exp_month=10,
+            exp_year=2031,
+            status="active",
             last_synced_at=datetime.now(UTC),
         )
     )

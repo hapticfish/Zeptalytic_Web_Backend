@@ -91,7 +91,7 @@
 - Notes / risks: The compose topology now exists, but the migration path is still effectively empty because `alembic/versions/` has no schema revisions and `app/db/models/__init__.py` still does not register models. The next slice should address DB bootstrap/model registration before any table work.
 - Next: Implement `pdb-010` to align model registration and Alembic/bootstrap wiring for upcoming schema slices.
 - Sources used (only if needed; prefer official docs): none
-- Commit: none (no commit created)
+- Commit: a20927b
 
 ## Iteration entry
 - Date/time: 2026-04-13T17:52:54.2112832-05:00
@@ -340,5 +340,25 @@
 - Tests run + results: `docker compose -f docker-compose.test.yml run --rm test pytest -q tests/unit/test_auth_models.py -vv` reused the current image state and only collected `29` tests ending at the preexisting `service_statuses` cases, so it was treated as a non-authoritative smoke check. `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` rebuilt the images, applied Alembic revision `20260413_2115`, and passed with `37 passed in 1.26s`.
 - Notes / risks: `billing_interval`, `normalized_status`, and entitlement `status` remain free-form strings with TODO markers because the controlling artifacts still do not lock the exact Pay-facing vocabularies. The tables intentionally omit pricing amounts, provider IDs beyond raw status text, and any billing-engine logic so the parent DB remains projection-only for this domain.
 - Next: Implement `pdb-075` for `product_access_states`, `payment_summaries`, and optional `payment_method_summaries`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (no commit created)
+
+## Iteration entry
+- Date/time: 2026-04-13T20:55:30.5236677-05:00
+- Goal for this iteration: Complete `pdb-075` by adding the remaining Pay-derived access and payment summary projection tables without introducing authoritative billing truth.
+- What I found (repo search summary): `app/db/models/auth.py` remained the only concrete ORM module and already defined the prior Pay-derived projections `SubscriptionSummary` and `EntitlementSummary`; `app/db/models/__init__.py` still only imports `app.db.models.auth`, and that registration path is consumed by `app/db/bootstrap.py` and `alembic/env.py`, so keeping the new slice in `auth.py` preserved the live metadata wiring with no extra bootstrap changes; the Alembic chain ended at `alembic/versions/20260413_2115_pdb070_subscription_entitlement_tables.py`, so `pdb-075` needed one direct follow-on revision; focused schema coverage already lived in `tests/unit/test_auth_models.py`, which covered metadata registration, indexes/defaults, round-trip persistence, and invalid FK/null cases for the earlier projection tables. There were still no payment/access routers, services, or repositories wired yet, which matches the DB-foundation scope.
+- What I changed: Extended `app/db/models/auth.py` with `ProductAccessState`, `PaymentSummary`, and `PaymentMethodSummary`, plus the matching `Account` relationships; added `alembic/versions/20260413_2128_pdb075_access_payment_summary_tables.py` to create those three projection tables and their indexes/uniqueness/defaults; expanded `tests/unit/test_auth_models.py` to register the new tables, validate their indexes/defaults, persist them in the existing round-trip test, and deny six invalid cases across missing accounts, missing required fields, and duplicate provider payment-method IDs; marked `pdb-075` complete in `IMPLEMENTATION_PLAN.md` and `specs/parent_db_foundation.json`.
+- Why I changed: The schema plan places `product_access_states`, `payment_summaries`, and optional `payment_method_summaries` immediately after the first subscription/entitlement projection slice. Implementing them now keeps launcher and billing read models parent-served while still leaving pricing, checkout, payment finality, and raw payment instruments in Pay/provider-owned systems.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/auth.py
+  - specs/parent_db_foundation.json
+  - tests/unit/test_auth_models.py
+- New Files:
+  - alembic/versions/20260413_2128_pdb075_access_payment_summary_tables.py
+- Removed Files:
+- Tests run + results: `docker compose -f docker-compose.test.yml run --rm test pytest -q tests/unit/test_auth_models.py -vv` passed with `34 passed in 0.94s`. The authoritative required command `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` rebuilt the images, applied Alembic revision `20260413_2128`, and passed with `43 passed in 1.48s`.
+- Notes / risks: `access_state`, `payment_rail`, `normalized_status`, and payment-method `status` remain free-form strings with TODO markers because the controlling artifacts still do not lock those vocabularies. `payment_method_summaries` is intentionally limited to safe summary data only and does not introduce raw PAN/CVC or authoritative provider state.
+- Next: Implement `pdb-080` to align `README.md` and docs with the actual DB topology, migration commands, and model-registration behavior now that the schema foundation is nearly complete.
 - Sources used (only if needed; prefer official docs): none
 - Commit: none (no commit created)
