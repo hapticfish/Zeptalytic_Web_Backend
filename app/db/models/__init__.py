@@ -22,6 +22,8 @@ MODEL_MODULES = (
     "app.db.models.product_access_states",
     "app.db.models.profile_preferences",
     "app.db.models.profiles",
+    "app.db.models.rewards.reward_accounts",
+    "app.db.models.rewards.reward_events",
     "app.db.models.service_statuses",
     "app.db.models.subscription_summaries",
     "app.db.models.support_ticket_attachments",

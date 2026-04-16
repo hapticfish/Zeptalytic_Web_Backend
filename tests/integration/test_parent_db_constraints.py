@@ -11,6 +11,8 @@ from app.db.models.accounts import Account
 from app.db.models.addresses import Address
 from app.db.models.discord_connection_history import DiscordConnectionHistory
 from app.db.models.payment_method_summaries import PaymentMethodSummary
+from app.db.models.rewards.reward_accounts import RewardAccount
+from app.db.models.rewards.reward_events import RewardEvent
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
 from app.db.models.support_tickets import SupportTicket
 from app.db.session import SessionLocal, engine
@@ -305,3 +307,29 @@ def test_parent_db_projection_uniqueness_and_indexes_match_expected_contract() -
         assert "ix_support_tickets_status" in support_ticket_indexes
     finally:
         _cleanup_accounts(account_ids)
+
+
+def test_parent_db_reward_event_requires_existing_account_and_indexes_exist() -> None:
+    with SessionLocal() as session:
+        session.add(
+            RewardEvent(
+                account_id=uuid4(),
+                event_type="objective_completed",
+                points_delta=100,
+                source_type="objective",
+                source_reference="objective:welcome",
+                status="applied",
+            )
+        )
+
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+        session.rollback()
+
+    inspector = inspect(engine)
+    reward_event_indexes = {index["name"] for index in inspector.get_indexes("reward_events")}
+
+    assert "ix_reward_events_account_id" in reward_event_indexes
+    assert "ix_reward_events_created_at" in reward_event_indexes
+    assert "ix_reward_events_reversed_event_id" in reward_event_indexes

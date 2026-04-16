@@ -91,3 +91,13 @@ class Account(Base):
         back_populates="account",
         cascade="all, delete-orphan",
     )
+    reward_account: Mapped["RewardAccount | None"] = relationship(
+        back_populates="account",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    reward_events: Mapped[list["RewardEvent"]] = relationship(
+        back_populates="account",
+        cascade="all, delete-orphan",
+        foreign_keys="RewardEvent.account_id",
+    )

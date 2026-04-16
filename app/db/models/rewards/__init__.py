@@ -1,0 +1,1 @@
+"""Rewards-domain model package."""

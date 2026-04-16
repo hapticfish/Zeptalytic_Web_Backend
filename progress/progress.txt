@@ -950,3 +950,33 @@
 - Next: `rdb-010` is now the next open rewards-schema build target.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+## Iteration entry
+- Date/time: 2026-04-15T23:47:18.6822662-05:00
+- Goal for this iteration: Complete `rdb-010` by adding the rewards-account snapshot table and append-only reward-event ledger foundation, then proving the schema slice through the authoritative Docker suite.
+- What I found (repo search summary): `git ls-files`, `rg`, and targeted reads showed there were still no committed rewards models or rewards migrations before this slice. The existing implementation pattern is one model per file under `app/db/models/`, metadata registration is centralized in `app/db/models/__init__.py` through `MODEL_MODULES`, and Alembic discovery still flows through `app/db/bootstrap.py` -> `alembic/env.py`. Existing coverage around this surface lived in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_parent_db_metadata_tables.py`, and the migrated-Postgres regressions in `tests/integration/test_parent_db_constraints.py` and `tests/integration/test_parent_db_round_trips.py`.
+- What I changed: Added `app/db/models/rewards/` with one-table-per-file models for `RewardAccount` and `RewardEvent`; wired `Account` relationships and top-level metadata registration for those two modules; added Alembic revision `alembic/versions/20260415_2355_rdb010_reward_foundation_tables.py` to create `reward_accounts` and `reward_events`; updated the metadata/layout/Alembic-history regression tests to include the new rewards foundation tables while still asserting later rewards tables are absent; and added migrated-Postgres constraint/round-trip coverage for the new reward ledger foundation.
+- Why I changed: `rdb-010` is the first real rewards-schema build item and the architecture docs explicitly call for an append-only points/reward event history plus a current-state account snapshot, while keeping the model layout one table per file and registered through the existing metadata path.
+- Updated Files:
+  - app/db/models/__init__.py
+  - app/db/models/accounts.py
+  - progress/progress.txt
+  - specs/rewards_domain_db_schema.json
+  - tests/integration/test_parent_db_constraints.py
+  - tests/integration/test_parent_db_round_trips.py
+  - tests/unit/test_db_bootstrap.py
+  - tests/unit/test_model_metadata_registration.py
+  - tests/unit/test_model_module_layout.py
+  - tests/unit/test_parent_db_metadata_tables.py
+- New Files:
+  - alembic/versions/20260415_2355_rdb010_reward_foundation_tables.py
+  - app/db/models/rewards/__init__.py
+  - app/db/models/rewards/reward_accounts.py
+  - app/db/models/rewards/reward_events.py
+- Removed Files:
+- Tests run + results:
+  - `python -m pytest tests/unit/test_db_bootstrap.py tests/unit/test_model_module_layout.py tests/unit/test_parent_db_metadata_tables.py -q` -> could not run locally; the host Python environment does not have `pytest` installed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> first run failed on `tests/unit/test_model_metadata_registration.py` because that file still expected the pre-rewards table inventory; after updating that regression, reran the same authoritative command and it passed with `84 passed in 2.31s`
+- Notes / risks: Reward-event vocabularies such as `event_type`, `status`, and `source_type` are still intentionally free-form strings at the schema layer because the rewards decision records defer locking those exact values. The Docker output still includes expected duplicate-key/FK violations from negative-path tests, and `migrate` exits `137` after the green `test` exit because of `--abort-on-container-exit`; the authoritative command itself exited `0`.
+- Next: `rdb-020` is now the next open rewards-schema build target.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending

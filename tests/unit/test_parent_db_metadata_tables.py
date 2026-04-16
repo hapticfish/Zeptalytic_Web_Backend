@@ -36,11 +36,17 @@ PAY_DERIVED_PROJECTION_TABLES = {
     "payment_method_summaries",
 }
 
+REWARDS_FOUNDATION_TABLES = {
+    "reward_accounts",
+    "reward_events",
+}
+
 EXPECTED_PARENT_TABLES = (
     IDENTITY_AND_SECURITY_TABLES
     | PROFILE_AND_SETTINGS_TABLES
     | SUPPORT_AND_CONTENT_TABLES
     | PAY_DERIVED_PROJECTION_TABLES
+    | REWARDS_FOUNDATION_TABLES
 )
 
 
@@ -66,6 +72,12 @@ def test_parent_db_metadata_registers_pay_projection_tables() -> None:
     metadata_tables = set(bootstrap.get_target_metadata().tables)
 
     assert PAY_DERIVED_PROJECTION_TABLES.issubset(metadata_tables)
+
+
+def test_parent_db_metadata_registers_rewards_foundation_tables() -> None:
+    metadata_tables = set(bootstrap.get_target_metadata().tables)
+
+    assert REWARDS_FOUNDATION_TABLES.issubset(metadata_tables)
 
 
 def test_parent_db_metadata_only_contains_expected_parent_tables() -> None:

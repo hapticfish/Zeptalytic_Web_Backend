@@ -12,6 +12,8 @@ from app.db.models.discord_connection_history import DiscordConnectionHistory
 from app.db.models.payment_method_summaries import PaymentMethodSummary
 from app.db.models.payment_summaries import PaymentSummary
 from app.db.models.profiles import Profile
+from app.db.models.rewards.reward_accounts import RewardAccount
+from app.db.models.rewards.reward_events import RewardEvent
 from app.db.models.subscription_summaries import SubscriptionSummary
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
 from app.db.models.support_ticket_messages import SupportTicketMessage
@@ -259,6 +261,82 @@ def test_parent_pay_projection_round_trip() -> None:
             assert persisted_account.payment_summaries[0].amount_cents == 4900
             assert persisted_account.payment_method_summaries[0].provider == "stripe"
             assert persisted_account.payment_method_summaries[0].is_default is True
+    finally:
+        if account_id is not None:
+            _cleanup_account(account_id)
+
+
+def test_parent_rewards_foundation_round_trip() -> None:
+    suffix = _unique_suffix()
+    account_id: UUID | None = None
+
+    try:
+        with SessionLocal() as session:
+            account = Account(
+                username=f"reward_{suffix}",
+                email=f"reward_{suffix}@example.com",
+                password_hash="hashed-password",
+                status="active",
+                role="member",
+            )
+            session.add(account)
+            session.flush()
+            account_id = account.id
+
+            reward_account = RewardAccount(
+                account_id=account.id,
+                current_points=100,
+                current_tier="BRONZE",
+                current_tier_progress_points=100,
+                next_milestone_points=200,
+            )
+            first_event = RewardEvent(
+                account_id=account.id,
+                event_type="objective_completed",
+                points_delta=100,
+                source_type="objective",
+                source_reference="objective:first-login",
+                status="applied",
+                event_metadata={"objective_code": "first-login"},
+            )
+            session.add_all([reward_account, first_event])
+            session.flush()
+
+            reversal_event = RewardEvent(
+                account_id=account.id,
+                event_type="objective_reversed",
+                points_delta=-100,
+                source_type="manual_review",
+                source_reference="review:first-login",
+                is_reversal=True,
+                reversed_event_id=first_event.id,
+                status="reversed",
+                event_metadata={"reason": "qualification_window_failed"},
+            )
+            session.add(reversal_event)
+            session.commit()
+
+        with SessionLocal() as session:
+            persisted_account = session.scalar(
+                select(Account)
+                .options(
+                    selectinload(Account.reward_account),
+                    selectinload(Account.reward_events),
+                )
+                .where(Account.id == account_id)
+            )
+
+            assert persisted_account is not None
+            assert persisted_account.reward_account is not None
+            assert persisted_account.reward_account.current_points == 100
+            assert persisted_account.reward_account.current_tier == "BRONZE"
+            assert persisted_account.reward_account.next_milestone_points == 200
+            assert len(persisted_account.reward_events) == 2
+
+            event_by_type = {event.event_type: event for event in persisted_account.reward_events}
+            assert event_by_type["objective_completed"].event_metadata == {"objective_code": "first-login"}
+            assert event_by_type["objective_reversed"].is_reversal is True
+            assert event_by_type["objective_reversed"].reversed_event_id == event_by_type["objective_completed"].id
     finally:
         if account_id is not None:
             _cleanup_account(account_id)

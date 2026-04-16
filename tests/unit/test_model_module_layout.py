@@ -20,6 +20,8 @@ from app.db.models.payment_summaries import PaymentSummary
 from app.db.models.product_access_states import ProductAccessState
 from app.db.models.profile_preferences import ProfilePreference
 from app.db.models.profiles import Profile
+from app.db.models.rewards.reward_accounts import RewardAccount
+from app.db.models.rewards.reward_events import RewardEvent
 from app.db.models.service_statuses import ServiceStatus
 from app.db.models.subscription_summaries import SubscriptionSummary
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
@@ -54,6 +56,12 @@ EXPECTED_MODEL_FILES = {
     "testimonials.py",
 }
 
+EXPECTED_REWARD_MODEL_FILES = {
+    "__init__.py",
+    "reward_accounts.py",
+    "reward_events.py",
+}
+
 EXPECTED_MODEL_MODULES = {
     "app.db.models.accounts": Account,
     "app.db.models.account_security_settings": AccountSecuritySettings,
@@ -73,6 +81,8 @@ EXPECTED_MODEL_MODULES = {
     "app.db.models.product_access_states": ProductAccessState,
     "app.db.models.profile_preferences": ProfilePreference,
     "app.db.models.profiles": Profile,
+    "app.db.models.rewards.reward_accounts": RewardAccount,
+    "app.db.models.rewards.reward_events": RewardEvent,
     "app.db.models.service_statuses": ServiceStatus,
     "app.db.models.subscription_summaries": SubscriptionSummary,
     "app.db.models.support_ticket_attachments": SupportTicketAttachment,
@@ -86,6 +96,13 @@ def test_expected_model_files_exist() -> None:
     model_files = {path.name for path in models_dir.glob("*.py")}
 
     assert EXPECTED_MODEL_FILES.issubset(model_files)
+
+
+def test_expected_rewards_model_files_exist() -> None:
+    rewards_dir = Path(__file__).resolve().parents[2] / "app" / "db" / "models" / "rewards"
+    reward_model_files = {path.name for path in rewards_dir.glob("*.py")}
+
+    assert EXPECTED_REWARD_MODEL_FILES == reward_model_files
 
 
 def test_expected_model_modules_are_registered_and_importable() -> None:
