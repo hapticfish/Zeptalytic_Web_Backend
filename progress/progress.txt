@@ -1143,3 +1143,22 @@
 - Next: The current active spec `specs/rewards_domain_db_schema.json` is now fully complete.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T00:35:12.1706418-05:00
+- Goal for this iteration: Complete `rrg-001` by inventorying the implemented rewards schema, migration chain, and current regression coverage before expanding the rewards hardening spec.
+- What I found (repo search summary): `git ls-files`, `git grep`, `rg`, and directory reads confirmed the implemented rewards ORM surface is split under `app/db/models/rewards/` into `account_badges.py`, `account_objective_progress.py`, `badge_definitions.py`, `objective_definitions.py`, `objective_reward_links.py`, `reward_accounts.py`, `reward_definitions.py`, `reward_events.py`, `reward_grants.py`, `reward_milestones.py`, `reward_notifications.py`, and `reward_tier_definitions.py`. Registration still flows through `app/db/models/rewards/__init__.py` -> `REWARD_MODEL_MODULES` -> `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`. The rewards migration chain is present and contiguous from `20260415_2355_rdb010_reward_foundation_tables.py` through `20260416_0245_rdb050_reward_notifications.py`. Existing reward coverage already lives in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`.
+- What I changed: Added `tests/unit/test_rewards_verification_inventory.py` to lock the current rewards model-file inventory, rewards migration-file chain, and reward-focused regression file set as the baseline for later `rrg-*` items; marked `rrg-001` complete in `specs/rewards_verification_and_regression.json`; and appended this progress entry.
+- Why I changed: `rrg-001` is explicitly an inventory-and-gap step. The repo already had broad rewards coverage, but that inventory only existed implicitly across several files. The new unit test turns the current rewards schema and verification surface into an explicit regression artifact so later items build from a fixed baseline instead of rediscovering it each run.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_verification_and_regression.json
+  - tests/unit/test_rewards_verification_inventory.py
+- New Files:
+  - tests/unit/test_rewards_verification_inventory.py
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `96 passed in 2.68s`
+- Notes / risks: `IMPLEMENTATION_PLAN.md` was already modified in the worktree before this iteration and was left untouched. The Docker output still includes expected duplicate-key and FK violations from negative-path regression tests, and `migrate` exits `137` after the green `test` exit because `--abort-on-container-exit` tears the stack down; the authoritative command itself exited `0`.
+- Next: `rrg-010` is now the next open item in `specs/rewards_verification_and_regression.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
