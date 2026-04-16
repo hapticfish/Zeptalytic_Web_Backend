@@ -26,9 +26,21 @@ class RewardEvent(Base):
     )
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     points_delta: Mapped[int] = mapped_column(Integer, nullable=False)
-    objective_definition_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
-    reward_definition_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
-    badge_definition_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
+    objective_definition_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("objective_definitions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reward_definition_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("reward_definitions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    badge_definition_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("badge_definitions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     source_type: Mapped[str] = mapped_column(String(64), nullable=False)
     source_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_reversal: Mapped[bool] = mapped_column(
@@ -56,6 +68,21 @@ class RewardEvent(Base):
     )
 
     account: Mapped["Account"] = relationship(back_populates="reward_events")
+    objective_definition: Mapped["ObjectiveDefinition | None"] = relationship(
+        back_populates="reward_events"
+    )
+    reward_definition: Mapped["RewardDefinition | None"] = relationship(
+        back_populates="reward_events"
+    )
+    badge_definition: Mapped["BadgeDefinition | None"] = relationship(
+        back_populates="reward_events"
+    )
+    reward_grants: Mapped[list["RewardGrant"]] = relationship(
+        back_populates="source_reward_event"
+    )
+    account_badges: Mapped[list["AccountBadge"]] = relationship(
+        back_populates="source_reward_event"
+    )
     reversed_event: Mapped["RewardEvent | None"] = relationship(
         remote_side="RewardEvent.id",
         foreign_keys=[reversed_event_id],

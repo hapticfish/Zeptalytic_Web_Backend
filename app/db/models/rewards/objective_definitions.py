@@ -66,7 +66,19 @@ class ObjectiveDefinition(Base):
         back_populates="objective_definition",
         cascade="all, delete-orphan",
     )
+    objective_reward_links: Mapped[list["ObjectiveRewardLink"]] = relationship(
+        back_populates="objective_definition",
+        cascade="all, delete-orphan",
+    )
+    reward_grants: Mapped[list["RewardGrant"]] = relationship(
+        back_populates="source_objective_definition"
+    )
+    account_badges: Mapped[list["AccountBadge"]] = relationship(
+        back_populates="source_objective_definition"
+    )
+    reward_events: Mapped[list["RewardEvent"]] = relationship(
+        back_populates="objective_definition"
+    )
     linked_reward_milestones: Mapped[list["RewardMilestone"]] = relationship(
         back_populates="linked_objective_definition"
     )
-

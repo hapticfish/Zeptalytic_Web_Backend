@@ -513,6 +513,40 @@
 - Next: Move to the queued spec `specs/parent_db_verification_and_regression.json` on the next iteration.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T00:08:02.7722007-05:00
+- Goal for this iteration: Complete `rdb-040` by adding the reward catalog, grant, badge, and account-achievement schema slice and proving it through the authoritative Docker suite.
+- What I found (repo search summary): `git ls-files`, `rg`, and targeted reads showed the rewards package already had only the first six rewards tables in `app/db/models/rewards/`, with central registration still in `app/db/models/__init__.py` and metadata/Alembic discovery still on `app/db/bootstrap.py` -> `alembic/env.py`. Existing regression coverage for this slice already lived in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, plus migrated-Postgres checks in `tests/integration/test_parent_db_constraints.py` and `tests/integration/test_parent_db_round_trips.py`. Those unit tests explicitly asserted that later rewards tables were still absent, so they had to move forward with this item.
+- What I changed: Added one-table-per-file rewards models for `RewardDefinition`, `RewardGrant`, `ObjectiveRewardLink`, `BadgeDefinition`, and `AccountBadge`; wired them into the model registry plus `Account`, `ObjectiveDefinition`, and `RewardEvent` relationships; added Alembic revision `20260416_0215_rdb040_reward_badge_and_grant_tables.py` to create the new tables and backfill the now-valid reward-event foreign keys to objectives/rewards/badges; and updated the existing metadata/layout/integration regressions to cover the new tables, indexes, FK constraints, and end-to-end round trips.
+- Why I changed: `rdb-040` requires the parent-owned schema to represent obtainable reward catalog entries, earned grants, objective-to-reward linkages, badge definitions, and earned badges without collapsing unrelated tables into generic files. The rewards data-model reference also expects reward events to link cleanly to objective, reward, and badge records once those tables exist.
+- Updated Files:
+  - app/db/models/__init__.py
+  - app/db/models/accounts.py
+  - app/db/models/rewards/objective_definitions.py
+  - app/db/models/rewards/reward_events.py
+  - progress/progress.txt
+  - specs/rewards_domain_db_schema.json
+  - tests/integration/test_parent_db_constraints.py
+  - tests/integration/test_parent_db_round_trips.py
+  - tests/unit/test_db_bootstrap.py
+  - tests/unit/test_model_metadata_registration.py
+  - tests/unit/test_model_module_layout.py
+  - tests/unit/test_parent_db_metadata_tables.py
+- New Files:
+  - alembic/versions/20260416_0215_rdb040_reward_badge_and_grant_tables.py
+  - app/db/models/rewards/account_badges.py
+  - app/db/models/rewards/badge_definitions.py
+  - app/db/models/rewards/objective_reward_links.py
+  - app/db/models/rewards/reward_definitions.py
+  - app/db/models/rewards/reward_grants.py
+- Removed Files:
+- Tests run + results:
+  - `python -m compileall app tests alembic` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `90 passed in 2.59s`
+- Notes / risks: The Docker output still includes expected duplicate-key and FK errors from negative-path regression tests, and `migrate` still exits `137` after the green `test` exit because `--abort-on-container-exit` tears down the stack; the authoritative command itself exited `0`. `reward_notifications` remains intentionally absent because it belongs to the next schema item `rdb-050`.
+- Next: `rdb-050` is now the next open rewards-schema build target.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
 
 ## Iteration entry
 - Date/time: 2026-04-15T23:29:54.2845093-05:00

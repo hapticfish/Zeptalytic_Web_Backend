@@ -78,7 +78,9 @@
         "Create badge definition and account badge tables/models.",
         "Create any necessary reward-to-objective / reward-to-milestone linkage tables."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T00:08:02.7722007-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rdb-050",

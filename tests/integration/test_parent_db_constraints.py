@@ -11,10 +11,15 @@ from app.db.models.accounts import Account
 from app.db.models.addresses import Address
 from app.db.models.discord_connection_history import DiscordConnectionHistory
 from app.db.models.payment_method_summaries import PaymentMethodSummary
+from app.db.models.rewards.account_badges import AccountBadge
 from app.db.models.rewards.account_objective_progress import AccountObjectiveProgress
+from app.db.models.rewards.badge_definitions import BadgeDefinition
 from app.db.models.rewards.objective_definitions import ObjectiveDefinition
+from app.db.models.rewards.objective_reward_links import ObjectiveRewardLink
 from app.db.models.rewards.reward_accounts import RewardAccount
+from app.db.models.rewards.reward_definitions import RewardDefinition
 from app.db.models.rewards.reward_events import RewardEvent
+from app.db.models.rewards.reward_grants import RewardGrant
 from app.db.models.rewards.reward_milestones import RewardMilestone
 from app.db.models.rewards.reward_tier_definitions import RewardTierDefinition
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
@@ -420,3 +425,172 @@ def test_parent_db_account_objective_progress_requires_existing_account_and_obje
             session.commit()
 
         session.rollback()
+
+
+def test_parent_db_reward_catalog_and_achievement_constraints_exist() -> None:
+    account_ids: list[UUID] = []
+    objective_id: UUID | None = None
+    reward_definition_id: UUID | None = None
+    badge_definition_id: UUID | None = None
+    suffix = _unique_suffix()
+
+    try:
+        with SessionLocal() as session:
+            account = _build_account(suffix)
+            objective = ObjectiveDefinition(
+                objective_code=f"catalog_objective_{suffix}",
+                title="Complete Rewards Catalog Objective",
+                description="Verifies reward/badge catalog constraints in Postgres.",
+                scope_type="global",
+                product_code=None,
+                objective_type="engagement",
+                is_repeatable=False,
+                repeat_group_key=None,
+                required_count=1,
+                tier_gate=None,
+                subscription_gate_product_code=None,
+                subscription_gate_plan_code=None,
+                is_milestone_objective=False,
+                sort_group="catalog",
+                sort_order=1200,
+                active=True,
+                objective_metadata={"source": "constraints"},
+            )
+            reward_definition = RewardDefinition(
+                reward_code=f"reward_{suffix}",
+                reward_type="cosmetic",
+                display_name="Catalog Reward",
+                description="A reward used for constraint verification.",
+                is_repeatable=False,
+                is_revocable=True,
+                grant_mode="automatic",
+                reward_metadata={"origin": "constraints"},
+            )
+            badge_definition = BadgeDefinition(
+                badge_code=f"badge_{suffix}",
+                display_name="Catalog Badge",
+                description="A badge used for constraint verification.",
+                icon_ref="badges/catalog.svg",
+                is_revocable=True,
+                badge_metadata={"origin": "constraints"},
+            )
+            session.add_all([account, objective, reward_definition, badge_definition])
+            session.commit()
+
+            account_ids.append(account.id)
+            objective_id = objective.id
+            reward_definition_id = reward_definition.id
+            badge_definition_id = badge_definition.id
+
+            session.add(
+                ObjectiveRewardLink(
+                    objective_definition_id=objective.id,
+                    reward_definition_id=reward_definition.id,
+                    grant_order=1,
+                )
+            )
+            session.commit()
+
+            session.add(
+                ObjectiveRewardLink(
+                    objective_definition_id=objective.id,
+                    reward_definition_id=reward_definition.id,
+                    grant_order=2,
+                )
+            )
+
+            with pytest.raises(IntegrityError):
+                session.commit()
+
+            session.rollback()
+
+        with SessionLocal() as session:
+            session.add(
+                RewardGrant(
+                    account_id=uuid4(),
+                    reward_definition_id=reward_definition_id or uuid4(),
+                    source_objective_definition_id=objective_id,
+                    status="granted",
+                )
+            )
+
+            with pytest.raises(IntegrityError):
+                session.commit()
+
+            session.rollback()
+
+            session.add(
+                AccountBadge(
+                    account_id=account_ids[0],
+                    badge_definition_id=uuid4(),
+                    source_objective_definition_id=objective_id,
+                )
+            )
+
+            with pytest.raises(IntegrityError):
+                session.commit()
+
+            session.rollback()
+
+            session.add(
+                RewardEvent(
+                    account_id=account_ids[0],
+                    event_type="reward_granted",
+                    points_delta=0,
+                    objective_definition_id=objective_id,
+                    reward_definition_id=reward_definition_id,
+                    badge_definition_id=badge_definition_id,
+                    source_type="objective",
+                    source_reference=f"objective:{suffix}",
+                    status="applied",
+                )
+            )
+            session.commit()
+
+        inspector = inspect(engine)
+        reward_definition_indexes = {
+            index["name"] for index in inspector.get_indexes("reward_definitions")
+        }
+        objective_reward_link_indexes = {
+            index["name"] for index in inspector.get_indexes("objective_reward_links")
+        }
+        reward_grant_indexes = {index["name"] for index in inspector.get_indexes("reward_grants")}
+        badge_definition_indexes = {
+            index["name"] for index in inspector.get_indexes("badge_definitions")
+        }
+        account_badge_indexes = {index["name"] for index in inspector.get_indexes("account_badges")}
+        reward_event_fks = {
+            fk["name"] for fk in inspector.get_foreign_keys("reward_events") if fk["name"]
+        }
+
+        assert "ix_reward_definitions_reward_type" in reward_definition_indexes
+        assert "uq_reward_definitions_reward_code" in reward_definition_indexes
+        assert "ix_objective_reward_links_objective_definition_id" in objective_reward_link_indexes
+        assert "ix_objective_reward_links_reward_definition_id" in objective_reward_link_indexes
+        assert "uq_objective_reward_links_objective_reward" in objective_reward_link_indexes
+        assert "ix_reward_grants_account_id" in reward_grant_indexes
+        assert "ix_reward_grants_reward_definition_id" in reward_grant_indexes
+        assert "ix_reward_grants_status" in reward_grant_indexes
+        assert "ix_badge_definitions_display_name" in badge_definition_indexes
+        assert "uq_badge_definitions_badge_code" in badge_definition_indexes
+        assert "ix_account_badges_account_id" in account_badge_indexes
+        assert "ix_account_badges_badge_definition_id" in account_badge_indexes
+        assert "fk_reward_events_objective_definition" in reward_event_fks
+        assert "fk_reward_events_reward_definition" in reward_event_fks
+        assert "fk_reward_events_badge_definition" in reward_event_fks
+    finally:
+        with SessionLocal() as session:
+            if objective_id is not None:
+                objective = session.get(ObjectiveDefinition, objective_id)
+                if objective is not None:
+                    session.delete(objective)
+            if reward_definition_id is not None:
+                reward_definition = session.get(RewardDefinition, reward_definition_id)
+                if reward_definition is not None:
+                    session.delete(reward_definition)
+            if badge_definition_id is not None:
+                badge_definition = session.get(BadgeDefinition, badge_definition_id)
+                if badge_definition is not None:
+                    session.delete(badge_definition)
+            session.commit()
+        _cleanup_accounts(account_ids)
