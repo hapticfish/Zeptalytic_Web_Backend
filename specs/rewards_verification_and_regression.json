@@ -28,7 +28,9 @@
         "Verify all rewards models are registered in metadata.",
         "Verify migrations produce the expected table surface."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T00:40:22.6791683-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rrg-020",
@@ -40,7 +42,9 @@
         "Test Bronze/Silver/Gold/Platinum/Plus structure and 100-point milestone behavior.",
         "Test current-state rewards summary updates against event/ledger changes."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T00:44:58.9741505-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rrg-030",
@@ -53,7 +57,9 @@
         "Test repeatable objective behavior.",
         "Test milestone objectives as objective records/progress surfaces."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T00:50:33.6471707-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rrg-040",
@@ -65,7 +71,9 @@
         "Verify the schema and data model can record reversals/revocations cleanly.",
         "Do not over-assume policy windows not yet locked beyond the approved principle that some reversals exist."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T00:55:59.4785678-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rrg-050",
@@ -77,7 +85,9 @@
         "Verify queued objective-completion presentation behavior.",
         "Verify skip/seen state transitions at the data layer."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T00:59:35.7734470-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rrg-060",
@@ -89,7 +99,9 @@
         "Add structure/layout regression tests.",
         "Verify one-table-per-file expectations for rewards domain models."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T01:03:52.1559579-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rrg-999",
@@ -102,7 +114,9 @@
         "Run the full authoritative docker test suite.",
         "Only mark this item complete when green."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T01:17:50.4338828-05:00",
+      "completed_by": "codex"
     }
   ]
 }

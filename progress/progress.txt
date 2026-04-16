@@ -1162,3 +1162,139 @@
 - Next: `rrg-010` is now the next open item in `specs/rewards_verification_and_regression.json`.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T00:40:22.6791683-05:00
+- Goal for this iteration: Complete `rrg-010` by adding explicit rewards metadata/bootstrap parity regressions for the registered model set and the migrated Postgres schema surface.
+- What I found (repo search summary): `git ls-files`, `git grep`, `rg`, and directory reads showed the rewards ORM modules remain split one-table-per-file under `app/db/models/rewards/`, with package registration in `app/db/models/rewards/__init__.py`, top-level import registration in `app/db/models/__init__.py`, metadata bootstrap in `app/db/bootstrap.py`, and Alembic discovery in `alembic/env.py`. Existing tests already covered broad metadata and migration drift via `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_model_module_layout.py`, and `tests/integration/test_parent_db_bootstrap.py`, but there was no explicit rewards-only bootstrap parity assertion locking the migrated rewards table and column surface as its own regression target.
+- What I changed: Added a unit regression in `tests/unit/test_db_bootstrap.py` that asserts the exact registered rewards table set is present in SQLAlchemy metadata, and added an integration regression in `tests/integration/test_parent_db_bootstrap.py` that asserts the migrated Postgres schema exposes exactly the expected rewards tables and that each rewards table's live columns match the SQLAlchemy metadata definition.
+- Why I changed: `rrg-010` is specifically about metadata/migration/bootstrap verification for the rewards domain. The repo already had broad full-schema drift checks, but this makes the rewards registration and migrated surface explicit so future changes cannot silently drop or reshape a rewards table while still passing only coarse parent-schema assertions.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_verification_and_regression.json
+  - tests/integration/test_parent_db_bootstrap.py
+  - tests/unit/test_db_bootstrap.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `pytest tests/unit/test_db_bootstrap.py` -> could not run on the host because `pytest` is not installed in the local PowerShell environment
+  - `pytest tests/integration/test_parent_db_bootstrap.py` -> could not run on the host because `pytest` is not installed in the local PowerShell environment
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `98 passed in 2.66s`
+- Notes / risks: `IMPLEMENTATION_PLAN.md` was already modified in the worktree before this iteration and was left untouched. The Docker output still includes expected duplicate-key and FK violations from negative-path regression tests, and `migrate` exits `137` after the green `test` exit because `--abort-on-container-exit` tears the stack down; the authoritative command itself exited `0`.
+- Next: `rrg-020` is now the next open item in `specs/rewards_verification_and_regression.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T00:44:58.9741505-05:00
+- Goal for this iteration: Complete `rrg-020` by adding regression coverage for the locked rewards tier/milestone structure and for reward-account summary updates driven by reward-event ledger changes.
+- What I found (repo search summary): `git ls-files`, `git grep`, and `rg` confirmed the relevant rewards surface lives in `app/db/models/rewards/reward_accounts.py`, `reward_events.py`, `reward_tier_definitions.py`, and `reward_milestones.py`, with account-side wiring in `app/db/models/accounts.py`, metadata registration through `app/db/models/rewards/__init__.py` -> `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`, and seed/migration behavior in `alembic/versions/20260415_2355_rdb010_reward_foundation_tables.py`, `20260416_0010_rdb020_reward_tiers_and_milestones.py`, and `20260416_0105_rdb030_objective_definition_and_progress_tables.py`. Existing tests already covered rewards metadata registration plus basic seeded tier/milestone rows and a simple reward-account round trip in `tests/integration/test_parent_db_constraints.py` and `tests/integration/test_parent_db_round_trips.py`, but there was no explicit regression proving the full locked Bronze/Silver/Gold/Platinum/Plus progression contract or proving that the current-state reward summary can be updated coherently after multiple ledger events including a reversal.
+- What I changed: Added `_tier_summary_for_points()` plus two new integration regressions in `tests/integration/test_parent_db_round_trips.py`. One test locks the exact five-tier / fifty-milestone progression contract, including 100-point spacing, 1000-point tier boundaries, and tier-code assignment across all milestones. The second test creates a reward account plus three reward events, applies the resulting summary update, and verifies the persisted reward-account snapshot matches the net event ledger and preserves reversal linkage.
+- Why I changed: `rrg-020` is specifically about progression and current-state summary regressions. These tests make the locked rewards progression rules executable and guard against future changes that would silently drift the reward-account summary behavior away from the ledger-backed model described in the rewards architecture docs.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_verification_and_regression.json
+  - tests/integration/test_parent_db_round_trips.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> failed first on `tests/integration/test_parent_db_round_trips.py::test_parent_reward_account_summary_tracks_ledger_driven_updates` because Postgres assigned identical timestamps to multiple inserted reward events, making the test's original ordering assumption invalid
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed after the fix with `100 passed in 2.71s`
+- Notes / risks: The green Docker run still shows expected duplicate-key and FK violations from negative-path regression tests, and `migrate` still exits `137` after the successful `test` exit because `--abort-on-container-exit` stops the stack; the authoritative command itself exited `0`. `IMPLEMENTATION_PLAN.md`, `progress/progress.txt`, `specs/rewards_verification_and_regression.json`, `tests/integration/test_parent_db_bootstrap.py`, and `tests/unit/test_db_bootstrap.py` were already dirty in the worktree before this iteration and were left in place.
+- Next: `rrg-030` is now the next open item in `specs/rewards_verification_and_regression.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T00:50:33.6471707-05:00
+- Goal for this iteration: Complete `rrg-030` by adding regression coverage for non-repeatable objectives, repeatable objective cycle state, and milestone objectives as linked objective/progress surfaces.
+- What I found (repo search summary): `git ls-files`, `rg`, and `git diff` showed the relevant rewards objective surface is already implemented in `app/db/models/rewards/objective_definitions.py`, `account_objective_progress.py`, and `reward_milestones.py`, with account-side relationships in `app/db/models/accounts.py`, registration through `app/db/models/rewards/__init__.py` -> `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`, and milestone-objective seed/link behavior in `alembic/versions/20260416_0105_rdb030_objective_definition_and_progress_tables.py`. Existing tests in `tests/integration/test_parent_db_round_trips.py` already covered a generic repeatable objective round trip plus adjacent reward catalog and queue behavior, while `tests/integration/test_parent_db_constraints.py` covered FK/index contracts, but there was no focused regression proving non-repeatable completion state, next-cycle repeatable state, or the seeded milestone-objective linkage as an objective-progress surface.
+- What I changed: Added three focused integration regressions to `tests/integration/test_parent_db_round_trips.py`. The new coverage verifies a non-repeatable objective persists a single completed state, a repeatable objective can persist the next active cycle after an earlier completion, and the seeded milestone objectives remain linked to all reward milestones and can be used directly through `account_objective_progress`.
+- Why I changed: `rrg-030` is about protecting objective progress semantics without inventing service-layer policy. These tests lock the approved data-layer representations for one-time objectives, repeat cycles, and the architecture requirement that progress-bar milestones are also objective records on the objectives surface.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_verification_and_regression.json
+  - tests/integration/test_parent_db_round_trips.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `103 passed in 2.75s`
+- Notes / risks: The green Docker run still includes expected duplicate-key and FK violations from negative-path regression tests, and `migrate` still exits `137` after the successful `test` exit because `--abort-on-container-exit` tears the stack down; the authoritative command itself exited `0`. `IMPLEMENTATION_PLAN.md`, `progress/progress.txt`, `specs/rewards_verification_and_regression.json`, `tests/integration/test_parent_db_bootstrap.py`, and `tests/unit/test_db_bootstrap.py` were already dirty in the worktree before this iteration and were left in place.
+- Next: `rrg-040` is now the next open item in `specs/rewards_verification_and_regression.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T00:55:59.4785678-05:00
+- Goal for this iteration: Complete `rrg-040` by adding focused regression coverage for reversal-capable reward events, revoked reward grants, and revoked badges without hardcoding unapproved policy windows.
+- What I found (repo search summary): `git ls-files`, `git grep`, `rg`, and targeted file reads showed the relevant reversal-capable surfaces already exist in `app/db/models/rewards/reward_events.py`, `reward_grants.py`, and `account_badges.py`, with account-side relationships in `app/db/models/accounts.py`, model registration still flowing through `app/db/models/rewards/__init__.py` -> `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`, and migration support already present in `alembic/versions/20260415_2355_rdb010_reward_foundation_tables.py` plus `20260416_0215_rdb040_reward_badge_and_grant_tables.py`. Existing tests in `tests/integration/test_parent_db_round_trips.py` already covered reversal events and general reward catalog persistence, while `tests/integration/test_parent_db_constraints.py` covered FK/index contracts, but there was no focused regression proving a reversal event, revoked reward grant, and revoked badge can persist together as clean data without assuming any specific retention-window constant.
+- What I changed: Added `test_parent_reward_reversal_and_revocation_round_trip()` to `tests/integration/test_parent_db_round_trips.py` to persist a revocable reward definition, revocable badge definition, the applied source reward event, a linked reversing reward event, and corresponding revoked `reward_grants`/`account_badges` rows that retain source-event linkage and revocation metadata. Marked `rrg-040` complete in `specs/rewards_verification_and_regression.json`.
+- Why I changed: `rrg-040` is about protecting the approved data-layer capability for reversals and revocations while avoiding premature business-policy logic. The new regression locks that structural capability in place without inventing a refund-window rule or service policy that the architecture docs have explicitly left open.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_verification_and_regression.json
+  - tests/integration/test_parent_db_round_trips.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `pytest tests/integration/test_parent_db_round_trips.py -q` -> could not run on the host because `pytest` is not installed in the local PowerShell environment
+  - `python -m pytest tests/integration/test_parent_db_round_trips.py -q` -> could not run on the host because the active Python install does not have `pytest`
+  - `python -m py_compile tests/integration/test_parent_db_round_trips.py` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `104 passed in 2.87s`
+- Notes / risks: The green Docker run still includes expected duplicate-key and FK violations from negative-path regression tests, and `migrate` still exits `137` after the successful `test` exit because `--abort-on-container-exit` tears the stack down; the authoritative command itself exited `0`. `IMPLEMENTATION_PLAN.md`, `progress/progress.txt`, `specs/rewards_verification_and_regression.json`, `tests/integration/test_parent_db_bootstrap.py`, and `tests/unit/test_db_bootstrap.py` were already dirty in the worktree before this iteration and were left in place.
+- Next: `rrg-050` is now the next open item in `specs/rewards_verification_and_regression.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T00:59:35.7734470-05:00
+- Goal for this iteration: Complete `rrg-050` by adding focused regression coverage for ordered reward-notification queue behavior and seen/skip transitions at the data layer.
+- What I found (repo search summary): `git ls-files`, `git grep`, `rg`, `Get-ChildItem`, and targeted file reads showed the notification queue surface was already implemented in `app/db/models/rewards/reward_notifications.py` with account-side wiring in `app/db/models/accounts.py`, model registration through `app/db/models/rewards/__init__.py` -> `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`, and migration support in `alembic/versions/20260416_0245_rdb050_reward_notifications.py`. Existing tests already covered metadata/layout registration in the unit suite, FK/index contracts in `tests/integration/test_parent_db_constraints.py`, and one broad queue round trip in `tests/integration/test_parent_db_round_trips.py`, but there was no focused regression proving ordered queued retrieval by `sequence_order` or proving that one viewed notification plus skip-all dismissal of the remaining queued entries persists cleanly.
+- What I changed: Added `test_parent_reward_notification_queue_preserves_order_and_skip_all_transitions()` to `tests/integration/test_parent_db_round_trips.py`. The new regression creates three queued objective-completion notifications, verifies the queue is read back in `sequence_order`, then persists a `seen` transition for the first item and `dismissed` skip-all transitions for the remaining queued entries with the expected `seen_at`, `dismissed_at`, and metadata values. Marked `rrg-050` complete in `specs/rewards_verification_and_regression.json`.
+- Why I changed: `rrg-050` is specifically about queued presentation behavior and skip/seen handling. This test locks the data-layer behavior described by the rewards architecture docs without inventing service-layer orchestration or additional notification policy beyond the already approved ordered queue plus skip-all concept.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_verification_and_regression.json
+  - tests/integration/test_parent_db_round_trips.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `python -m py_compile tests/integration/test_parent_db_round_trips.py` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `105 passed in 2.84s`
+- Notes / risks: The green Docker run still shows expected duplicate-key and FK violations from negative-path regression tests, and `migrate` still exits `137` after the successful `test` exit because `--abort-on-container-exit` stops the stack; the authoritative command itself exited `0`. `IMPLEMENTATION_PLAN.md`, `progress/progress.txt`, `specs/rewards_verification_and_regression.json`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, and `tests/unit/test_db_bootstrap.py` were already dirty in the worktree before this iteration and were left in place.
+- Next: `rrg-060` is now the next open item in `specs/rewards_verification_and_regression.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T01:03:52.1559579-05:00
+- Goal for this iteration: Complete `rrg-060` by adding structural regression protections that keep rewards models split one-table-per-file and preserve metadata discovery wiring.
+- What I found (repo search summary): `git ls-files`, `rg`, and targeted file reads showed the existing structural guardrails already live in `tests/unit/test_model_module_layout.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_db_bootstrap.py`, and `tests/integration/test_parent_db_bootstrap.py`. The rewards model package is registered through `app/db/models/rewards/__init__.py` -> `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`, and each rewards table currently lives in its own file under `app/db/models/rewards/`. There was already broad file-inventory coverage and metadata table-surface coverage, but no focused regression proving each registered rewards module exposes exactly one mapped model or preventing a future collapse into a generic `app/db/models/rewards.py` registry entry.
+- What I changed: Added structure-focused unit assertions in `tests/unit/test_model_module_layout.py` and `tests/unit/test_model_metadata_registration.py`. The new coverage verifies every registered rewards module defines exactly one mapped SQLAlchemy model, asserts there is no generic `app/db/models/rewards.py` file or `app.db.models.rewards` registry entry, and checks the metadata/registry surface still maps one registered rewards module per rewards table.
+- Why I changed: `rrg-060` is specifically about defending the agreed model layout and discovery path. These tests lock the one-table-per-file rule for the rewards domain and reduce the chance of future runs silently breaking Alembic/metadata discovery while refactoring.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_verification_and_regression.json
+  - tests/unit/test_model_metadata_registration.py
+  - tests/unit/test_model_module_layout.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `python -m py_compile tests/unit/test_model_module_layout.py` -> passed
+  - `python -m py_compile tests/unit/test_model_metadata_registration.py` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `108 passed in 2.84s`
+- Notes / risks: The green Docker run still includes expected duplicate-key and FK violations from negative-path regression tests, and `migrate` still exits `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit; the authoritative command itself exited `0`. `IMPLEMENTATION_PLAN.md`, `progress/progress.txt`, `specs/rewards_verification_and_regression.json`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, and `tests/unit/test_db_bootstrap.py` were already dirty in the worktree before this iteration and were left in place.
+- Next: `rrg-999` is now the next open item in `specs/rewards_verification_and_regression.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T01:17:50.4338828-05:00
+- Goal for this iteration: Complete `rrg-999` by rerunning the authoritative Docker suite and closing out the active rewards verification spec only if it is green.
+- What I found (repo search summary): `git ls-files`, `rg`, `git grep`, and targeted file reads confirmed the closeout surface was already implemented. `docker-compose.test.yml` remains the authoritative `db` -> `migrate` -> `test` topology, `tests/unit/test_test_topology_contract.py` already locks the compose dependency path/health checks/runtime commands, and rewards model registration still flows through `app/db/models/rewards/__init__.py` -> `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`. Existing coverage for this surface already lived in `tests/unit/test_test_topology_contract.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_db_bootstrap.py`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`.
+- What I changed: Marked `rrg-999` complete in `specs/rewards_verification_and_regression.json` after the authoritative suite passed, and appended this progress entry.
+- Why I changed: `rrg-999` is the spec closeout gate. No code changes were needed because the required topology and regression coverage were already in place; the only remaining work was to verify the full Docker path is green and record the result durably.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_verification_and_regression.json
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `108 passed in 2.84s`
+- Notes / risks: The Docker run still emitted expected duplicate-key and FK violations from negative-path regression tests, and `migrate` exited `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit; the authoritative command itself exited `0`. `IMPLEMENTATION_PLAN.md`, `progress/progress.txt`, `specs/rewards_verification_and_regression.json`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, and `tests/unit/test_model_module_layout.py` were already dirty in the worktree before this iteration and were left in place except for the two durable files updated here.
+- Next: Active spec `specs/rewards_verification_and_regression.json` is now fully complete.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
