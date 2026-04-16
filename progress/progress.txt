@@ -1127,3 +1127,19 @@
 - Next: `rdb-999` remains open as the last unchecked item in `specs/rewards_domain_db_schema.json`.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+- Date/time: 2026-04-16T00:28:24.0050598-05:00
+- Goal for this iteration: Complete `rdb-999` by running the authoritative Docker suite for the fully built rewards domain schema workstream and closing the spec only if it passes cleanly.
+- What I found (repo search summary): `git ls-files`, `git grep`, `rg`, and `grep -R` confirmed the target surface was already fully implemented. The authoritative test topology lives in `docker-compose.test.yml` with the expected `db` -> `migrate` -> `test` path, metadata registration still flows through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`, the rewards schema modules remain split one-table-per-file under `app/db/models/rewards/`, and existing coverage for this closeout surface already lives in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_test_topology_contract.py`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`.
+- What I changed: Marked `rdb-999` complete in `specs/rewards_domain_db_schema.json` after the authoritative suite passed and appended this progress entry.
+- Why I changed: `rdb-999` is the final gated item for the active rewards DB schema spec. No source-code edits were needed because the implementation and regression coverage were already in place; the required work was to prove the full Docker test path is green and record that result durably.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_domain_db_schema.json
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `94 passed in 2.72s`
+- Notes / risks: The Docker output still includes expected duplicate-key and FK violations from negative-path regression tests, and `migrate` still exits `137` after the green `test` exit because `--abort-on-container-exit` stops the stack; the authoritative command itself exited `0`.
+- Next: The current active spec `specs/rewards_domain_db_schema.json` is now fully complete.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
