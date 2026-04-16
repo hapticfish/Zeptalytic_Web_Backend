@@ -62,7 +62,9 @@
         "Create account objective progress tables/models.",
         "Support milestone objectives as objectives in the same domain model."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T00:00:17.7838694-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rdb-040",

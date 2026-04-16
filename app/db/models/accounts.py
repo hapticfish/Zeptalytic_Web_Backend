@@ -101,3 +101,7 @@ class Account(Base):
         cascade="all, delete-orphan",
         foreign_keys="RewardEvent.account_id",
     )
+    account_objective_progress_entries: Mapped[list["AccountObjectiveProgress"]] = relationship(
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )

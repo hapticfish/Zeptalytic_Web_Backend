@@ -11,6 +11,8 @@ from app.db.models.accounts import Account
 from app.db.models.addresses import Address
 from app.db.models.discord_connection_history import DiscordConnectionHistory
 from app.db.models.payment_method_summaries import PaymentMethodSummary
+from app.db.models.rewards.account_objective_progress import AccountObjectiveProgress
+from app.db.models.rewards.objective_definitions import ObjectiveDefinition
 from app.db.models.rewards.reward_accounts import RewardAccount
 from app.db.models.rewards.reward_events import RewardEvent
 from app.db.models.rewards.reward_milestones import RewardMilestone
@@ -339,8 +341,15 @@ def test_parent_db_reward_event_requires_existing_account_and_indexes_exist() ->
 
 def test_parent_db_reward_definition_seed_contract_and_indexes_exist() -> None:
     with SessionLocal() as session:
+        objective_definitions = session.query(ObjectiveDefinition).order_by(
+            ObjectiveDefinition.sort_order
+        ).all()
         tiers = session.query(RewardTierDefinition).order_by(RewardTierDefinition.sort_order).all()
         milestones = session.query(RewardMilestone).order_by(RewardMilestone.sort_order).all()
+
+    milestone_objectives = [
+        objective for objective in objective_definitions if objective.is_milestone_objective
+    ]
 
     assert [tier.tier_code for tier in tiers] == [
         "BRONZE",
@@ -359,6 +368,9 @@ def test_parent_db_reward_definition_seed_contract_and_indexes_exist() -> None:
     assert len(milestones) == 50
     assert milestones[0].milestone_points == 100
     assert milestones[-1].milestone_points == 5000
+    assert len(milestone_objectives) == 50
+    assert milestone_objectives[0].objective_code == "milestone_0100"
+    assert milestone_objectives[-1].objective_code == "milestone_5000"
     assert [milestone.milestone_points for milestone in milestones if milestone.is_tier_boundary] == [
         1000,
         2000,
@@ -366,8 +378,15 @@ def test_parent_db_reward_definition_seed_contract_and_indexes_exist() -> None:
         4000,
         5000,
     ]
+    assert all(milestone.linked_objective_definition_id is not None for milestone in milestones)
 
     inspector = inspect(engine)
+    objective_definition_indexes = {
+        index["name"] for index in inspector.get_indexes("objective_definitions")
+    }
+    objective_progress_indexes = {
+        index["name"] for index in inspector.get_indexes("account_objective_progress")
+    }
     reward_tier_indexes = {
         index["name"] for index in inspector.get_indexes("reward_tier_definitions")
     }
@@ -375,7 +394,29 @@ def test_parent_db_reward_definition_seed_contract_and_indexes_exist() -> None:
         index["name"] for index in inspector.get_indexes("reward_milestones")
     }
 
+    assert "ix_objective_definitions_scope_type" in objective_definition_indexes
+    assert "ix_objective_definitions_sort_group_sort_order" in objective_definition_indexes
+    assert "uq_objective_definitions_objective_code" in objective_definition_indexes
+    assert "ix_account_objective_progress_account_id" in objective_progress_indexes
+    assert "ix_account_objective_progress_objective_definition_id" in objective_progress_indexes
+    assert "ix_account_objective_progress_status" in objective_progress_indexes
     assert "ix_reward_tier_definitions_sort_order" in reward_tier_indexes
     assert "uq_reward_tier_definitions_tier_code" in reward_tier_indexes
     assert "ix_reward_milestones_sort_order" in reward_milestone_indexes
     assert "uq_reward_milestones_milestone_points" in reward_milestone_indexes
+
+
+def test_parent_db_account_objective_progress_requires_existing_account_and_objective() -> None:
+    with SessionLocal() as session:
+        session.add(
+            AccountObjectiveProgress(
+                account_id=uuid4(),
+                objective_definition_id=uuid4(),
+                status="in_progress",
+            )
+        )
+
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+        session.rollback()

@@ -37,6 +37,8 @@ PAY_DERIVED_PROJECTION_TABLES = {
 }
 
 REWARDS_FOUNDATION_TABLES = {
+    "account_objective_progress",
+    "objective_definitions",
     "reward_accounts",
     "reward_events",
     "reward_milestones",

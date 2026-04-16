@@ -25,6 +25,8 @@ EXPECTED_TABLES = {
     "product_access_states",
     "payment_summaries",
     "payment_method_summaries",
+    "account_objective_progress",
+    "objective_definitions",
     "reward_accounts",
     "reward_events",
     "reward_milestones",

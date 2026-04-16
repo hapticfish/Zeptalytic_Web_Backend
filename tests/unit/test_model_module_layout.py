@@ -20,6 +20,8 @@ from app.db.models.payment_summaries import PaymentSummary
 from app.db.models.product_access_states import ProductAccessState
 from app.db.models.profile_preferences import ProfilePreference
 from app.db.models.profiles import Profile
+from app.db.models.rewards.account_objective_progress import AccountObjectiveProgress
+from app.db.models.rewards.objective_definitions import ObjectiveDefinition
 from app.db.models.rewards.reward_accounts import RewardAccount
 from app.db.models.rewards.reward_events import RewardEvent
 from app.db.models.rewards.reward_milestones import RewardMilestone
@@ -60,6 +62,8 @@ EXPECTED_MODEL_FILES = {
 
 EXPECTED_REWARD_MODEL_FILES = {
     "__init__.py",
+    "account_objective_progress.py",
+    "objective_definitions.py",
     "reward_accounts.py",
     "reward_events.py",
     "reward_milestones.py",
@@ -85,6 +89,8 @@ EXPECTED_MODEL_MODULES = {
     "app.db.models.product_access_states": ProductAccessState,
     "app.db.models.profile_preferences": ProfilePreference,
     "app.db.models.profiles": Profile,
+    "app.db.models.rewards.account_objective_progress": AccountObjectiveProgress,
+    "app.db.models.rewards.objective_definitions": ObjectiveDefinition,
     "app.db.models.rewards.reward_accounts": RewardAccount,
     "app.db.models.rewards.reward_events": RewardEvent,
     "app.db.models.rewards.reward_milestones": RewardMilestone,

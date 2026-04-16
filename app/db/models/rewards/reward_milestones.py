@@ -4,7 +4,8 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, Index, Integer, String, Uuid, func, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -24,7 +25,11 @@ class RewardMilestone(Base):
         nullable=False,
         server_default=text("false"),
     )
-    linked_objective_definition_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
+    linked_objective_definition_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("objective_definitions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -36,4 +41,8 @@ class RewardMilestone(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    linked_objective_definition: Mapped["ObjectiveDefinition | None"] = relationship(
+        back_populates="linked_reward_milestones"
     )

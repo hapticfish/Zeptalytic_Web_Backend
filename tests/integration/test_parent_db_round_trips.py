@@ -12,6 +12,8 @@ from app.db.models.discord_connection_history import DiscordConnectionHistory
 from app.db.models.payment_method_summaries import PaymentMethodSummary
 from app.db.models.payment_summaries import PaymentSummary
 from app.db.models.profiles import Profile
+from app.db.models.rewards.account_objective_progress import AccountObjectiveProgress
+from app.db.models.rewards.objective_definitions import ObjectiveDefinition
 from app.db.models.rewards.reward_accounts import RewardAccount
 from app.db.models.rewards.reward_events import RewardEvent
 from app.db.models.rewards.reward_milestones import RewardMilestone
@@ -346,6 +348,11 @@ def test_parent_rewards_foundation_round_trip() -> None:
 
 def test_parent_rewards_tier_and_milestone_definitions_round_trip() -> None:
     with SessionLocal() as session:
+        milestone_objectives = session.scalars(
+            select(ObjectiveDefinition)
+            .where(ObjectiveDefinition.is_milestone_objective.is_(True))
+            .order_by(ObjectiveDefinition.sort_order)
+        ).all()
         tiers = session.scalars(
             select(RewardTierDefinition).order_by(RewardTierDefinition.sort_order)
         ).all()
@@ -360,9 +367,105 @@ def test_parent_rewards_tier_and_milestone_definitions_round_trip() -> None:
         "Platinum",
         "Plus",
     ]
+    assert milestone_objectives[0].objective_metadata == {
+        "milestone_points": 100,
+        "tier_code": "BRONZE",
+        "is_tier_boundary": False,
+    }
     assert milestones[0].tier_code == "BRONZE"
+    assert milestones[0].linked_objective_definition_id == milestone_objectives[0].id
     assert milestones[8].milestone_points == 900
     assert milestones[9].tier_code == "BRONZE"
     assert milestones[9].is_tier_boundary is True
     assert milestones[10].tier_code == "SILVER"
     assert milestones[49].tier_code == "PLUS"
+
+
+def test_parent_objective_definition_and_progress_round_trip() -> None:
+    suffix = _unique_suffix()
+    account_id: UUID | None = None
+    objective_id: UUID | None = None
+
+    try:
+        with SessionLocal() as session:
+            account = Account(
+                username=f"objective_{suffix}",
+                email=f"objective_{suffix}@example.com",
+                password_hash="hashed-password",
+                status="active",
+                role="member",
+            )
+            session.add(account)
+            session.flush()
+            account_id = account.id
+
+            objective = ObjectiveDefinition(
+                objective_code=f"zardbot_session_{suffix}",
+                title="Launch ZardBot Three Times",
+                description="Track repeated ZardBot session launches for rewards progress.",
+                scope_type="product",
+                product_code="zardbot",
+                objective_type="usage",
+                is_repeatable=True,
+                repeat_group_key="zardbot_sessions",
+                required_count=3,
+                tier_gate="SILVER",
+                subscription_gate_product_code="zardbot",
+                subscription_gate_plan_code="pro_monthly",
+                is_milestone_objective=False,
+                sort_group="product",
+                sort_order=900,
+                active=True,
+                objective_metadata={"page": "objectives"},
+            )
+            session.add(objective)
+            session.flush()
+            objective_id = objective.id
+
+            progress = AccountObjectiveProgress(
+                account_id=account.id,
+                objective_definition_id=objective.id,
+                current_count=2,
+                completed_count=0,
+                repeat_iteration=1,
+                status="in_progress",
+                progress_metadata={"recent_action": "launcher_opened"},
+            )
+            session.add(progress)
+            session.commit()
+
+        with SessionLocal() as session:
+            persisted_account = session.scalar(
+                select(Account)
+                .options(
+                    selectinload(Account.account_objective_progress_entries).selectinload(
+                        AccountObjectiveProgress.objective_definition
+                    )
+                )
+                .where(Account.id == account_id)
+            )
+
+            persisted_objective = session.get(ObjectiveDefinition, objective_id)
+
+            assert persisted_account is not None
+            assert persisted_objective is not None
+            assert len(persisted_account.account_objective_progress_entries) == 1
+
+            persisted_progress = persisted_account.account_objective_progress_entries[0]
+            assert persisted_progress.current_count == 2
+            assert persisted_progress.repeat_iteration == 1
+            assert persisted_progress.progress_metadata == {"recent_action": "launcher_opened"}
+            assert persisted_progress.objective_definition.objective_code == f"zardbot_session_{suffix}"
+            assert persisted_objective.scope_type == "product"
+            assert persisted_objective.product_code == "zardbot"
+            assert persisted_objective.subscription_gate_plan_code == "pro_monthly"
+            assert persisted_objective.is_repeatable is True
+    finally:
+        with SessionLocal() as session:
+            if objective_id is not None:
+                objective = session.get(ObjectiveDefinition, objective_id)
+                if objective is not None:
+                    session.delete(objective)
+                    session.commit()
+        if account_id is not None:
+            _cleanup_account(account_id)

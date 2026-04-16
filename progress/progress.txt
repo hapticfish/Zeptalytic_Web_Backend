@@ -1009,3 +1009,33 @@
 - Next: `rdb-030` is now the next open rewards-schema build target.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T00:00:17.7838694-05:00
+- Goal for this iteration: Complete `rdb-030` by adding objective-definition and account-objective-progress schema support, including milestone-objective linkage, then prove the slice through the authoritative Docker suite.
+- What I found (repo search summary): `git ls-files`, `rg`, and targeted reads showed the rewards package already contained `RewardAccount`, `RewardEvent`, `RewardTierDefinition`, and `RewardMilestone` under `app/db/models/rewards/`, with top-level registration still centralized in `app/db/models/__init__.py` and metadata/Alembic discovery still flowing through `app/db/bootstrap.py` -> `alembic/env.py`. Existing regression coverage for this surface already lived in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, plus migrated-Postgres checks in `tests/integration/test_parent_db_constraints.py` and `tests/integration/test_parent_db_round_trips.py`.
+- What I changed: Added one-table-per-file rewards models for `ObjectiveDefinition` and `AccountObjectiveProgress`; wired them into the model registry and `Account` relationships; extended `RewardMilestone.linked_objective_definition_id` to a real FK-backed linkage; added Alembic revision `20260416_0105_rdb030_objective_definition_and_progress_tables.py` to create the new tables, seed the 50 milestone objective definitions, and backfill all `reward_milestones` links; and updated the unit/integration registration, metadata, layout, seed-contract, FK, and round-trip tests around this exact schema slice.
+- Why I changed: `rdb-030` requires milestone objectives and general objectives to live in the same parent-owned domain model while preserving global/product/tier/subscription gating fields and account-level progress state. The architecture docs explicitly call for milestones to be objectives rather than a disconnected UI concept.
+- Updated Files:
+  - app/db/models/__init__.py
+  - app/db/models/accounts.py
+  - app/db/models/rewards/reward_milestones.py
+  - progress/progress.txt
+  - specs/rewards_domain_db_schema.json
+  - tests/integration/test_parent_db_constraints.py
+  - tests/integration/test_parent_db_round_trips.py
+  - tests/unit/test_db_bootstrap.py
+  - tests/unit/test_model_metadata_registration.py
+  - tests/unit/test_model_module_layout.py
+  - tests/unit/test_parent_db_metadata_tables.py
+- New Files:
+  - alembic/versions/20260416_0105_rdb030_objective_definition_and_progress_tables.py
+  - app/db/models/rewards/account_objective_progress.py
+  - app/db/models/rewards/objective_definitions.py
+- Removed Files:
+- Tests run + results:
+  - `python -m compileall app tests alembic` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> first run failed because the new migration used a Postgres FK name longer than 63 characters; after shortening that identifier and rerunning the same authoritative command, it passed with `88 passed in 2.41s`
+- Notes / risks: `objective_definitions` and `account_objective_progress` intentionally keep string vocabularies such as `scope_type`, `objective_type`, and `status` as unconstrained text because the rewards decision records have not locked those exact value sets yet. The Docker output still includes expected duplicate-key/FK violations from negative-path regression tests, and `migrate` still exits `137` after the green `test` exit because `--abort-on-container-exit` stops the stack; the authoritative command itself exited `0`.
+- Next: `rdb-040` is now the next open rewards-schema build target.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
