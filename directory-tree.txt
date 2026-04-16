@@ -1,0 +1,130 @@
+Zeptalytic_Web_Backend/
+├── alembic/
+│   ├── versions/
+│   │   ├── 20260413_1830_pdb035_profile_settings_tables.py
+│   │   ├── 20260413_1835_pdb020_auth_tables.py
+│   │   ├── 20260413_1910_pdb025_security_tables.py
+│   │   ├── 20260413_1918_pdb030_profiles_table.py
+│   │   ├── 20260413_2040_pdb040_addresses_table.py
+│   │   ├── 20260413_2055_pdb055_support_attachment_tables.py
+│   │   ├── 20260413_2105_pdb050_support_tables.py
+│   │   ├── 20260413_2108_pdb060_announcement_status_tables.py
+│   │   ├── 20260413_2115_pdb070_subscription_entitlement_tables.py
+│   │   └── 20260413_2128_pdb075_access_payment_summary_tables.py
+│   ├── env.py
+│   └── script.py.mako
+├── app/
+│   ├── api/
+│   │   ├── routers/
+│   │   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   └── deps.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   └── config.py
+│   ├── db/
+│   │   ├── models/
+│   │   │   ├── __init__.py
+│   │   │   ├── _json.py
+│   │   │   ├── account_security_settings.py
+│   │   │   ├── accounts.py
+│   │   │   ├── addresses.py
+│   │   │   ├── announcements.py
+│   │   │   ├── auth.py
+│   │   │   ├── auth_events.py
+│   │   │   ├── auth_sessions.py
+│   │   │   ├── communication_preferences.py
+│   │   │   ├── email_verification_tokens.py
+│   │   │   ├── entitlement_summaries.py
+│   │   │   ├── mfa_recovery_codes.py
+│   │   │   ├── oauth_connections.py
+│   │   │   ├── password_reset_tokens.py
+│   │   │   ├── payment_method_summaries.py
+│   │   │   ├── payment_summaries.py
+│   │   │   ├── product_access_states.py
+│   │   │   ├── profile_preferences.py
+│   │   │   ├── profiles.py
+│   │   │   ├── service_statuses.py
+│   │   │   ├── subscription_summaries.py
+│   │   │   ├── support_ticket_attachments.py
+│   │   │   ├── support_ticket_messages.py
+│   │   │   ├── support_tickets.py
+│   │   │   └── testimonials.py
+│   │   ├── repositories/
+│   │   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── bootstrap.py
+│   │   ├── session.py
+│   │   └── vocabularies.py
+│   ├── integrations/
+│   │   └── __init__.py
+│   ├── schemas/
+│   │   └── __init__.py
+│   ├── services/
+│   │   └── __init__.py
+│   ├── utils/
+│   │   └── __init__.py
+│   ├── workers/
+│   │   └── __init__.py
+│   ├── __init__.py
+│   └── main.py
+├── docs/
+│   ├── architecture/
+│       ├── Discord_Integration_Decision_Record.md
+│       ├── Discord_Rewards_Workstream_Sequence.md
+│       ├── Rewards_Objectives_Badges_Data_Model_Reference.md
+│       ├── Rewards_Objectives_Badges_Domain_Decision_Record.md
+│       ├── Rewards_Objectives_Badges_UI_Interaction_Reference.md
+│       ├── Zeptalytic_Agent_Harness_Development_Strategy.md
+│       ├── Zeptalytic_Domain_Vocabulary_Decision_Record.md
+│       ├── Zeptalytic_Feature_Ownership_Register.md
+│       ├── Zeptalytic_Parent_DB_Schema_Plan.md
+│       ├── Zeptalytic_Parent_vs_Pay_Data_Ownership_Matrix.md
+│       └── Zeptalytic_Website_Implementation_Control_Plan.md
+├── progress/
+│   └── progress.txt
+├── prompt/
+│   ├── prompt_build.md
+│   └── prompt_plan.md
+├── scripts/
+│   ├── bootstrap_repo_structure.sh
+│   └── ralph-loop.sh
+├── specs/
+│   ├── discord_identity_schema_correction.json
+│   ├── model_file_separation_refactor.json
+│   ├── parent_db_foundation.json
+│   ├── parent_db_verification_and_regression.json
+│   ├── rewards_api_application_layer.json
+│   ├── rewards_domain_db_schema.json
+│   └── rewards_verification_and_regression.json
+├── tests/
+│   ├── integration/
+│   │   ├── __init__.py
+│   │   ├── test_parent_db_bootstrap.py
+│   │   ├── test_parent_db_constraints.py
+│   │   └── test_parent_db_round_trips.py
+│   ├── unit/
+│   │   ├── __init__.py
+│   │   ├── test_auth_models.py
+│   │   ├── test_config.py
+│   │   ├── test_db_bootstrap.py
+│   │   ├── test_domain_vocabulary_decision_record.py
+│   │   ├── test_health.py
+│   │   ├── test_model_metadata_registration.py
+│   │   ├── test_model_module_layout.py
+│   │   ├── test_parent_db_metadata_tables.py
+│   │   ├── test_parent_domain_vocabularies.py
+│   │   └── test_test_topology_contract.py
+│   ├── __init__.py
+│   └── conftest.py
+├── AGENTS.md
+├── Dockerfile
+├── IMPLEMENTATION_PLAN.md
+├── PROMPT.md
+├── README.md
+├── alembic.ini
+├── docker-compose.test.yml
+├── docker-compose.yml
+├── main.py
+└── pyproject.toml

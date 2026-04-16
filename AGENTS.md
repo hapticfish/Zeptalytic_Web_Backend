@@ -1,84 +1,67 @@
 # Codex rules for Zeptalytic Web Backend (read before doing work)
 
 ## Purpose of this repo
-A FastAPI-based parent-site backend for Zeptalytic. This service is the browser-facing API for:
-- auth and account management
-- profile/settings/integrations
-- addresses
-- support tickets and attachments
-- rewards/objectives
-- announcements/status/testimonials
-- dashboard/launcher aggregation
-- Pay-derived read models for billing/access display
-
-It is NOT the source of truth for commercial billing lifecycle logic. The Zeptalytic Pay Service remains authoritative for:
-- pricing truth
-- checkout/payment initiation
-- orders/payments/refunds
-- subscriptions/entitlements
-- disputes/risk
-- provider-facing webhook/finality logic
+A FastAPI-based parent-site backend for the Zeptalytic ecosystem. This service owns:
+- auth / sessions / account profile / settings / addresses
+- support tickets / attachments / announcements / service status
+- rewards / objectives / badges / points / progress presentation
+- browser-facing aggregation for dashboard / launcher / billing
+- parent-side integration contracts to the Zeptalytic Pay service
 
 ## Non-negotiable rules (always)
-- Do NOT add new dependencies (production or dev) unless John explicitly approves.
-- Do NOT delete files unless the current IMPLEMENTATION_PLAN.md explicitly says to.
+- Do NOT add new dependencies unless John explicitly approves.
+- Do NOT delete files unless the active implementation plan explicitly says to.
 - Prefer small, safe, reviewable changes.
-- Follow the existing project structure and separation-of-concerns conventions.
-- Do not break existing behavior unless the active spec requires it.
+- Keep parent-site ownership separate from Pay ownership.
+- Do not move commercial/billing truth into this repo.
+- Do not dump unrelated models into one generic file.
+- Default rule: one table/model per file unless a tightly-coupled pair is explicitly justified.
+- If sensible directories do not exist, create them rather than collapsing concerns into one file.
 
-## Architecture boundary rules (always)
-- Parent backend is the only browser-facing API boundary.
-- Pay remains the commercial source of truth.
-- Parent-owned domains must stay in this repo: auth, settings, addresses, support, rewards, announcements, testimonials, dashboard aggregation.
-- Pricing comparison matrices and marketing copy are parent metadata, not Pay truth.
-- Card data must never pass through this service; Stripe.js / Elements + SetupIntents is the intended card-update path.
+## Locked architecture boundaries
+- Pay remains source of truth for pricing, checkout, orders, payments, refunds, subscriptions, entitlements, disputes, and risk.
+- Parent backend owns auth/settings/addresses/support/rewards/announcements/testimonials/dashboard aggregation.
+- Stripe.js / Elements + SetupIntents is the intended payment-method update path.
+- Discord current active linkage is modeled on `profiles`, with preserved historical connection state tracked separately.
+- The docs under `docs/architecture/` are durable reference material; do not contradict them without updating the relevant decision record first.
 
-## File organization rules (always)
-- Do NOT dump unrelated models or any code generation into one large file always follow good coding convention and separation.
-- One SQLAlchemy model/table per file by default.
-- Group files into sensible directories when the project needs it; create missing directories rather than collapsing concerns into a generic file.
-- Acceptable model layout examples:
-  - `app/db/models/accounts.py`
-  - `app/db/models/profiles.py`
-  - `app/db/models/support_tickets.py`
-  - `app/db/models/billing/payment_summaries.py`
-- Shared mixins, enums, or helpers may live in separate support files, but table models should remain individually readable.
-- The same principle applies to schemas, services, repositories, and routers: split by responsibility.
+## Required rehydrate behavior (every run)
+Read these first:
+1. `AGENTS.md`
+2. `IMPLEMENTATION_PLAN.md`
+3. `PROMPT.md` (if present)
+4. `progress/progress.txt` (last 1–3 entries)
+5. Determine the active spec from the `Active spec:` line in `IMPLEMENTATION_PLAN.md`
+6. Read the active spec file
+7. Read these architecture references when relevant:
+   - `docs/architecture/Zeptalytic_Website_Implementation_Control_Plan.md`
+   - `docs/architecture/Zeptalytic_Feature_Ownership_Register.md`
+   - `docs/architecture/Zeptalytic_Parent_vs_Pay_Data_Ownership_Matrix.md`
+   - `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md`
+   - `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md` is the canonical source for parent-site vocabulary, enum values, and status names.
+   - `docs/architecture/Discord_Integration_Decision_Record.md`
+   - `docs/architecture/Rewards_Objectives_Badges_Domain_Decision_Record.md`
+   - `docs/architecture/Rewards_Objectives_Badges_Data_Model_Reference.md`
+   - `docs/architecture/Rewards_Objectives_Badges_UI_Interaction_Reference.md`
+   - `docs/architecture/Discord_Rewards_Workstream_Sequence.md`
+8. Run `git status`
+9. Run `git log -5 --oneline`
 
-## Vocabulary decisions (locked)
-Use the canonical vocabularies from:
-- `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md`
+## Search-before-edit rule
+Before changing code, search the repo for:
+- existing router/service/model/repository patterns
+- existing tests that already cover the same surface
+- existing migration/bootstrap conventions
+Do not assume something is missing until you search.
 
-Treat that decision record as the canonical source for parent-site enums and status values.
-Do not invent alternate status values during implementation.
+## Test requirement
+Do not claim done until the authoritative suite passes:
+- `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test`
 
-## Required “rehydrate context” behavior (every run)
-1) Read these files first:
-   - `AGENTS.md`
-   - `IMPLEMENTATION_PLAN.md`
-   - `PROMPT.md` (if present)
-   - `progress/progress.txt` (last 1–3 entries)
-2) Determine the ACTIVE SPEC FILE from `IMPLEMENTATION_PLAN.md` (or `PROMPT.md` fallback).
-3) Read the ACTIVE SPEC file.
-4) Before editing, search the repo for existing related code.
-   - Do not assume something is missing.
-   - Summarize what you found before changing anything.
-   - Use commands that exist in the repo environment: `git grep`, `find`, `rg`, `grep -R`, `python -c`.
+If the command cannot run, record the blocker in `progress/progress.txt` and stop the iteration.
 
-## Test requirements (must be followed)
-- Do not claim “done” until tests pass.
-- The authoritative full test run for this repo is:
-  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test`
-- If docker is unavailable or the command cannot run because required topology files are missing:
-  - record the blocker in `progress/progress.txt`
-  - do NOT mark the spec item complete
-  - stop the iteration with `ITERATION_BLOCKED`
-
-## Git/branch rules
-- Work on a feature branch, not main/master.
-- Commit only when tests are green.
-- One commit per meaningful step.
-- Use short commit messages:
-  - `pdb-020: add account/auth tables`
-  - `mdl-030: split support models into per-file modules`
-  - `dbv-040: add metadata and migration verification tests`
+## Durable artifact rule
+When a run is successful:
+- update the active spec only for the completed item
+- append a new entry to `progress/progress.txt`
+- keep progress append-only

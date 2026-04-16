@@ -1,6 +1,6 @@
 # Zeptalytic Web Backend Implementation Plan
 
-Active spec: specs/discord_identity_schema_correction.json
+Active spec: specs/rewards_domain_db_schema.json
 
 ## Current workstream
 Correct the Discord identity schema placement, then build the rewards/objectives/badges workstream as a separate sequence: domain DB schema, verification/regression hardening, and API/application layer.
