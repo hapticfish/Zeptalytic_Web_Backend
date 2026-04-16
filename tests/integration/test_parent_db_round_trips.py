@@ -14,6 +14,8 @@ from app.db.models.payment_summaries import PaymentSummary
 from app.db.models.profiles import Profile
 from app.db.models.rewards.reward_accounts import RewardAccount
 from app.db.models.rewards.reward_events import RewardEvent
+from app.db.models.rewards.reward_milestones import RewardMilestone
+from app.db.models.rewards.reward_tier_definitions import RewardTierDefinition
 from app.db.models.subscription_summaries import SubscriptionSummary
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
 from app.db.models.support_ticket_messages import SupportTicketMessage
@@ -340,3 +342,27 @@ def test_parent_rewards_foundation_round_trip() -> None:
     finally:
         if account_id is not None:
             _cleanup_account(account_id)
+
+
+def test_parent_rewards_tier_and_milestone_definitions_round_trip() -> None:
+    with SessionLocal() as session:
+        tiers = session.scalars(
+            select(RewardTierDefinition).order_by(RewardTierDefinition.sort_order)
+        ).all()
+        milestones = session.scalars(
+            select(RewardMilestone).order_by(RewardMilestone.sort_order)
+        ).all()
+
+    assert [tier.display_name for tier in tiers] == [
+        "Bronze",
+        "Silver",
+        "Gold",
+        "Platinum",
+        "Plus",
+    ]
+    assert milestones[0].tier_code == "BRONZE"
+    assert milestones[8].milestone_points == 900
+    assert milestones[9].tier_code == "BRONZE"
+    assert milestones[9].is_tier_boundary is True
+    assert milestones[10].tier_code == "SILVER"
+    assert milestones[49].tier_code == "PLUS"

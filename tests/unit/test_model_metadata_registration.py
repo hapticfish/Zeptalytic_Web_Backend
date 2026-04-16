@@ -27,6 +27,8 @@ EXPECTED_TABLES = {
     "payment_method_summaries",
     "reward_accounts",
     "reward_events",
+    "reward_milestones",
+    "reward_tier_definitions",
 }
 
 

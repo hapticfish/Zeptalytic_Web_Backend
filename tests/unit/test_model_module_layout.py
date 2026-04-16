@@ -22,6 +22,8 @@ from app.db.models.profile_preferences import ProfilePreference
 from app.db.models.profiles import Profile
 from app.db.models.rewards.reward_accounts import RewardAccount
 from app.db.models.rewards.reward_events import RewardEvent
+from app.db.models.rewards.reward_milestones import RewardMilestone
+from app.db.models.rewards.reward_tier_definitions import RewardTierDefinition
 from app.db.models.service_statuses import ServiceStatus
 from app.db.models.subscription_summaries import SubscriptionSummary
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
@@ -60,6 +62,8 @@ EXPECTED_REWARD_MODEL_FILES = {
     "__init__.py",
     "reward_accounts.py",
     "reward_events.py",
+    "reward_milestones.py",
+    "reward_tier_definitions.py",
 }
 
 EXPECTED_MODEL_MODULES = {
@@ -83,6 +87,8 @@ EXPECTED_MODEL_MODULES = {
     "app.db.models.profiles": Profile,
     "app.db.models.rewards.reward_accounts": RewardAccount,
     "app.db.models.rewards.reward_events": RewardEvent,
+    "app.db.models.rewards.reward_milestones": RewardMilestone,
+    "app.db.models.rewards.reward_tier_definitions": RewardTierDefinition,
     "app.db.models.service_statuses": ServiceStatus,
     "app.db.models.subscription_summaries": SubscriptionSummary,
     "app.db.models.support_ticket_attachments": SupportTicketAttachment,

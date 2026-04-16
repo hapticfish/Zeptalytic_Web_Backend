@@ -13,6 +13,8 @@ from app.db.models.discord_connection_history import DiscordConnectionHistory
 from app.db.models.payment_method_summaries import PaymentMethodSummary
 from app.db.models.rewards.reward_accounts import RewardAccount
 from app.db.models.rewards.reward_events import RewardEvent
+from app.db.models.rewards.reward_milestones import RewardMilestone
+from app.db.models.rewards.reward_tier_definitions import RewardTierDefinition
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
 from app.db.models.support_tickets import SupportTicket
 from app.db.session import SessionLocal, engine
@@ -333,3 +335,47 @@ def test_parent_db_reward_event_requires_existing_account_and_indexes_exist() ->
     assert "ix_reward_events_account_id" in reward_event_indexes
     assert "ix_reward_events_created_at" in reward_event_indexes
     assert "ix_reward_events_reversed_event_id" in reward_event_indexes
+
+
+def test_parent_db_reward_definition_seed_contract_and_indexes_exist() -> None:
+    with SessionLocal() as session:
+        tiers = session.query(RewardTierDefinition).order_by(RewardTierDefinition.sort_order).all()
+        milestones = session.query(RewardMilestone).order_by(RewardMilestone.sort_order).all()
+
+    assert [tier.tier_code for tier in tiers] == [
+        "BRONZE",
+        "SILVER",
+        "GOLD",
+        "PLATINUM",
+        "PLUS",
+    ]
+    assert [(tier.tier_start_points, tier.tier_end_points) for tier in tiers] == [
+        (0, 999),
+        (1000, 1999),
+        (2000, 2999),
+        (3000, 3999),
+        (4000, 4999),
+    ]
+    assert len(milestones) == 50
+    assert milestones[0].milestone_points == 100
+    assert milestones[-1].milestone_points == 5000
+    assert [milestone.milestone_points for milestone in milestones if milestone.is_tier_boundary] == [
+        1000,
+        2000,
+        3000,
+        4000,
+        5000,
+    ]
+
+    inspector = inspect(engine)
+    reward_tier_indexes = {
+        index["name"] for index in inspector.get_indexes("reward_tier_definitions")
+    }
+    reward_milestone_indexes = {
+        index["name"] for index in inspector.get_indexes("reward_milestones")
+    }
+
+    assert "ix_reward_tier_definitions_sort_order" in reward_tier_indexes
+    assert "uq_reward_tier_definitions_tier_code" in reward_tier_indexes
+    assert "ix_reward_milestones_sort_order" in reward_milestone_indexes
+    assert "uq_reward_milestones_milestone_points" in reward_milestone_indexes

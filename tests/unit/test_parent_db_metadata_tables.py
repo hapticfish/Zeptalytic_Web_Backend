@@ -39,6 +39,8 @@ PAY_DERIVED_PROJECTION_TABLES = {
 REWARDS_FOUNDATION_TABLES = {
     "reward_accounts",
     "reward_events",
+    "reward_milestones",
+    "reward_tier_definitions",
 }
 
 EXPECTED_PARENT_TABLES = (

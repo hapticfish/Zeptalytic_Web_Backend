@@ -24,6 +24,8 @@ MODEL_MODULES = (
     "app.db.models.profiles",
     "app.db.models.rewards.reward_accounts",
     "app.db.models.rewards.reward_events",
+    "app.db.models.rewards.reward_milestones",
+    "app.db.models.rewards.reward_tier_definitions",
     "app.db.models.service_statuses",
     "app.db.models.subscription_summaries",
     "app.db.models.support_ticket_attachments",
