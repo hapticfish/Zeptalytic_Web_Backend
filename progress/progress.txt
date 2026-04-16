@@ -534,7 +534,6 @@
 - Next: `disc-999` remains open as the final spec gate item.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
-
 ## Iteration entry
 - Date/time: 2026-04-14T00:29:11.4622516-05:00
 - Goal for this iteration: Complete `dbv-050` by adding Postgres-backed uniqueness/index/constraint verification for key parent-owned and projection tables.
@@ -911,5 +910,22 @@
   - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; `79 passed in 2.13s`
 - Notes / risks: The first Docker run failed because the initial test assumed Alembic revision IDs included the descriptive filename suffix; I corrected the regression to match the repo's actual timestamp-based revision IDs and reran the full suite successfully. The compose output still includes expected duplicate-key/FK errors from negative-path tests, and `migrate` still exits `137` after the green `test` exit because of `--abort-on-container-exit`; the authoritative command itself exited `0`.
 - Next: `disc-999` remains open as the final spec gate item.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+## Iteration entry
+- Date/time: 2026-04-15T23:34:55.3706691-05:00
+- Goal for this iteration: Complete `disc-999` by running the authoritative Docker suite and closing the active Discord correction spec only if it is green.
+- What I found (repo search summary): `git ls-files`, `rg`, and `git grep` confirmed the suite gate is wired through `docker-compose.test.yml`, which already defines the required `db`, `migrate`, and `test` services with the `db` -> `migrate` -> `test` dependency path. Current Discord-correction behavior is already implemented in `app/db/models/profiles.py`, `app/db/models/discord_connection_history.py`, `alembic/versions/20260415_2315_disc010_profile_discord_fields.py`, and `alembic/versions/20260415_2345_disc020_discord_history_table.py`, while metadata registration still flows through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`. Existing tests covering the target area already live in `tests/unit/test_auth_models.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`.
+- What I changed: Marked `disc-999` complete in `specs/discord_identity_schema_correction.json` after the required authoritative suite passed, and appended this progress entry at EOF.
+- Why I changed: `disc-999` is the final quality gate for the active spec and only allows completion after the exact Docker command succeeds.
+- Updated Files:
+  - progress/progress.txt
+  - specs/discord_identity_schema_correction.json
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; `79 passed in 2.13s`
+- Notes / risks: The compose output still includes expected duplicate-key and FK errors from negative-path regression tests, and `migrate` exits `137` after the green `test` exit because `--abort-on-container-exit` stops the stack; the authoritative command itself exited `0`, so the required gate passed.
+- Next: Active spec is fully complete; switch `IMPLEMENTATION_PLAN.md` to the next queued spec before the next run.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
