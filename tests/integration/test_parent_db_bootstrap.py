@@ -32,3 +32,22 @@ def test_parent_db_bootstrap_matches_migrated_postgres_schema() -> None:
         f"Missing tables: {sorted(missing_tables)}. "
         f"Unexpected tables: {sorted(unexpected_tables)}."
     )
+
+
+def test_parent_db_bootstrap_exposes_discord_correction_schema() -> None:
+    inspector = inspect(engine)
+
+    profile_columns = {
+        column["name"]: column for column in inspector.get_columns("profiles")
+    }
+    discord_history_columns = {
+        column["name"]: column
+        for column in inspector.get_columns("discord_connection_history")
+    }
+
+    assert "discord_user_id" in profile_columns
+    assert "discord_username" in profile_columns
+    assert "discord_integration_status" in profile_columns
+    assert "discord_user_id" in discord_history_columns
+    assert "discord_username" in discord_history_columns
+    assert "status" in discord_history_columns

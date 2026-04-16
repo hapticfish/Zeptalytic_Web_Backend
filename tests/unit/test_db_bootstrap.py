@@ -1,4 +1,6 @@
 from sqlalchemy import MetaData
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 import app.db.models as model_registry
 import app.db.bootstrap as bootstrap
@@ -58,3 +60,16 @@ def test_get_target_metadata_registers_split_model_tables() -> None:
         "payment_summaries",
         "payment_method_summaries",
     }.issubset(set(metadata.tables))
+
+
+def test_alembic_history_includes_discord_correction_revisions() -> None:
+    alembic_config = Config("alembic.ini")
+    script_directory = ScriptDirectory.from_config(alembic_config)
+    revision_2345 = script_directory.get_revision("20260415_2345")
+    revision_2315 = script_directory.get_revision("20260415_2315")
+
+    assert revision_2315 is not None
+    assert revision_2345 is not None
+    assert revision_2315.path.endswith("20260415_2315_disc010_profile_discord_fields.py")
+    assert revision_2345.path.endswith("20260415_2345_disc020_discord_history_table.py")
+    assert revision_2345.down_revision == "20260415_2315"

@@ -515,6 +515,27 @@
 - Commit: pending
 
 ## Iteration entry
+- Date/time: 2026-04-15T23:29:54.2845093-05:00
+- Goal for this iteration: Complete `disc-030` by adding focused regression coverage for Discord migration presence and migrated-schema registration/shape.
+- What I found (repo search summary): `git ls-files`, `rg`, and `git grep` showed the Discord correction surface already wired through `app/db/models/profiles.py`, `app/db/models/discord_connection_history.py`, `app/db/models/accounts.py`, `app/db/models/__init__.py`, `app/db/bootstrap.py`, `alembic/env.py`, and the two Discord revisions `alembic/versions/20260415_2315_disc010_profile_discord_fields.py` and `alembic/versions/20260415_2345_disc020_discord_history_table.py`. Existing tests already covered metadata registration and ORM behavior in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_domain_vocabularies.py`, `tests/unit/test_auth_models.py`, plus migrated-Postgres behavior in `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, and `tests/integration/test_parent_db_constraints.py`. The missing gap was a focused regression proving the Discord revisions are present in Alembic history and that the migrated live schema exposes the Discord correction columns/tables explicitly.
+- What I changed: Added a unit regression in `tests/unit/test_db_bootstrap.py` that locks the presence of the `disc-010` and `disc-020` Alembic revisions by revision ID, filename, and chain order, and added an integration regression in `tests/integration/test_parent_db_bootstrap.py` that asserts the migrated Postgres schema exposes the expected Discord profile columns and `discord_connection_history` columns.
+- Why I changed: `disc-030` requires targeted migration/registration regression coverage on top of the broader metadata and ORM tests already in the repo, and the Discord workstream sequence explicitly calls out migration verification as part of this corrective slice.
+- Updated Files:
+  - progress/progress.txt
+  - specs/discord_identity_schema_correction.json
+  - tests/integration/test_parent_db_bootstrap.py
+  - tests/unit/test_db_bootstrap.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `python -m compileall tests` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; `79 passed in 2.13s`
+- Notes / risks: The first Docker run failed because the initial test assumed Alembic revision IDs included the descriptive filename suffix; I corrected the regression to match the repo’s actual timestamp-based revision IDs and reran the full suite successfully. The compose output still includes expected duplicate-key/FK errors from negative-path tests, and `migrate` still exits `137` after the green `test` exit because of `--abort-on-container-exit`; the authoritative command itself exited `0`.
+- Next: `disc-999` remains open as the final spec gate item.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+
+## Iteration entry
 - Date/time: 2026-04-14T00:29:11.4622516-05:00
 - Goal for this iteration: Complete `dbv-050` by adding Postgres-backed uniqueness/index/constraint verification for key parent-owned and projection tables.
 - What I found (repo search summary): The current model wiring still registers all ORM modules through `app/db/models/__init__.py`, and the relevant Postgres-backed schema rules already lived in the model/migration pairs for `accounts.py` + `20260413_1835_pdb020_auth_tables.py`, `support_tickets.py` + `20260413_2105_pdb050_support_tables.py`, `support_ticket_attachments.py` + `20260413_2055_pdb055_support_attachment_tables.py`, `payment_method_summaries.py` + `20260413_2128_pdb075_access_payment_summary_tables.py`, and `addresses.py` + `20260413_2040_pdb040_addresses_table.py`. Existing coverage in `tests/unit/test_auth_models.py` already asserted metadata-level unique constraints and SQLite behavior for usernames, ticket codes, attachment storage keys, and the payment-method provider-method pair, while `tests/integration/test_parent_db_round_trips.py` only covered successful persistence and relationship loading. There was no integration file proving those constraints and index contracts survive the migrated Postgres schema, and `addresses.is_primary` was only a boolean default, not a uniqueness constraint.
@@ -869,5 +890,26 @@
   - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; `77 passed in 2.13s`
 - Notes / risks: The Docker output still showed expected duplicate-key and FK errors from negative-path regression tests, and the `migrate` container exited with code 137 after the green `test` exit because compose was running with `--abort-on-container-exit`; the authoritative command itself exited 0, so the required quality gate passed.
 - Next: Implement `disc-030` by adding any remaining focused regression coverage for migration presence and Discord profile/history table registration.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+
+## Iteration entry
+- Date/time: 2026-04-15T23:29:54.2845093-05:00
+- Goal for this iteration: Complete `disc-030` by adding focused regression coverage for Discord migration presence and migrated-schema registration/shape.
+- What I found (repo search summary): `git ls-files`, `rg`, and `git grep` showed the Discord correction surface already wired through `app/db/models/profiles.py`, `app/db/models/discord_connection_history.py`, `app/db/models/accounts.py`, `app/db/models/__init__.py`, `app/db/bootstrap.py`, `alembic/env.py`, and the two Discord revisions `alembic/versions/20260415_2315_disc010_profile_discord_fields.py` and `alembic/versions/20260415_2345_disc020_discord_history_table.py`. Existing tests already covered metadata registration and ORM behavior in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_domain_vocabularies.py`, `tests/unit/test_auth_models.py`, plus migrated-Postgres behavior in `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, and `tests/integration/test_parent_db_constraints.py`. The missing gap was a focused regression proving the Discord revisions are present in Alembic history and that the migrated live schema exposes the Discord correction columns/tables explicitly.
+- What I changed: Added a unit regression in `tests/unit/test_db_bootstrap.py` that locks the presence of the `disc-010` and `disc-020` Alembic revisions by revision ID, filename, and chain order, and added an integration regression in `tests/integration/test_parent_db_bootstrap.py` that asserts the migrated Postgres schema exposes the expected Discord profile columns and `discord_connection_history` columns.
+- Why I changed: `disc-030` requires targeted migration/registration regression coverage on top of the broader metadata and ORM tests already in the repo, and the Discord workstream sequence explicitly calls out migration verification as part of this corrective slice.
+- Updated Files:
+  - progress/progress.txt
+  - specs/discord_identity_schema_correction.json
+  - tests/integration/test_parent_db_bootstrap.py
+  - tests/unit/test_db_bootstrap.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `python -m compileall tests` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; `79 passed in 2.13s`
+- Notes / risks: The first Docker run failed because the initial test assumed Alembic revision IDs included the descriptive filename suffix; I corrected the regression to match the repo's actual timestamp-based revision IDs and reran the full suite successfully. The compose output still includes expected duplicate-key/FK errors from negative-path tests, and `migrate` still exits `137` after the green `test` exit because of `--abort-on-container-exit`; the authoritative command itself exited `0`.
+- Next: `disc-999` remains open as the final spec gate item.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending

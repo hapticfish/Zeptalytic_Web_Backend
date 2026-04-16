@@ -64,7 +64,9 @@
         "Add/update tests for metadata table registration and migration presence.",
         "Add/update tests for the profile Discord fields and preserved-history table."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-15T23:29:54.2845093-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "disc-999",
