@@ -1073,3 +1073,36 @@
 - Next: `rdb-040` is now the next open rewards-schema build target.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T00:20:28.7639707-05:00
+- Goal for this iteration: Complete `rdb-050` by adding the rewards notification/presentation queue schema slice, keeping milestone auto-reveal and queued objectives-page presentation distinct, then prove it through the authoritative Docker suite.
+- What I found (repo search summary): `git ls-files`, `rg`, and targeted reads showed the rewards package already contained one-table-per-file models through `rdb-040` under `app/db/models/rewards/`, with registration centralized in `app/db/models/__init__.py` and Alembic discovery still flowing through `app/db/bootstrap.py` -> `alembic/env.py`. `reward_notifications` was already referenced in the rewards architecture docs and in `tests/unit/test_db_bootstrap.py`, but no model or migration existed yet. Existing regression coverage for this surface already lived in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, plus migrated-Postgres checks in `tests/integration/test_parent_db_constraints.py` and `tests/integration/test_parent_db_round_trips.py`.
+- What I changed: Added the one-table-per-file `RewardNotification` ORM model in `app/db/models/rewards/reward_notifications.py`; wired it into the central model registry plus the existing `Account`, `ObjectiveDefinition`, `RewardGrant`, `BadgeDefinition`, and `RewardEvent` relationships; added Alembic revision `20260416_0245_rdb050_reward_notifications.py` to create the `reward_notifications` table with account/objective/grant/badge/event references, queue status, seen/dismissed timestamps, sequence ordering, and metadata; and updated the unit/integration registration, layout, metadata, FK/index, and round-trip tests for this exact queue surface.
+- Why I changed: `rdb-050` requires a parent-owned queue structure that can preserve the UI split locked in the rewards decision records: milestone progress-bar achievements can auto-present, while non-milestone objective completions queue ordered notifications for later handling on the objectives page, including skip/seen behavior.
+- Updated Files:
+  - app/db/models/__init__.py
+  - app/db/models/accounts.py
+  - app/db/models/rewards/badge_definitions.py
+  - app/db/models/rewards/objective_definitions.py
+  - app/db/models/rewards/reward_events.py
+  - app/db/models/rewards/reward_grants.py
+  - progress/progress.txt
+  - specs/rewards_domain_db_schema.json
+  - tests/integration/test_parent_db_constraints.py
+  - tests/integration/test_parent_db_round_trips.py
+  - tests/unit/test_db_bootstrap.py
+  - tests/unit/test_model_metadata_registration.py
+  - tests/unit/test_model_module_layout.py
+  - tests/unit/test_parent_db_metadata_tables.py
+- New Files:
+  - alembic/versions/20260416_0245_rdb050_reward_notifications.py
+  - app/db/models/rewards/reward_notifications.py
+- Removed Files:
+- Tests run + results:
+  - `python -m pytest tests/unit/test_db_bootstrap.py tests/unit/test_model_module_layout.py tests/unit/test_model_metadata_registration.py tests/unit/test_parent_db_metadata_tables.py` -> could not run locally; the host Python environment does not have `pytest` installed
+  - `python -m pytest tests/integration/test_parent_db_constraints.py -k reward_notifications tests/integration/test_parent_db_round_trips.py -k reward_notification` -> could not run locally; the host Python environment does not have `pytest` installed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `92 passed in 2.64s`
+- Notes / risks: The local host environment also lacks `sqlalchemy`, so only the containerized test environment was usable for execution. The Docker output still includes expected duplicate-key/FK violations from negative-path regression tests, and `migrate` exits `137` after the green `test` exit because `--abort-on-container-exit` stops the stack; the authoritative command itself exited `0`. `reward_notifications.notification_type` and `reward_notifications.status` remain unconstrained strings because the rewards decision records have not yet locked those exact vocabularies.
+- Next: `rdb-060` is now the next open rewards-schema build target.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending

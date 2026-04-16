@@ -35,6 +35,7 @@ EXPECTED_TABLES = {
     "reward_events",
     "reward_grants",
     "reward_milestones",
+    "reward_notifications",
     "reward_tier_definitions",
 }
 

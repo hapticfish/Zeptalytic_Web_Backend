@@ -105,6 +105,10 @@ class Account(Base):
         back_populates="account",
         cascade="all, delete-orphan",
     )
+    reward_notifications: Mapped[list["RewardNotification"]] = relationship(
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
     account_badges: Mapped[list["AccountBadge"]] = relationship(
         back_populates="account",
         cascade="all, delete-orphan",

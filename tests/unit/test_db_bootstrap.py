@@ -39,6 +39,7 @@ def test_model_registry_imports_split_modules_directly() -> None:
     assert "app.db.models.rewards.reward_events" in model_registry.MODEL_MODULES
     assert "app.db.models.rewards.reward_grants" in model_registry.MODEL_MODULES
     assert "app.db.models.rewards.reward_milestones" in model_registry.MODEL_MODULES
+    assert "app.db.models.rewards.reward_notifications" in model_registry.MODEL_MODULES
     assert "app.db.models.rewards.reward_tier_definitions" in model_registry.MODEL_MODULES
     assert "app.db.models.subscription_summaries" in model_registry.MODEL_MODULES
 
@@ -80,33 +81,22 @@ def test_get_target_metadata_registers_split_model_tables() -> None:
         "reward_events",
         "reward_grants",
         "reward_milestones",
+        "reward_notifications",
         "reward_tier_definitions",
     }.issubset(set(metadata.tables))
 
 
-def test_later_rewards_modules_and_tables_are_not_registered_before_later_rewards_items() -> None:
+def test_reward_notification_module_and_table_are_registered_for_later_rewards_queue_item() -> None:
     metadata = bootstrap.get_target_metadata()
-    reward_tables = {
-        "reward_notifications",
-    }
 
-    assert "app.db.models.rewards.account_badges" in model_registry.MODEL_MODULES
-    assert "app.db.models.rewards.account_objective_progress" in model_registry.MODEL_MODULES
-    assert "app.db.models.rewards.badge_definitions" in model_registry.MODEL_MODULES
-    assert "app.db.models.rewards.objective_definitions" in model_registry.MODEL_MODULES
-    assert "app.db.models.rewards.objective_reward_links" in model_registry.MODEL_MODULES
-    assert "app.db.models.rewards.reward_accounts" in model_registry.MODEL_MODULES
-    assert "app.db.models.rewards.reward_definitions" in model_registry.MODEL_MODULES
-    assert "app.db.models.rewards.reward_events" in model_registry.MODEL_MODULES
-    assert "app.db.models.rewards.reward_grants" in model_registry.MODEL_MODULES
-    assert "app.db.models.rewards.reward_milestones" in model_registry.MODEL_MODULES
-    assert "app.db.models.rewards.reward_tier_definitions" in model_registry.MODEL_MODULES
-    assert reward_tables.isdisjoint(set(metadata.tables))
+    assert "app.db.models.rewards.reward_notifications" in model_registry.MODEL_MODULES
+    assert "reward_notifications" in metadata.tables
 
 
 def test_alembic_history_includes_reward_foundation_and_tier_revisions() -> None:
     alembic_config = Config("alembic.ini")
     script_directory = ScriptDirectory.from_config(alembic_config)
+    revision_0245 = script_directory.get_revision("20260416_0245")
     revision_0215 = script_directory.get_revision("20260416_0215")
     revision_0105 = script_directory.get_revision("20260416_0105")
     revision_0010 = script_directory.get_revision("20260416_0010")
@@ -114,12 +104,14 @@ def test_alembic_history_includes_reward_foundation_and_tier_revisions() -> None
     revision_2345 = script_directory.get_revision("20260415_2345")
     revision_2315 = script_directory.get_revision("20260415_2315")
 
+    assert revision_0245 is not None
     assert revision_0215 is not None
     assert revision_2315 is not None
     assert revision_2345 is not None
     assert revision_2355 is not None
     assert revision_0010 is not None
     assert revision_0105 is not None
+    assert revision_0245.path.endswith("20260416_0245_rdb050_reward_notifications.py")
     assert revision_0215.path.endswith("20260416_0215_rdb040_reward_badge_and_grant_tables.py")
     assert revision_2315.path.endswith("20260415_2315_disc010_profile_discord_fields.py")
     assert revision_2345.path.endswith("20260415_2345_disc020_discord_history_table.py")
@@ -128,6 +120,7 @@ def test_alembic_history_includes_reward_foundation_and_tier_revisions() -> None
     assert revision_0105.path.endswith(
         "20260416_0105_rdb030_objective_definition_and_progress_tables.py"
     )
+    assert revision_0245.down_revision == "20260416_0215"
     assert revision_0215.down_revision == "20260416_0105"
     assert revision_2345.down_revision == "20260415_2315"
     assert revision_2355.down_revision == "20260415_2345"

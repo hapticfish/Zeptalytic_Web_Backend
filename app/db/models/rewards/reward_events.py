@@ -80,6 +80,9 @@ class RewardEvent(Base):
     reward_grants: Mapped[list["RewardGrant"]] = relationship(
         back_populates="source_reward_event"
     )
+    reward_notifications: Mapped[list["RewardNotification"]] = relationship(
+        back_populates="reward_event"
+    )
     account_badges: Mapped[list["AccountBadge"]] = relationship(
         back_populates="source_reward_event"
     )

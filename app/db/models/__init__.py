@@ -32,6 +32,7 @@ MODEL_MODULES = (
     "app.db.models.rewards.reward_events",
     "app.db.models.rewards.reward_grants",
     "app.db.models.rewards.reward_milestones",
+    "app.db.models.rewards.reward_notifications",
     "app.db.models.rewards.reward_tier_definitions",
     "app.db.models.service_statuses",
     "app.db.models.subscription_summaries",

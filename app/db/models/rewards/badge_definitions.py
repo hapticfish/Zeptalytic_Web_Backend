@@ -50,5 +50,7 @@ class BadgeDefinition(Base):
         back_populates="badge_definition",
         cascade="all, delete-orphan",
     )
+    reward_notifications: Mapped[list["RewardNotification"]] = relationship(
+        back_populates="badge_definition"
+    )
     reward_events: Mapped[list["RewardEvent"]] = relationship(back_populates="badge_definition")
-

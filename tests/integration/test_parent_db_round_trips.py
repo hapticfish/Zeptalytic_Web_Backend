@@ -22,6 +22,7 @@ from app.db.models.rewards.reward_definitions import RewardDefinition
 from app.db.models.rewards.reward_events import RewardEvent
 from app.db.models.rewards.reward_grants import RewardGrant
 from app.db.models.rewards.reward_milestones import RewardMilestone
+from app.db.models.rewards.reward_notifications import RewardNotification
 from app.db.models.rewards.reward_tier_definitions import RewardTierDefinition
 from app.db.models.subscription_summaries import SubscriptionSummary
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
@@ -613,6 +614,181 @@ def test_parent_reward_catalog_and_achievement_round_trip() -> None:
                 persisted_objective.objective_reward_links[0].reward_definition.display_name
                 == "Founders Frame"
             )
+    finally:
+        with SessionLocal() as session:
+            if objective_id is not None:
+                objective = session.get(ObjectiveDefinition, objective_id)
+                if objective is not None:
+                    session.delete(objective)
+            if reward_definition_id is not None:
+                reward_definition = session.get(RewardDefinition, reward_definition_id)
+                if reward_definition is not None:
+                    session.delete(reward_definition)
+            if badge_definition_id is not None:
+                badge_definition = session.get(BadgeDefinition, badge_definition_id)
+                if badge_definition is not None:
+                    session.delete(badge_definition)
+            session.commit()
+        if account_id is not None:
+            _cleanup_account(account_id)
+
+
+def test_parent_reward_notification_queue_round_trip() -> None:
+    suffix = _unique_suffix()
+    account_id: UUID | None = None
+    objective_id: UUID | None = None
+    reward_definition_id: UUID | None = None
+    badge_definition_id: UUID | None = None
+
+    try:
+        with SessionLocal() as session:
+            account = Account(
+                username=f"notification_{suffix}",
+                email=f"notification_{suffix}@example.com",
+                password_hash="hashed-password",
+                status="active",
+                role="member",
+            )
+            objective = ObjectiveDefinition(
+                objective_code=f"queued_objective_{suffix}",
+                title="Complete a queued objective",
+                description="Round-trip reward notification queue state.",
+                scope_type="global",
+                product_code=None,
+                objective_type="engagement",
+                is_repeatable=False,
+                repeat_group_key=None,
+                required_count=1,
+                tier_gate=None,
+                subscription_gate_product_code=None,
+                subscription_gate_plan_code=None,
+                is_milestone_objective=False,
+                sort_group="notifications",
+                sort_order=1800,
+                active=True,
+                objective_metadata={"channel": "objectives"},
+            )
+            reward_definition = RewardDefinition(
+                reward_code=f"queued_reward_{suffix}",
+                reward_type="milestone_reward",
+                display_name="Queued Milestone Reward",
+                description="Represents a queued revealable reward.",
+                is_repeatable=False,
+                is_revocable=True,
+                grant_mode="automatic",
+                reward_metadata={"surface": "progress_bar"},
+            )
+            badge_definition = BadgeDefinition(
+                badge_code=f"queued_badge_{suffix}",
+                display_name="Queued Badge",
+                description="Represents a queued revealable badge.",
+                icon_ref="badges/queued-badge.svg",
+                is_revocable=True,
+                badge_metadata={"surface": "objectives"},
+            )
+            session.add_all([account, objective, reward_definition, badge_definition])
+            session.flush()
+            account_id = account.id
+            objective_id = objective.id
+            reward_definition_id = reward_definition.id
+            badge_definition_id = badge_definition.id
+
+            reward_event = RewardEvent(
+                account_id=account.id,
+                event_type="objective_completed",
+                points_delta=100,
+                objective_definition_id=objective.id,
+                reward_definition_id=reward_definition.id,
+                badge_definition_id=badge_definition.id,
+                source_type="objective",
+                source_reference=f"objective:{objective.objective_code}",
+                status="applied",
+                event_metadata={"surface": "objectives_page"},
+            )
+            session.add(reward_event)
+            session.flush()
+
+            reward_grant = RewardGrant(
+                account_id=account.id,
+                reward_definition_id=reward_definition.id,
+                source_objective_definition_id=objective.id,
+                source_reward_event_id=reward_event.id,
+                status="granted",
+                grant_metadata={"surface": "objectives_page"},
+            )
+            session.add(reward_grant)
+            session.flush()
+
+            queued_notification = RewardNotification(
+                account_id=account.id,
+                notification_type="objective_completion_queue",
+                objective_definition_id=objective.id,
+                reward_grant_id=reward_grant.id,
+                badge_definition_id=badge_definition.id,
+                reward_event_id=reward_event.id,
+                status="queued",
+                sequence_order=1,
+                notification_metadata={"entry_surface": "objectives_page"},
+            )
+            skipped_notification = RewardNotification(
+                account_id=account.id,
+                notification_type="milestone_auto_reveal",
+                objective_definition_id=objective.id,
+                reward_grant_id=reward_grant.id,
+                badge_definition_id=badge_definition.id,
+                reward_event_id=reward_event.id,
+                status="dismissed",
+                sequence_order=2,
+                seen_at=datetime.now(timezone.utc).replace(microsecond=0),
+                dismissed_at=datetime.now(timezone.utc).replace(microsecond=0),
+                notification_metadata={"skip_all": True},
+            )
+            session.add_all([queued_notification, skipped_notification])
+            session.commit()
+
+        with SessionLocal() as session:
+            persisted_account = session.scalar(
+                select(Account)
+                .options(
+                    selectinload(Account.reward_notifications).selectinload(
+                        RewardNotification.objective_definition
+                    ),
+                    selectinload(Account.reward_notifications).selectinload(
+                        RewardNotification.reward_grant
+                    ),
+                    selectinload(Account.reward_notifications).selectinload(
+                        RewardNotification.badge_definition
+                    ),
+                    selectinload(Account.reward_notifications).selectinload(
+                        RewardNotification.reward_event
+                    ),
+                )
+                .where(Account.id == account_id)
+            )
+
+            assert persisted_account is not None
+            assert len(persisted_account.reward_notifications) == 2
+
+            notifications_by_sequence = {
+                notification.sequence_order: notification
+                for notification in persisted_account.reward_notifications
+            }
+            queued = notifications_by_sequence[1]
+            dismissed = notifications_by_sequence[2]
+
+            assert queued.status == "queued"
+            assert queued.objective_definition is not None
+            assert queued.objective_definition.objective_code == f"queued_objective_{suffix}"
+            assert queued.reward_grant is not None
+            assert queued.reward_grant.status == "granted"
+            assert queued.badge_definition is not None
+            assert queued.badge_definition.badge_code == f"queued_badge_{suffix}"
+            assert queued.reward_event is not None
+            assert queued.notification_metadata == {"entry_surface": "objectives_page"}
+            assert dismissed.notification_type == "milestone_auto_reveal"
+            assert dismissed.seen_at is not None
+            assert dismissed.dismissed_at is not None
+            assert dismissed.notification_metadata == {"skip_all": True}
     finally:
         with SessionLocal() as session:
             if objective_id is not None:

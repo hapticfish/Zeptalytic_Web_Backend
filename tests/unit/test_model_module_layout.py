@@ -30,6 +30,7 @@ from app.db.models.rewards.reward_definitions import RewardDefinition
 from app.db.models.rewards.reward_events import RewardEvent
 from app.db.models.rewards.reward_grants import RewardGrant
 from app.db.models.rewards.reward_milestones import RewardMilestone
+from app.db.models.rewards.reward_notifications import RewardNotification
 from app.db.models.rewards.reward_tier_definitions import RewardTierDefinition
 from app.db.models.service_statuses import ServiceStatus
 from app.db.models.subscription_summaries import SubscriptionSummary
@@ -77,6 +78,7 @@ EXPECTED_REWARD_MODEL_FILES = {
     "reward_events.py",
     "reward_grants.py",
     "reward_milestones.py",
+    "reward_notifications.py",
     "reward_tier_definitions.py",
 }
 
@@ -109,6 +111,7 @@ EXPECTED_MODEL_MODULES = {
     "app.db.models.rewards.reward_events": RewardEvent,
     "app.db.models.rewards.reward_grants": RewardGrant,
     "app.db.models.rewards.reward_milestones": RewardMilestone,
+    "app.db.models.rewards.reward_notifications": RewardNotification,
     "app.db.models.rewards.reward_tier_definitions": RewardTierDefinition,
     "app.db.models.service_statuses": ServiceStatus,
     "app.db.models.subscription_summaries": SubscriptionSummary,

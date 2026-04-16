@@ -63,4 +63,6 @@ class RewardGrant(Base):
     source_reward_event: Mapped["RewardEvent | None"] = relationship(
         back_populates="reward_grants"
     )
-
+    reward_notifications: Mapped[list["RewardNotification"]] = relationship(
+        back_populates="reward_grant"
+    )

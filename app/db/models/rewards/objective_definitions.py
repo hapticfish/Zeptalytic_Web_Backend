@@ -73,6 +73,9 @@ class ObjectiveDefinition(Base):
     reward_grants: Mapped[list["RewardGrant"]] = relationship(
         back_populates="source_objective_definition"
     )
+    reward_notifications: Mapped[list["RewardNotification"]] = relationship(
+        back_populates="objective_definition"
+    )
     account_badges: Mapped[list["AccountBadge"]] = relationship(
         back_populates="source_objective_definition"
     )
