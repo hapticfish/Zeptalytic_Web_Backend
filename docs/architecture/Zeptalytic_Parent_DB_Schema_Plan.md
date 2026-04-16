@@ -12,7 +12,7 @@ This document is intentionally scoped to the **parent site backend + parent DB**
 4. Stripe card capture is handled through Stripe.js / Elements + SetupIntents. Coinbase is treated as a checkout/payment rail, not a saved-card subsystem.
 5. This first DB workstream should focus on **launch-critical parent-owned tables** first.
 
-## Current repo reality audit (2026-04-13)
+## Current repo reality audit (2026-04-15)
 - Runtime entrypoint: `app/main.py` creates the FastAPI app directly and exposes only `/health`.
 - Config surface: `app/core/config.py` is the active settings module; there is no `app/settings.py` in this repo.
 - DB bootstrap: `app/db/base.py` defines `Base`, `app/db/session.py` defines `engine` and `SessionLocal`, `app/db/bootstrap.py` is the shared metadata-loading surface, and `alembic/env.py` imports `target_metadata` from that bootstrap path.
@@ -20,22 +20,71 @@ This document is intentionally scoped to the **parent site backend + parent DB**
 - Current registered ORM surface: `app/db/models/` now contains one concrete table model per file for the 22 parent tables plus a backward-compatible `app/db/models/auth.py` re-export shim that is no longer part of the registry path.
 - Migration path: `alembic/versions/` now contains the parent DB foundation revision chain through `20260413_2128_pdb075_access_payment_summary_tables.py`.
 - Container topology: `docker-compose.yml` and `docker-compose.test.yml` now exist and define the documented `api`, `migrate`, and `test` services used by the authoritative docker commands.
-- Test harness: concrete tests include `tests/unit/test_db_bootstrap.py`, `tests/unit/test_auth_models.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_model_metadata_registration.py`, and `tests/unit/test_domain_vocabulary_decision_record.py`; DB coverage is still mostly unit-level and SQLite-backed, and `tests/integration/` has no concrete DB tests yet.
+- Test harness: unit coverage includes the metadata/layout/vocabulary guards plus the broad schema checks in `tests/unit/test_auth_models.py`; `tests/integration/` now contains concrete migrated-Postgres coverage in `test_parent_db_bootstrap.py`, `test_parent_db_constraints.py`, and `test_parent_db_round_trips.py`, and `tests/unit/test_test_topology_contract.py` verifies compose topology assumptions.
+- Discord schema reality: `app/db/models/profiles.py` currently carries `discord_username` only, while `app/db/models/oauth_connections.py` still carries provider-linked active Discord identifiers/status, and no dedicated `discord_connection_history` model or migration exists yet.
 
 Planning implication:
-- the parent DB foundation and model-file-separation workstreams are complete; the active workstream is now `specs/parent_db_verification_and_regression.json`.
-- the next implementation slice should be `dbv-001`, starting with a durable gap inventory for metadata, migration, vocabulary, Postgres-backed CRUD/constraint coverage, and compose-topology verification.
+- the parent DB foundation, model-file-separation, and DB verification workstreams are complete enough to move on.
+- the active workstream is `specs/discord_identity_schema_correction.json`, and the next implementation slice should be `disc-001`.
+- the queued rewards sequence remains `specs/rewards_domain_db_schema.json`, then `specs/rewards_verification_and_regression.json`, then `specs/rewards_api_application_layer.json`.
 
-## DB verification surface audit for `dbv-001` (2026-04-13)
-- Existing DB verification is concentrated in unit tests:
-  - `tests/unit/test_auth_models.py` performs broad schema, relationship, default, and constraint checks plus SQLite-backed round trips across all 22 parent tables.
-  - `tests/unit/test_db_bootstrap.py` and `tests/unit/test_model_metadata_registration.py` verify bootstrap/model registration and the expected table inventory.
-  - `tests/unit/test_domain_vocabulary_decision_record.py` guards that the decision record remains explicitly wired into repo control docs, but it does not yet verify model defaults/value vocabularies against the record.
-- Current gaps relative to the active verification spec:
-  - no concrete `tests/integration/` coverage against the migrated Postgres schema
-  - no explicit migration smoke/regression test beyond the compose `migrate` service succeeding during full-suite runs
-  - no dedicated model-vocabulary regression tests comparing implemented defaults/value fields against `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md`
-  - no explicit topology contract test covering `docker-compose.test.yml` service names, dependency ordering, and `pytest -q` execution
+## Rewards domain inventory for `rdb-001` (2026-04-15)
+
+### Current repo reality before rewards tables
+- `app/db/models/` contains only the parent foundation/domain files plus the Discord correction files; there are no committed rewards/objectives/badges/points/progress ORM modules yet.
+- `alembic/versions/` contains the parent DB foundation chain through `20260413_2128_pdb075_access_payment_summary_tables.py` plus the Discord correction revisions `20260415_2315_disc010_profile_discord_fields.py` and `20260415_2345_disc020_discord_history_table.py`; there are no rewards migrations yet.
+- Metadata registration still flows through `app/db/models/__init__.py`, which imports the concrete model modules listed in `MODEL_MODULES`.
+- Shared metadata/Alembic discovery still flows through `app/db/bootstrap.py` -> `target_metadata` -> `alembic/env.py`.
+- Current tests covering the schema/registration surface already live in:
+  - `tests/unit/test_auth_models.py`
+  - `tests/unit/test_db_bootstrap.py`
+  - `tests/unit/test_model_metadata_registration.py`
+  - `tests/unit/test_model_module_layout.py`
+  - `tests/unit/test_parent_db_metadata_tables.py`
+  - `tests/unit/test_parent_domain_vocabularies.py`
+  - `tests/integration/test_parent_db_bootstrap.py`
+  - `tests/integration/test_parent_db_constraints.py`
+  - `tests/integration/test_parent_db_round_trips.py`
+
+### Target rewards model file map
+The rewards workstream is large enough to justify its own package instead of flattening 12+ new tables into `app/db/models/`.
+
+Planned package:
+- `app/db/models/rewards/__init__.py`
+
+Exact target one-table-per-file map:
+| Table | Model | Target file |
+| --- | --- | --- |
+| `reward_accounts` | `RewardAccount` | `app/db/models/rewards/reward_accounts.py` |
+| `reward_events` | `RewardEvent` | `app/db/models/rewards/reward_events.py` |
+| `reward_tier_definitions` | `RewardTierDefinition` | `app/db/models/rewards/reward_tier_definitions.py` |
+| `reward_milestones` | `RewardMilestone` | `app/db/models/rewards/reward_milestones.py` |
+| `reward_definitions` | `RewardDefinition` | `app/db/models/rewards/reward_definitions.py` |
+| `reward_grants` | `RewardGrant` | `app/db/models/rewards/reward_grants.py` |
+| `objective_definitions` | `ObjectiveDefinition` | `app/db/models/rewards/objective_definitions.py` |
+| `objective_reward_links` | `ObjectiveRewardLink` | `app/db/models/rewards/objective_reward_links.py` |
+| `account_objective_progress` | `AccountObjectiveProgress` | `app/db/models/rewards/account_objective_progress.py` |
+| `badge_definitions` | `BadgeDefinition` | `app/db/models/rewards/badge_definitions.py` |
+| `account_badges` | `AccountBadge` | `app/db/models/rewards/account_badges.py` |
+| `reward_notifications` | `RewardNotification` | `app/db/models/rewards/reward_notifications.py` |
+
+Registration plan for later rewards items:
+- keep `app/db/models/__init__.py` as the top-level registry surface
+- add explicit rewards module imports there when the files are created
+- keep Alembic discovery on the existing `app/db/bootstrap.py` -> `alembic/env.py` path rather than introducing a parallel metadata path
+
+## DB verification surface audit (updated 2026-04-15)
+- Existing DB verification now spans both unit and integration coverage:
+  - `tests/unit/test_auth_models.py` still performs broad schema, relationship, default, and SQLite-backed round trips across the current parent tables.
+  - `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_parent_db_metadata_tables.py`, and `tests/unit/test_model_module_layout.py` verify bootstrap/model registration and the expected table inventory/layout.
+  - `tests/unit/test_parent_domain_vocabularies.py` compares implemented vocabularies and string-column shapes against `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md`.
+  - `tests/unit/test_test_topology_contract.py` verifies the committed compose topology contract.
+  - `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py` exercise migrated Postgres schema behavior.
+- Current gaps relevant to the active Discord correction spec:
+  - no Discord-specific metadata or migration regression tests yet
+  - no profile-level `discord_user_id` / `discord_integration_status` fields yet
+  - no dedicated Discord history table/model or migration yet
+  - existing profile/oauth tests still reflect the pre-correction shape where `oauth_connections` is the primary Discord linkage record
 
 Historical note:
 - The `mdl-001` model split inventory below remains as a reference artifact from the completed prior workstream.

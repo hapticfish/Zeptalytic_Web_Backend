@@ -929,3 +929,24 @@
 - Next: Active spec is fully complete; switch `IMPLEMENTATION_PLAN.md` to the next queued spec before the next run.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+## Iteration entry
+- Date/time: 2026-04-15T23:41:10.6726386-05:00
+- Goal for this iteration: Complete `rdb-001` by inventorying the current rewards-schema repo reality and recording the exact target model file map before any rewards tables are added.
+- What I found (repo search summary): `git ls-files`, `rg`, and targeted reads confirmed there are no committed rewards/objectives/badges/points/progress ORM modules in `app/db/models/` and no rewards migrations in `alembic/versions/`; the current ORM surface is still the parent-foundation tables plus the Discord correction files. Metadata registration remains centralized in `app/db/models/__init__.py` through `MODEL_MODULES`, loaded by `app/db/bootstrap.py`, and exposed to Alembic through `alembic/env.py`. Existing registration/schema tests already cover this surface in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_auth_models.py`, and the migrated-Postgres integration tests under `tests/integration/`.
+- What I changed: Added a `rdb-001` inventory section to `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md` documenting the current rewards-domain baseline and the exact planned one-table-per-file map under a new `app/db/models/rewards/` package, and added a regression in `tests/unit/test_db_bootstrap.py` that asserts no rewards modules or rewards tables are registered before the rewards workstream lands.
+- Why I changed: `rdb-001` is explicitly an inventory/file-map gate, and the durable schema plan plus a small baseline regression give the next rewards-schema items a concrete target layout without prematurely adding tables.
+- Updated Files:
+  - docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md
+  - progress/progress.txt
+  - specs/rewards_domain_db_schema.json
+  - tests/unit/test_db_bootstrap.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `python -m pytest tests/unit/test_db_bootstrap.py` -> could not run locally; `pytest` is not installed in the host Python environment
+  - `python -m pytest tests/unit/test_model_module_layout.py tests/unit/test_parent_db_metadata_tables.py` -> could not run locally; `pytest` is not installed in the host Python environment
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; `80 passed in 2.23s`
+- Notes / risks: The authoritative Docker suite is the valid gate here and passed cleanly. The compose output still includes expected duplicate-key and FK violations from negative-path tests, and `migrate` again exits `137` after the green `test` exit because `--abort-on-container-exit` stops the stack.
+- Next: `rdb-010` is now the next open rewards-schema build target.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending

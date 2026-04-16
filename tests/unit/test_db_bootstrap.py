@@ -62,6 +62,27 @@ def test_get_target_metadata_registers_split_model_tables() -> None:
     }.issubset(set(metadata.tables))
 
 
+def test_rewards_modules_and_tables_are_not_registered_before_rewards_workstream() -> None:
+    metadata = bootstrap.get_target_metadata()
+    reward_tables = {
+        "reward_accounts",
+        "reward_events",
+        "reward_tier_definitions",
+        "reward_milestones",
+        "reward_definitions",
+        "reward_grants",
+        "objective_definitions",
+        "objective_reward_links",
+        "account_objective_progress",
+        "badge_definitions",
+        "account_badges",
+        "reward_notifications",
+    }
+
+    assert not any(module_name.startswith("app.db.models.rewards") for module_name in model_registry.MODEL_MODULES)
+    assert reward_tables.isdisjoint(set(metadata.tables))
+
+
 def test_alembic_history_includes_discord_correction_revisions() -> None:
     alembic_config = Config("alembic.ini")
     script_directory = ScriptDirectory.from_config(alembic_config)
