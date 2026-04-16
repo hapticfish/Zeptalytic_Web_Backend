@@ -140,6 +140,14 @@ def test_oauth_connections_have_expected_indexes() -> None:
     assert "uq_oauth_connections_provider_user" in oauth_indexes
 
 
+def test_profiles_include_active_discord_linkage_columns() -> None:
+    profiles_table = Profile.__table__
+
+    assert profiles_table.c.discord_user_id.nullable is True
+    assert profiles_table.c.discord_integration_status.nullable is False
+    assert profiles_table.c.discord_integration_status.server_default is not None
+
+
 def test_addresses_have_expected_defaults_and_indexes() -> None:
     addresses_table = Address.__table__
     address_indexes = {index.name for index in addresses_table.indexes}
@@ -273,7 +281,9 @@ def test_auth_and_security_persistence_round_trip() -> None:
         phone="+1-555-0100",
         timezone="America/Chicago",
         profile_image_url="https://cdn.example.com/avatar.png",
+        discord_user_id="discord-user-123",
         discord_username="testrunner",
+        discord_integration_status="connected",
     )
     profile_preferences = ProfilePreference(
         account_id=account.id,
@@ -501,6 +511,8 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_profile is not None
     assert persisted_profile.display_name == "Test Runner"
     assert persisted_profile.timezone == "America/Chicago"
+    assert persisted_profile.discord_user_id == "discord-user-123"
+    assert persisted_profile.discord_integration_status == "connected"
     assert persisted_profile.account.id == account.id
     assert persisted_profile_preferences is not None
     assert persisted_profile_preferences.preferred_language == "en-US"
@@ -554,7 +566,9 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_payment_method_summary.last4 == "4242"
     assert persisted_payment_method_summary.is_default is True
     assert account.profile is not None
+    assert account.profile.discord_user_id == "discord-user-123"
     assert account.profile.discord_username == "testrunner"
+    assert account.profile.discord_integration_status == "connected"
     assert account.profile_preferences is not None
     assert account.profile_preferences.preferred_language == "en-US"
     assert account.communication_preferences is not None

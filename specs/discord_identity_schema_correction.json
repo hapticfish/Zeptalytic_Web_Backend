@@ -1,0 +1,81 @@
+{
+  "spec_name": "Discord identity schema correction",
+  "description": "Correct the current active Discord linkage shape by placing active Discord identity on profiles while preserving historical connection records separately.",
+  "items": [
+    {
+      "id": "disc-001",
+      "description": "Inventory the current Discord linkage reality across profiles, oauth connections, migrations, metadata registration, and tests before changing linkage placement.",
+      "expected_paths": [
+        "app/db/models/",
+        "app/db/bootstrap.py",
+        "app/db/vocabularies.py",
+        "alembic/versions/",
+        "tests/",
+        "docker-compose.test.yml"
+      ],
+      "steps": [
+        "Search the repo for existing Discord/profile/integration fields, models, migrations, vocabulary helpers, and tests.",
+        "Confirm whether the current active Discord linkage still lives primarily in oauth_connections, whether profiles only carries discord_username today, and whether a history table already exists.",
+        "Record the exact metadata-registration, Alembic-discovery, and compose-test wiring before editing."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-15T23:01:45.3658382-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "disc-010",
+      "description": "Add or align active Discord linkage fields on profiles (`discord_user_id`, `discord_username`, `discord_integration_status`) using the approved vocabulary and one-model-per-file structure.",
+      "expected_paths": [
+        "app/db/models/profiles.py",
+        "alembic/versions/"
+      ],
+      "steps": [
+        "Update the profile model and migration(s) so the current active Discord linkage lives on profiles.",
+        "Use the approved integration status vocabulary.",
+        "Do not add extra Discord fields outside approved scope."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-15T23:14:34.0339633-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "disc-020",
+      "description": "Create or align a separate preserved-history model/table for Discord connection state changes without making it the primary active-linkage source.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/"
+      ],
+      "steps": [
+        "Add a history table/model for Discord connection/disconnection records.",
+        "Keep it separate from the active linkage on profiles.",
+        "Use sensible naming and one-table-per-file structure."
+      ],
+      "passes": false
+    },
+    {
+      "id": "disc-030",
+      "description": "Add focused regression tests covering metadata registration, migrations, and Discord profile/history table behavior.",
+      "expected_paths": [
+        "tests/"
+      ],
+      "steps": [
+        "Add/update tests for metadata table registration and migration presence.",
+        "Add/update tests for the profile Discord fields and preserved-history table."
+      ],
+      "passes": false
+    },
+    {
+      "id": "disc-999",
+      "description": "Run the authoritative docker test suite and mark the spec complete only when green.",
+      "expected_paths": [
+        "docker-compose.test.yml",
+        "tests/"
+      ],
+      "steps": [
+        "Run the full authoritative docker test suite.",
+        "Only mark this item complete when the suite is green."
+      ],
+      "passes": false
+    }
+  ]
+}

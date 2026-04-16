@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, String, Uuid, func
+from sqlalchemy import DateTime, ForeignKey, String, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -22,7 +22,13 @@ class Profile(Base):
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     profile_image_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    discord_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     discord_username: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    discord_integration_status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        server_default=text("'pending'"),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

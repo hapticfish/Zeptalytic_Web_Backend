@@ -12,6 +12,7 @@ from app.db.models.entitlement_summaries import EntitlementSummary
 from app.db.models.oauth_connections import OAuthConnection
 from app.db.models.payment_method_summaries import PaymentMethodSummary
 from app.db.models.payment_summaries import PaymentSummary
+from app.db.models.profiles import Profile
 from app.db.models.product_access_states import ProductAccessState
 from app.db.models.service_statuses import ServiceStatus
 from app.db.models.subscription_summaries import SubscriptionSummary
@@ -78,6 +79,7 @@ MODEL_VOCABULARY_COLUMNS = (
     (PaymentSummary, "payment_rail"),
     (PaymentSummary, "normalized_status"),
     (PaymentMethodSummary, "status"),
+    (Profile, "discord_integration_status"),
     (OAuthConnection, "status"),
     (Address, "address_type"),
     (SupportTicket, "request_type"),

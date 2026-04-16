@@ -10,6 +10,7 @@ from app.db.models.accounts import Account
 from app.db.models.addresses import Address
 from app.db.models.payment_method_summaries import PaymentMethodSummary
 from app.db.models.payment_summaries import PaymentSummary
+from app.db.models.profiles import Profile
 from app.db.models.subscription_summaries import SubscriptionSummary
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
 from app.db.models.support_ticket_messages import SupportTicketMessage
@@ -118,6 +119,50 @@ def test_parent_identity_address_and_support_round_trip() -> None:
                 "The support thread persisted correctly."
             )
             assert persisted_ticket.attachments[0].storage_key == f"support/{suffix}/evidence.txt"
+    finally:
+        if account_id is not None:
+            _cleanup_account(account_id)
+
+
+def test_parent_profile_round_trip_persists_active_discord_linkage() -> None:
+    suffix = _unique_suffix()
+    account_id: UUID | None = None
+
+    try:
+        with SessionLocal() as session:
+            account = Account(
+                username=f"profile_{suffix}",
+                email=f"profile_{suffix}@example.com",
+                password_hash="hashed-password",
+                status="active",
+                role="member",
+            )
+            session.add(account)
+            session.flush()
+            account_id = account.id
+
+            profile = Profile(
+                account_id=account.id,
+                display_name="Discord Linked User",
+                discord_user_id=f"discord-{suffix}",
+                discord_username=f"discord_user_{suffix}",
+                discord_integration_status="connected",
+            )
+            session.add(profile)
+            session.commit()
+
+        with SessionLocal() as session:
+            persisted_account = session.scalar(
+                select(Account)
+                .options(selectinload(Account.profile))
+                .where(Account.id == account_id)
+            )
+
+            assert persisted_account is not None
+            assert persisted_account.profile is not None
+            assert persisted_account.profile.discord_user_id == f"discord-{suffix}"
+            assert persisted_account.profile.discord_username == f"discord_user_{suffix}"
+            assert persisted_account.profile.discord_integration_status == "connected"
     finally:
         if account_id is not None:
             _cleanup_account(account_id)

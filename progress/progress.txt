@@ -758,3 +758,83 @@
 - Next: The active spec is fully complete. Choose the next workstream/spec before the next build iteration.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+
+## Iteration entry
+- Date/time: 2026-04-15T22:34:30-05:00
+- Goal for this iteration: Planning-only rehydration and refinement of the active Discord identity correction workstream before the next build iteration.
+- What I found (repo search summary): `IMPLEMENTATION_PLAN.md` correctly points to `specs/discord_identity_schema_correction.json` as the active spec and keeps the rewards workstreams queued behind it. Current Discord linkage is only partially aligned with the locked architecture: `app/db/models/profiles.py` contains `discord_username` but not `discord_user_id` or `discord_integration_status`, while `app/db/models/oauth_connections.py` still carries provider-linked identifier/status fields and no dedicated `discord_connection_history` model or migration exists. Metadata discovery still flows through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`. Repo verification topology is stronger than some docs claimed: `tests/integration/` now contains concrete migrated-Postgres tests and `tests/unit/test_test_topology_contract.py` locks the compose contract.
+- What I changed: Tightened `disc-001` in `specs/discord_identity_schema_correction.json` so the inventory step explicitly covers `profiles`, `oauth_connections`, vocabulary helpers, metadata registration, Alembic discovery, and compose-test wiring. Updated `docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md` so its repo-reality audit no longer points at the retired DB-verification workstream and instead documents the current Discord gap plus the now-present integration/topology verification coverage.
+- Why I changed: The planning artifacts had drifted behind the repo. Without this correction, the next build run would start from an outdated baseline and could miss that the repo already has the verification harness needed for the Discord correction while still lacking the actual Discord profile/history schema changes.
+- Updated Files:
+  - docs/architecture/Zeptalytic_Parent_DB_Schema_Plan.md
+  - progress/progress.txt
+  - specs/discord_identity_schema_correction.json
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` failed before pytest started. The `db` service came up with an existing Postgres data directory, but the expected `zeptalytic_web_backend_test` database was missing, so the `migrate` service failed on `alembic upgrade head` with `psycopg.OperationalError: ... FATAL: database "zeptalytic_web_backend_test" does not exist`.
+- Notes / risks: This is a current topology/environment blocker on the authoritative docker gate, not a planning-doc parsing issue. The compose log also reported an orphan `zeptalytic_web_backend-api-1` container. Because the required test command failed, this planning run must not claim a green verification gate.
+- Next: Resolve the docker test topology issue so the `db` container initializes the expected `zeptalytic_web_backend_test` database cleanly, then rerun the authoritative command before any build run claims completion of the next spec item.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (planning-only changes; authoritative docker gate is currently blocked)
+
+## Iteration entry
+- Date/time: 2026-04-15T22:36:28.6963588-05:00
+- Goal for this iteration: Execute `disc-001` inventory validation and record the item only if the authoritative docker suite is green.
+- What I found (repo search summary): `app/db/models/profiles.py` still exposes only `Profile.discord_username`, while `app/db/models/oauth_connections.py` still carries `provider_user_id`, `provider_username`, and `status`, so the current active Discord linkage remains centered on `oauth_connections`. `app/db/models/__init__.py` remains the central metadata-registration hub consumed by `app/db/bootstrap.py`, and `alembic/env.py` still discovers metadata through that bootstrap path. The only Discord-related migrations are `alembic/versions/20260413_1918_pdb030_profiles_table.py` and `alembic/versions/20260413_1830_pdb035_profile_settings_tables.py`; there is still no `discord_connection_history` model or migration. Existing coverage for the target area is broad but pre-correction: `tests/unit/test_parent_db_metadata_tables.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_parent_domain_vocabularies.py`, and `tests/unit/test_auth_models.py` cover metadata/vocabulary/ORM behavior, but no test yet targets Discord-specific migration history or a preserved-history table.
+- What I changed: Appended this blocker entry only. No code, migration, test, or spec files were changed.
+- Why I changed: The run routine requires the authoritative docker suite to pass before any active-spec item can be marked complete. The suite failed again before pytest started, so `disc-001` cannot be completed durably in this iteration.
+- Updated Files:
+  - progress/progress.txt
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` failed before pytest. The compose log showed `db-1 | FATAL:  database "zeptalytic_web_backend_test" does not exist`, then `migrate` failed on `alembic upgrade head` with `psycopg.OperationalError` against that same missing database, and `test` never started.
+- Notes / risks: The repo topology still expects the `db` service in `docker-compose.test.yml` to initialize `POSTGRES_DB=zeptalytic_web_backend_test`, but the currently running Postgres container is reusing a data directory where that database is absent. The compose run also reported an orphan `zeptalytic_web_backend-api-1` container, which is evidence of leftover project state in Docker.
+- Next: Fix the Docker test environment so the `db` service reliably creates or exposes `zeptalytic_web_backend_test`, then rerun the authoritative compose command before marking any Discord spec item complete.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (blocked by the required docker quality gate)
+
+## Iteration entry
+- Date/time: 2026-04-15T23:01:45.3658382-05:00
+- Goal for this iteration: Complete `disc-001` by inventorying the current Discord linkage shape and validating the run against the authoritative docker suite.
+- What I found (repo search summary): `git ls-files`, `rg`, and `git grep` confirmed the target surface is still concentrated in `app/db/models/profiles.py`, `app/db/models/oauth_connections.py`, `app/db/vocabularies.py`, `app/db/models/__init__.py`, `app/db/bootstrap.py`, `alembic/versions/20260413_1918_pdb030_profiles_table.py`, `alembic/versions/20260413_1830_pdb035_profile_settings_tables.py`, `docker-compose.test.yml`, and the existing tests under `tests/unit/`. `Profile` still exposes only `discord_username`, while `OAuthConnection` still carries `provider_user_id`, `provider_username`, and `status`, so active Discord linkage remains centered on `oauth_connections`. Metadata discovery still flows through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`. No `discord_connection_history` model or migration exists yet. Existing test coverage in `tests/unit/test_auth_models.py`, `tests/unit/test_parent_domain_vocabularies.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_parent_db_metadata_tables.py`, and `tests/unit/test_test_topology_contract.py` covers the surrounding schema, vocabulary, metadata, and compose wiring, but not the future Discord-correction shape.
+- What I changed: Marked `disc-001` complete in `specs/discord_identity_schema_correction.json` and advanced the implementation plan's immediate next build target to `disc-010`.
+- Why I changed: The repo inventory required by `disc-001` is now explicitly validated against the current code, migration, metadata, compose, and test surfaces, and the authoritative docker quality gate passed in this run.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+  - specs/discord_identity_schema_correction.json
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; `72 passed in 2.13s`
+- Notes / risks: The compose run was green, but the database log still showed expected duplicate-key errors from uniqueness-constraint regression tests during pytest. Those are test assertions, not a blocker.
+- Next: Implement `disc-010` by moving the current active Discord linkage fields onto `profiles` using the locked integration-status vocabulary.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (worktree already contains unrelated uncommitted changes)
+
+## Iteration entry
+- Date/time: 2026-04-15T23:14:34.0339633-05:00
+- Goal for this iteration: Complete `disc-010` by moving the active Discord linkage shape onto `profiles` with the locked integration-status vocabulary and validating it through the authoritative Docker suite.
+- What I found (repo search summary): `app/db/models/profiles.py` still held only `discord_username`, while `app/db/models/oauth_connections.py` still held `provider_user_id`, `provider_username`, and `status`. The approved vocabulary was already implemented as `OAUTH_INTEGRATION_STATUS` in `app/db/vocabularies.py`. Metadata/Alembic discovery still flowed through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`. Existing coverage relevant to this slice lived in `tests/unit/test_auth_models.py`, `tests/unit/test_parent_domain_vocabularies.py`, and `tests/integration/test_parent_db_round_trips.py`.
+- What I changed: Added `Profile.discord_user_id` and `Profile.discord_integration_status` in `app/db/models/profiles.py`; added Alembic revision `alembic/versions/20260415_2315_disc010_profile_discord_fields.py` to add the columns, default `discord_integration_status` to `pending`, and backfill the latest Discord linkage from `oauth_connections`; updated unit/integration regression tests to assert the new profile-owned Discord fields and locked vocabulary column shape.
+- Why I changed: The Discord decision record locks the current active linkage onto `profiles` for simple account/settings reads, while keeping preserved-history work separate for the next item.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/profiles.py
+  - progress/progress.txt
+  - specs/discord_identity_schema_correction.json
+  - tests/integration/test_parent_db_round_trips.py
+  - tests/unit/test_auth_models.py
+  - tests/unit/test_parent_domain_vocabularies.py
+- New Files:
+  - alembic/versions/20260415_2315_disc010_profile_discord_fields.py
+- Removed Files:
+- Tests run + results:
+  - Local focused pytest invocation was not available on the host: `pytest` was not on `PATH`, and `python -m pytest` failed because the host Python environment does not have `pytest` installed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; `74 passed in 2.18s`
+- Notes / risks: The compose output still included expected duplicate-key errors from negative uniqueness tests. The `migrate` container exited with code 137 after the green `test` exit because compose was running with `--abort-on-container-exit`; the authoritative command itself exited 0, so the required quality gate passed.
+- Next: Implement `disc-020` by introducing the dedicated preserved-history Discord connection table/model without making it the active linkage source.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
