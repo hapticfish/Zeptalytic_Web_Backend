@@ -1106,3 +1106,24 @@
 - Next: `rdb-060` is now the next open rewards-schema build target.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T00:24:02.5942820-05:00
+- Goal for this iteration: Complete `rdb-060` by tightening the rewards metadata-registration source of truth and proving bootstrap/Alembic discovery still stays aligned through the authoritative Docker suite.
+- What I found (repo search summary): `git ls-files`, `rg`, and targeted reads showed the rewards ORM files already existed under `app/db/models/rewards/`, with registration still centralized in `app/db/models/__init__.py`, metadata loading in `app/db/bootstrap.py`, and Alembic discovery still importing `target_metadata` from `app/db/bootstrap.py` in `alembic/env.py`. Existing coverage for this surface already lived in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, plus migrated-schema parity coverage in `tests/integration/test_parent_db_bootstrap.py`.
+- What I changed: Added `REWARD_MODEL_MODULES` to `app/db/models/rewards/__init__.py` as the rewards-package registration source of truth; updated `app/db/models/__init__.py` to compose the top-level `MODEL_MODULES` tuple from that shared rewards registry instead of duplicating every rewards module inline; and added unit regressions proving the top-level registry and expected rewards module layout stay synchronized.
+- Why I changed: `rdb-060` is about keeping metadata registration and Alembic discovery clean after the rewards schema additions. The registration already worked, but it still duplicated the rewards module list in the top-level registry. Centralizing that list in the rewards package reduces drift risk while preserving the same bootstrap and Alembic wiring.
+- Updated Files:
+  - app/db/models/__init__.py
+  - app/db/models/rewards/__init__.py
+  - progress/progress.txt
+  - specs/rewards_domain_db_schema.json
+  - tests/unit/test_db_bootstrap.py
+  - tests/unit/test_model_module_layout.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `94 passed in 2.66s`
+- Notes / risks: The Docker run still showed expected duplicate-key and FK violations from negative-path constraint tests, and `migrate` exited `137` after the green `test` exit because `--abort-on-container-exit` tears the stack down; the authoritative command itself exited `0`.
+- Next: `rdb-999` remains open as the last unchecked item in `specs/rewards_domain_db_schema.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending

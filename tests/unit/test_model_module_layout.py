@@ -2,6 +2,7 @@ from importlib import import_module
 from pathlib import Path
 
 import app.db.models as model_registry
+from app.db.models.rewards import REWARD_MODEL_MODULES
 from app.db.models.account_security_settings import AccountSecuritySettings
 from app.db.models.accounts import Account
 from app.db.models.addresses import Address
@@ -133,6 +134,14 @@ def test_expected_rewards_model_files_exist() -> None:
     reward_model_files = {path.name for path in rewards_dir.glob("*.py")}
 
     assert EXPECTED_REWARD_MODEL_FILES == reward_model_files
+
+
+def test_rewards_package_registration_matches_expected_modules() -> None:
+    assert REWARD_MODEL_MODULES == tuple(
+        module_name
+        for module_name in EXPECTED_MODEL_MODULES
+        if module_name.startswith("app.db.models.rewards.")
+    )
 
 
 def test_expected_model_modules_are_registered_and_importable() -> None:

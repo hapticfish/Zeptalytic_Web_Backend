@@ -4,6 +4,7 @@ from alembic.script import ScriptDirectory
 
 import app.db.models as model_registry
 import app.db.bootstrap as bootstrap
+from app.db.models.rewards import REWARD_MODEL_MODULES
 
 
 def test_get_target_metadata_imports_models(monkeypatch) -> None:
@@ -42,6 +43,16 @@ def test_model_registry_imports_split_modules_directly() -> None:
     assert "app.db.models.rewards.reward_notifications" in model_registry.MODEL_MODULES
     assert "app.db.models.rewards.reward_tier_definitions" in model_registry.MODEL_MODULES
     assert "app.db.models.subscription_summaries" in model_registry.MODEL_MODULES
+
+
+def test_model_registry_uses_rewards_package_registration_source_of_truth() -> None:
+    registered_reward_modules = tuple(
+        module_name
+        for module_name in model_registry.MODEL_MODULES
+        if module_name.startswith("app.db.models.rewards.")
+    )
+
+    assert registered_reward_modules == REWARD_MODEL_MODULES
 
 
 def test_get_target_metadata_registers_split_model_tables() -> None:

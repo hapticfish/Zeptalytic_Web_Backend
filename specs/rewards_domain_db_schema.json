@@ -109,7 +109,9 @@
         "Register the new models cleanly without collapsing them into generic files.",
         "Confirm Alembic can discover the new metadata surface."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T00:24:02.5942820-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rdb-999",

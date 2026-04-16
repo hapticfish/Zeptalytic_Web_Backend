@@ -2,6 +2,8 @@
 
 from importlib import import_module
 
+from app.db.models.rewards import REWARD_MODEL_MODULES
+
 
 MODEL_MODULES = (
     "app.db.models.addresses",
@@ -22,24 +24,12 @@ MODEL_MODULES = (
     "app.db.models.product_access_states",
     "app.db.models.profile_preferences",
     "app.db.models.profiles",
-    "app.db.models.rewards.account_badges",
-    "app.db.models.rewards.reward_accounts",
-    "app.db.models.rewards.account_objective_progress",
-    "app.db.models.rewards.badge_definitions",
-    "app.db.models.rewards.objective_definitions",
-    "app.db.models.rewards.objective_reward_links",
-    "app.db.models.rewards.reward_definitions",
-    "app.db.models.rewards.reward_events",
-    "app.db.models.rewards.reward_grants",
-    "app.db.models.rewards.reward_milestones",
-    "app.db.models.rewards.reward_notifications",
-    "app.db.models.rewards.reward_tier_definitions",
     "app.db.models.service_statuses",
     "app.db.models.subscription_summaries",
     "app.db.models.support_ticket_attachments",
     "app.db.models.support_ticket_messages",
     "app.db.models.support_tickets",
-)
+) + REWARD_MODEL_MODULES
 
 
 def import_models() -> None:
