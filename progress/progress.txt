@@ -838,3 +838,36 @@
 - Next: Implement `disc-020` by introducing the dedicated preserved-history Discord connection table/model without making it the active linkage source.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+
+## Iteration entry
+- Date/time: 2026-04-15T23:25:13.3181700-05:00
+- Goal for this iteration: Complete `disc-020` by adding the preserved-history Discord connection table/model and keeping `profiles` as the active linkage source.
+- What I found (repo search summary): `git ls-files`, `git grep`, and `rg` confirmed the Discord correction surface still lives in `app/db/models/profiles.py`, `app/db/models/oauth_connections.py`, `app/db/models/accounts.py`, `app/db/models/__init__.py`, `app/db/bootstrap.py`, `alembic/env.py`, and the existing metadata/layout/ORM tests under `tests/unit/` plus the migrated-Postgres checks in `tests/integration/`. Active linkage was already on `Profile`, but there was still no `app/db/models/discord_connection_history.py`, no metadata registration entry for that table, and no Alembic revision creating it. Existing regression coverage already locked metadata discovery through `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`, plus table inventories in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_parent_db_metadata_tables.py`, and layout wiring in `tests/unit/test_model_module_layout.py`.
+- What I changed: Added `DiscordConnectionHistory` in its own model file with an `Account` relationship and per-table registration; created Alembic revision `alembic/versions/20260415_2345_disc020_discord_history_table.py` to create `discord_connection_history`, index `account_id`, and backfill existing Discord rows from `oauth_connections` without changing `profiles` as the active source; extended unit and integration regressions so metadata inventories, module layout, vocabulary-column checks, ORM round trips, and foreign-key enforcement now include the history table.
+- Why I changed: The Discord decision record requires current linkage to remain on `profiles` while preserved connection state lives separately for audit/history needs, so this slice needed a dedicated table without broadening into OAuth/token behavior.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - app/db/models/__init__.py
+  - app/db/models/accounts.py
+  - progress/progress.txt
+  - specs/discord_identity_schema_correction.json
+  - tests/integration/test_parent_db_constraints.py
+  - tests/integration/test_parent_db_round_trips.py
+  - tests/unit/test_auth_models.py
+  - tests/unit/test_db_bootstrap.py
+  - tests/unit/test_model_metadata_registration.py
+  - tests/unit/test_model_module_layout.py
+  - tests/unit/test_parent_db_metadata_tables.py
+  - tests/unit/test_parent_domain_vocabularies.py
+- New Files:
+  - alembic/versions/20260415_2345_disc020_discord_history_table.py
+  - app/db/models/discord_connection_history.py
+- Removed Files:
+- Tests run + results:
+  - `python -m compileall app tests alembic` -> passed
+  - Host-focused pytest could not run because `pytest` was not on `PATH`, and `python -m pytest ...` failed because the host Python environment does not have `pytest` installed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; `77 passed in 2.13s`
+- Notes / risks: The Docker output still showed expected duplicate-key and FK errors from negative-path regression tests, and the `migrate` container exited with code 137 after the green `test` exit because compose was running with `--abort-on-container-exit`; the authoritative command itself exited 0, so the required quality gate passed.
+- Next: Implement `disc-030` by adding any remaining focused regression coverage for migration presence and Discord profile/history table registration.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending

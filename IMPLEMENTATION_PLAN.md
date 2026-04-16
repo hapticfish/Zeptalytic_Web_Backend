@@ -43,7 +43,7 @@ Read these before every planning/build run:
 
 ### B. Active workstream — Discord identity schema correction
 - Active spec: `specs/discord_identity_schema_correction.json`
-- Immediate next build target: `disc-020`
+- Immediate next build target: `disc-030`
 
 ### C. Queued next workstream — Rewards DB schema
 - Next spec after B is green:

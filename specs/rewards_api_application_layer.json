@@ -1,0 +1,103 @@
+{
+  "spec_name": "Rewards API and application layer",
+  "description": "Implement the parent-owned API/service/schema behavior for rewards summary, objectives detail, progress handling, and reward presentation flows.",
+  "items": [
+    {
+      "id": "rapi-001",
+      "description": "Inventory repo reality for current routers, schemas, services, repositories, and frontend-dependent surfaces related to rewards/objectives before adding endpoints.",
+      "expected_paths": [
+        "app/api/",
+        "app/services/",
+        "app/db/repositories/",
+        "tests/"
+      ],
+      "steps": [
+        "Search for any existing rewards/objectives-related routers/services/repositories/tests.",
+        "Map the existing rewards/objectives frontend expectations to parent backend API surfaces."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rapi-010",
+      "description": "Add parent rewards summary read APIs for the dashboard/rewards page summary surface.",
+      "expected_paths": [
+        "app/api/",
+        "app/services/",
+        "app/schemas/",
+        "app/db/repositories/"
+      ],
+      "steps": [
+        "Implement summary routes/services/schemas/repository calls for current points, current tier, next milestone, and active perks summary.",
+        "Keep parent-owned aggregation separate from Pay."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rapi-020",
+      "description": "Add objectives detail APIs supporting organized objective listing, progress, reward details, and milestone-objective linkage.",
+      "expected_paths": [
+        "app/api/",
+        "app/services/",
+        "app/schemas/",
+        "app/db/repositories/"
+      ],
+      "steps": [
+        "Implement objectives listing/detail routes/services/schemas.",
+        "Support organized presentation for milestone objectives and subscription/tier/product-specific objectives."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rapi-030",
+      "description": "Add queued completion/reward presentation APIs or service flows needed for notifications, seen state, skip-all handling, and ordered reveal behavior.",
+      "expected_paths": [
+        "app/api/",
+        "app/services/",
+        "app/schemas/",
+        "app/db/repositories/"
+      ],
+      "steps": [
+        "Implement the parent backend behavior for queued objective completion presentation.",
+        "Support ordered reveal, seen/consumed state, and skip-all transitions."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rapi-040",
+      "description": "Add service-layer progression/reversal scaffolding needed to support points and reward changes from future triggers without hardcoding unsupported trigger sources.",
+      "expected_paths": [
+        "app/services/",
+        "app/db/repositories/"
+      ],
+      "steps": [
+        "Create internal service-layer primitives for award, reverse, complete-objective, and queue-presentation behavior.",
+        "Do not overbuild external trigger orchestration not yet in scope."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rapi-050",
+      "description": "Add API/application tests covering rewards summary, objectives detail, notification queue behavior, and core service-layer progression flows.",
+      "expected_paths": [
+        "tests/"
+      ],
+      "steps": [
+        "Add/update integration and unit tests for the rewards API/application layer."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rapi-999",
+      "description": "Run the authoritative docker test suite and mark this spec complete only when green.",
+      "expected_paths": [
+        "docker-compose.test.yml",
+        "tests/"
+      ],
+      "steps": [
+        "Run the full authoritative docker test suite.",
+        "Only mark this item complete when green."
+      ],
+      "passes": false
+    }
+  ]
+}

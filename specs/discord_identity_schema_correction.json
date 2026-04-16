@@ -50,7 +50,9 @@
         "Keep it separate from the active linkage on profiles.",
         "Use sensible naming and one-table-per-file structure."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-15T23:25:13.3181700-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "disc-030",

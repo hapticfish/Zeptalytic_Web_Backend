@@ -8,6 +8,7 @@ from sqlalchemy import Boolean, String
 from app.db.models.accounts import Account
 from app.db.models.addresses import Address
 from app.db.models.announcements import Announcement
+from app.db.models.discord_connection_history import DiscordConnectionHistory
 from app.db.models.entitlement_summaries import EntitlementSummary
 from app.db.models.oauth_connections import OAuthConnection
 from app.db.models.payment_method_summaries import PaymentMethodSummary
@@ -80,6 +81,7 @@ MODEL_VOCABULARY_COLUMNS = (
     (PaymentSummary, "normalized_status"),
     (PaymentMethodSummary, "status"),
     (Profile, "discord_integration_status"),
+    (DiscordConnectionHistory, "status"),
     (OAuthConnection, "status"),
     (Address, "address_type"),
     (SupportTicket, "request_type"),

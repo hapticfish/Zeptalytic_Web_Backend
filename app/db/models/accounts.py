@@ -49,6 +49,10 @@ class Account(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    discord_connection_history: Mapped[list["DiscordConnectionHistory"]] = relationship(
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
     oauth_connections: Mapped[list["OAuthConnection"]] = relationship(
         back_populates="account",
         cascade="all, delete-orphan",

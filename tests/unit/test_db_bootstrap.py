@@ -22,6 +22,7 @@ def test_get_target_metadata_imports_models(monkeypatch) -> None:
 
 def test_model_registry_imports_split_modules_directly() -> None:
     assert "app.db.models.auth" not in model_registry.MODEL_MODULES
+    assert "app.db.models.discord_connection_history" in model_registry.MODEL_MODULES
     assert "app.db.models.entitlement_summaries" in model_registry.MODEL_MODULES
     assert "app.db.models.payment_method_summaries" in model_registry.MODEL_MODULES
     assert "app.db.models.payment_summaries" in model_registry.MODEL_MODULES
@@ -43,6 +44,7 @@ def test_get_target_metadata_registers_split_model_tables() -> None:
         "profiles",
         "profile_preferences",
         "communication_preferences",
+        "discord_connection_history",
         "oauth_connections",
         "addresses",
         "support_tickets",

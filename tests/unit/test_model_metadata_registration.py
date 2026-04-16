@@ -12,6 +12,7 @@ EXPECTED_TABLES = {
     "profiles",
     "profile_preferences",
     "communication_preferences",
+    "discord_connection_history",
     "oauth_connections",
     "addresses",
     "support_tickets",

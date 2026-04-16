@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models.accounts import Account
 from app.db.models.addresses import Address
+from app.db.models.discord_connection_history import DiscordConnectionHistory
 from app.db.models.payment_method_summaries import PaymentMethodSummary
 from app.db.models.payment_summaries import PaymentSummary
 from app.db.models.profiles import Profile
@@ -148,13 +149,22 @@ def test_parent_profile_round_trip_persists_active_discord_linkage() -> None:
                 discord_username=f"discord_user_{suffix}",
                 discord_integration_status="connected",
             )
-            session.add(profile)
+            history_entry = DiscordConnectionHistory(
+                account_id=account.id,
+                discord_user_id=f"discord-{suffix}",
+                discord_username=f"discord_user_{suffix}",
+                status="connected",
+            )
+            session.add_all([profile, history_entry])
             session.commit()
 
         with SessionLocal() as session:
             persisted_account = session.scalar(
                 select(Account)
-                .options(selectinload(Account.profile))
+                .options(
+                    selectinload(Account.profile),
+                    selectinload(Account.discord_connection_history),
+                )
                 .where(Account.id == account_id)
             )
 
@@ -163,6 +173,9 @@ def test_parent_profile_round_trip_persists_active_discord_linkage() -> None:
             assert persisted_account.profile.discord_user_id == f"discord-{suffix}"
             assert persisted_account.profile.discord_username == f"discord_user_{suffix}"
             assert persisted_account.profile.discord_integration_status == "connected"
+            assert len(persisted_account.discord_connection_history) == 1
+            assert persisted_account.discord_connection_history[0].discord_user_id == f"discord-{suffix}"
+            assert persisted_account.discord_connection_history[0].status == "connected"
     finally:
         if account_id is not None:
             _cleanup_account(account_id)

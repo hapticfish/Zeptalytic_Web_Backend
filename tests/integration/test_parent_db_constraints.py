@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.models.accounts import Account
 from app.db.models.addresses import Address
+from app.db.models.discord_connection_history import DiscordConnectionHistory
 from app.db.models.payment_method_summaries import PaymentMethodSummary
 from app.db.models.support_ticket_attachments import SupportTicketAttachment
 from app.db.models.support_tickets import SupportTicket
@@ -64,6 +65,23 @@ def test_parent_db_rejects_duplicate_usernames() -> None:
             session.rollback()
     finally:
         _cleanup_accounts(account_ids)
+
+
+def test_parent_db_discord_history_requires_existing_account() -> None:
+    with SessionLocal() as session:
+        session.add(
+            DiscordConnectionHistory(
+                account_id=uuid4(),
+                discord_user_id="discord-missing-account",
+                discord_username="missing_user",
+                status="connected",
+            )
+        )
+
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+        session.rollback()
 
 
 def test_parent_db_rejects_duplicate_support_codes_and_attachment_storage_keys() -> None:

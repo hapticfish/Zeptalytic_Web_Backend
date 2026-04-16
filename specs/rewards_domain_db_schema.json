@@ -1,0 +1,116 @@
+{
+  "spec_name": "Rewards domain DB schema",
+  "description": "Build the parent-owned rewards/objectives/badges/points/progress data model according to the approved domain references.",
+  "items": [
+    {
+      "id": "rdb-001",
+      "description": "Inventory current repo reality and confirm the target rewards model file map before adding tables.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/"
+      ],
+      "steps": [
+        "Search for any existing rewards/objectives/badges/points/progress models, migrations, or tests.",
+        "Record the exact target table/model file map before editing.",
+        "Confirm no unrelated models are collapsed into a single file."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rdb-010",
+      "description": "Add the rewards account / points ledger foundation tables and models.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/"
+      ],
+      "steps": [
+        "Create the current-state rewards account table(s) for global points balance, tier, and summary state.",
+        "Create append-only event/ledger tables for points and reward-related state changes.",
+        "Keep one table/model per file."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rdb-020",
+      "description": "Add tier and milestone definition tables/models using the approved Bronze/Silver/Gold/Platinum/Plus and 100-point milestone rules.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/"
+      ],
+      "steps": [
+        "Create tier definition and milestone definition tables/models.",
+        "Encode the approved tier and milestone structure in schema-friendly form."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rdb-030",
+      "description": "Add objective and objective-progress tables/models supporting both milestone objectives and general objectives, including global/product/subscription/tier scoping.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/"
+      ],
+      "steps": [
+        "Create objective definition tables/models.",
+        "Create account objective progress tables/models.",
+        "Support milestone objectives as objectives in the same domain model."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rdb-040",
+      "description": "Add reward, badge, perk/grant, and account-achievement tables/models needed to represent earned and obtainable items cleanly.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/"
+      ],
+      "steps": [
+        "Create reward definition and earned/grant tables/models.",
+        "Create badge definition and account badge tables/models.",
+        "Create any necessary reward-to-objective / reward-to-milestone linkage tables."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rdb-050",
+      "description": "Add notification/presentation queue tables/models needed for queued objective completion and reward reveal flows.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/"
+      ],
+      "steps": [
+        "Create data structures supporting queued objective-completion presentation and skip/seen handling.",
+        "Preserve the distinction between auto milestone reveal flow and queued objectives-page reveal flow."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rdb-060",
+      "description": "Align metadata registration, bootstrap imports, and Alembic discovery after the rewards model additions.",
+      "expected_paths": [
+        "app/db/models/__init__.py",
+        "app/db/bootstrap.py",
+        "alembic/env.py"
+      ],
+      "steps": [
+        "Register the new models cleanly without collapsing them into generic files.",
+        "Confirm Alembic can discover the new metadata surface."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rdb-999",
+      "description": "Run the authoritative docker test suite and mark this spec complete only when green.",
+      "expected_paths": [
+        "docker-compose.test.yml",
+        "tests/"
+      ],
+      "steps": [
+        "Run the full authoritative docker test suite.",
+        "Only mark this item complete when green."
+      ],
+      "passes": false
+    }
+  ]
+}

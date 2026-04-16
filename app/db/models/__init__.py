@@ -11,6 +11,7 @@ MODEL_MODULES = (
     "app.db.models.auth_events",
     "app.db.models.auth_sessions",
     "app.db.models.communication_preferences",
+    "app.db.models.discord_connection_history",
     "app.db.models.email_verification_tokens",
     "app.db.models.entitlement_summaries",
     "app.db.models.mfa_recovery_codes",

@@ -16,6 +16,7 @@ from app.db.models.entitlement_summaries import EntitlementSummary
 from app.db.models.auth_events import AuthEvent
 from app.db.models.auth_sessions import AuthSession
 from app.db.models.communication_preferences import CommunicationPreference
+from app.db.models.discord_connection_history import DiscordConnectionHistory
 from app.db.models.email_verification_tokens import EmailVerificationToken
 from app.db.models.mfa_recovery_codes import MfaRecoveryCode
 from app.db.models.oauth_connections import OAuthConnection
@@ -55,6 +56,7 @@ def _create_in_memory_schema() -> tuple[Session, MetaData]:
         Profile.__table__,
         ProfilePreference.__table__,
         CommunicationPreference.__table__,
+        DiscordConnectionHistory.__table__,
         OAuthConnection.__table__,
         Address.__table__,
         SupportTicket.__table__,
@@ -88,6 +90,7 @@ def test_auth_tables_are_registered_in_metadata() -> None:
         "profiles",
         "profile_preferences",
         "communication_preferences",
+        "discord_connection_history",
         "oauth_connections",
         "addresses",
         "support_tickets",
@@ -138,6 +141,15 @@ def test_oauth_connections_have_expected_indexes() -> None:
 
     assert "ix_oauth_connections_account_id" in oauth_indexes
     assert "uq_oauth_connections_provider_user" in oauth_indexes
+
+
+def test_discord_connection_history_has_expected_defaults_and_indexes() -> None:
+    discord_history_table = DiscordConnectionHistory.__table__
+    discord_history_indexes = {index.name for index in discord_history_table.indexes}
+
+    assert discord_history_table.c.status.nullable is False
+    assert discord_history_table.c.status.server_default is not None
+    assert "ix_discord_connection_history_account_id" in discord_history_indexes
 
 
 def test_profiles_include_active_discord_linkage_columns() -> None:
@@ -290,6 +302,12 @@ def test_auth_and_security_persistence_round_trip() -> None:
         preferred_language="en-US",
     )
     communication_preferences = CommunicationPreference(account_id=account.id)
+    discord_history = DiscordConnectionHistory(
+        account_id=account.id,
+        discord_user_id="discord-user-123",
+        discord_username="testrunner",
+        status="connected",
+    )
     oauth_connection = OAuthConnection(
         account_id=account.id,
         provider="discord",
@@ -404,6 +422,7 @@ def test_auth_and_security_persistence_round_trip() -> None:
             profile,
             profile_preferences,
             communication_preferences,
+            discord_history,
             oauth_connection,
             address,
             support_ticket,
@@ -463,6 +482,9 @@ def test_auth_and_security_persistence_round_trip() -> None:
     persisted_communication_preferences = session.scalar(
         select(CommunicationPreference).where(CommunicationPreference.account_id == account.id)
     )
+    persisted_discord_history = session.scalar(
+        select(DiscordConnectionHistory).where(DiscordConnectionHistory.account_id == account.id)
+    )
     persisted_oauth_connection = session.scalar(
         select(OAuthConnection).where(OAuthConnection.account_id == account.id)
     )
@@ -520,6 +542,9 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert persisted_communication_preferences.marketing_emails_enabled is False
     assert persisted_communication_preferences.product_updates_enabled is True
     assert persisted_communication_preferences.announcement_emails_enabled is True
+    assert persisted_discord_history is not None
+    assert persisted_discord_history.discord_user_id == "discord-user-123"
+    assert persisted_discord_history.status == "connected"
     assert persisted_oauth_connection is not None
     assert persisted_oauth_connection.provider == "discord"
     assert persisted_oauth_connection.provider_user_id == "discord-user-123"
@@ -569,6 +594,9 @@ def test_auth_and_security_persistence_round_trip() -> None:
     assert account.profile.discord_user_id == "discord-user-123"
     assert account.profile.discord_username == "testrunner"
     assert account.profile.discord_integration_status == "connected"
+    assert len(account.discord_connection_history) == 1
+    assert account.discord_connection_history[0].discord_user_id == "discord-user-123"
+    assert account.discord_connection_history[0].status == "connected"
     assert account.profile_preferences is not None
     assert account.profile_preferences.preferred_language == "en-US"
     assert account.communication_preferences is not None
@@ -749,6 +777,20 @@ def test_oauth_connections_require_existing_account() -> None:
             provider_user_id="missing-account-user",
             status="connected",
             connection_metadata={},
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_discord_connection_history_requires_existing_account() -> None:
+    session, _ = _create_in_memory_schema()
+    session.add(
+        DiscordConnectionHistory(
+            account_id=uuid4(),
+            discord_user_id="missing-account-user",
+            status="connected",
         )
     )
 

@@ -1,0 +1,106 @@
+{
+  "spec_name": "Rewards verification and regression hardening",
+  "description": "Verify the rewards domain migrations, metadata registration, constraints, progression behavior, reversal support, repeatable objective handling, and regression protections.",
+  "items": [
+    {
+      "id": "rrg-001",
+      "description": "Inventory the implemented rewards schema, migration chain, and current test coverage before expanding verification.",
+      "expected_paths": [
+        "app/db/models/",
+        "alembic/versions/",
+        "tests/"
+      ],
+      "steps": [
+        "Search for implemented rewards tables/models/migrations/tests.",
+        "Summarize exact current coverage and identify the remaining verification gaps."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rrg-010",
+      "description": "Add metadata/migration/bootstrap verification coverage for all rewards tables and model registration surfaces.",
+      "expected_paths": [
+        "tests/"
+      ],
+      "steps": [
+        "Verify all rewards models are registered in metadata.",
+        "Verify migrations produce the expected table surface."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rrg-020",
+      "description": "Add regression tests for tier/milestone structure, points accumulation, and current-state summary behavior.",
+      "expected_paths": [
+        "tests/"
+      ],
+      "steps": [
+        "Test Bronze/Silver/Gold/Platinum/Plus structure and 100-point milestone behavior.",
+        "Test current-state rewards summary updates against event/ledger changes."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rrg-030",
+      "description": "Add regression tests for objective progress behavior, including repeatable objectives and milestone objectives.",
+      "expected_paths": [
+        "tests/"
+      ],
+      "steps": [
+        "Test non-repeatable objectives.",
+        "Test repeatable objective behavior.",
+        "Test milestone objectives as objective records/progress surfaces."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rrg-040",
+      "description": "Add regression tests for point/reward reversal-capable data behavior without inventing unapproved reversal policy logic.",
+      "expected_paths": [
+        "tests/"
+      ],
+      "steps": [
+        "Verify the schema and data model can record reversals/revocations cleanly.",
+        "Do not over-assume policy windows not yet locked beyond the approved principle that some reversals exist."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rrg-050",
+      "description": "Add regression tests for queued notification/presentation data behavior and seen/skip handling.",
+      "expected_paths": [
+        "tests/"
+      ],
+      "steps": [
+        "Verify queued objective-completion presentation behavior.",
+        "Verify skip/seen state transitions at the data layer."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rrg-060",
+      "description": "Add structural regression protections so future runs cannot collapse rewards models into a generic file or break metadata discovery.",
+      "expected_paths": [
+        "tests/"
+      ],
+      "steps": [
+        "Add structure/layout regression tests.",
+        "Verify one-table-per-file expectations for rewards domain models."
+      ],
+      "passes": false
+    },
+    {
+      "id": "rrg-999",
+      "description": "Run the authoritative docker test suite and mark this spec complete only when green.",
+      "expected_paths": [
+        "docker-compose.test.yml",
+        "tests/"
+      ],
+      "steps": [
+        "Run the full authoritative docker test suite.",
+        "Only mark this item complete when green."
+      ],
+      "passes": false
+    }
+  ]
+}
