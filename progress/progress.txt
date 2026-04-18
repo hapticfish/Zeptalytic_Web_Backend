@@ -1469,3 +1469,37 @@
 - Notes / risks: The green authoritative run still emitted the expected duplicate-key and FK-violation logs from negative-path regression tests, and `migrate` again exited `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit; the command itself exited `0`. The worktree already contained unrelated dirty and untracked files before this iteration, so I did not create a commit.
 - Sources used (only if needed; prefer official docs): none
 - Commit: not created
+## Iteration entry
+- Date/time: 2026-04-18T00:35:31.5587010-05:00
+- Mode: spec_author
+- Selected roadmap item: application-layer foundation
+- Spec file created: specs/application_layer_foundation.json
+- Architecture docs used:
+  - docs/architecture/Spec_Authoring_and_Harness_Workflow.md
+  - docs/architecture/Parent_Backend_Application_Architecture.md
+  - docs/architecture/Parent_Backend_API_Contract_Standards.md
+  - docs/architecture/Parent_Backend_Repository_Layer_Design.md
+  - docs/architecture/Parent_Backend_Service_Layer_Design.md
+  - docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md
+  - docs/architecture/Frontend_Backend_Contract_Map.md
+  - docs/architecture/Auth_Session_and_Security_Flows.md
+  - docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md
+  - docs/architecture/Support_Announcements_and_Status_Design.md
+  - docs/architecture/Rewards_Application_and_Notification_Flows.md
+  - docs/architecture/Discord_Integration_Application_Flow.md
+  - docs/architecture/Background_Jobs_Sync_and_Event_Processing.md
+  - docs/architecture/Security_Operational_Control_Guide.md
+  - docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md
+- Repo search summary: `git status --short` showed a clean tracked worktree before this spec-authoring pass. `git log -5 --oneline` confirmed `924e5ee added backend harness and spec run agent flow` is the latest commit and the prior active rewards spec is already complete. `git ls-files`, recursive file inventories, and targeted `git grep` searches found only rewards browser routers in `app/api/routers/reward_notifications.py`, `app/api/routers/reward_objectives.py`, and `app/api/routers/rewards_summary.py`, all mounted through `app/api/routers/__init__.py` and `app/main.py` with `settings.api_v1_prefix`. Those routers instantiate `RewardNotificationService`, `RewardObjectiveService`, and `RewardSummaryService` over matching repositories and still translate domain exceptions into per-endpoint `HTTPException(detail=...)` responses. Pydantic DTOs currently exist only in `app/schemas/reward_notifications.py`, `app/schemas/reward_objectives.py`, and `app/schemas/reward_summary.py`; no shared `common.py`, cursor pagination schema, exception handler module, or request validation handler exists. Existing API tests are `tests/unit/test_reward_notifications_api.py`, `tests/unit/test_reward_objectives_api.py`, and `tests/unit/test_rewards_summary_api.py`, and they currently lock plain `404` payloads such as `{\"detail\": \"Reward summary not found.\"}`. Package stubs exist at `app/services/__init__.py`, `app/db/repositories/__init__.py`, and `app/schemas/__init__.py`, but no code-level foundation yet locks broader router/service/repository conventions or a `app/api/routers/v1/` package.
+- Files changed:
+  - progress/progress.txt
+  - specs/application_layer_foundation.json
+- Non-goals:
+  - Do not implement auth/session flows.
+  - Do not implement Pay integration, dashboard/launcher/billing aggregation, support APIs, rewards expansion, Discord OAuth, background jobs, or admin dashboards.
+  - Do not modify database models, Alembic migrations, or existing runtime domain behavior outside the narrow application-layer foundation.
+- Risks/assumptions:
+  - The repo already versions routes globally through `settings.api_v1_prefix`, so the build spec assumes the foundation should preserve that behavior while introducing a canonical `app/api/routers/v1/` structure rather than adding a second version prefix.
+  - Existing rewards API tests currently assert legacy `detail`-only errors, so the build agent will need to update those tests when standard error handling is introduced.
+  - No shared common schema or exception module exists today, so the build agent should keep the first implementation minimal and avoid inventing a heavyweight framework.
+- Next command to run: ./scripts/ralph-loop.sh plan 1

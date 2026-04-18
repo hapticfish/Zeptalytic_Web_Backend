@@ -1,6 +1,6 @@
 # Zeptalytic Web Backend Implementation Plan
 
-Active spec: specs/rewards_api_application_layer.json
+Active spec: specs/application_layer_foundation.json
 
 ## Current phase
 
