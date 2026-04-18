@@ -1,0 +1,118 @@
+{
+  "purpose": "Next-phase implementation roadmap for Zeptalytic Web Backend after DB/schema specs are complete.",
+  "strategy": "Commit architecture/control docs first, then use small foundation specs followed by vertical capability specs.",
+  "active_spec_recommendation": "application_layer_foundation.json",
+  "specs": [
+    {
+      "id": "app-foundation",
+      "filename": "application_layer_foundation.json",
+      "goal": "Establish API versioning, standard error response shape, schema conventions, service/repository boundaries, and dependency patterns.",
+      "expected_docs": [
+        "Parent_Backend_Application_Architecture.md",
+        "Parent_Backend_API_Contract_Standards.md",
+        "Parent_Backend_Repository_Layer_Design.md",
+        "Parent_Backend_Service_Layer_Design.md"
+      ],
+      "notes": "Keep this foundation small. Do not build every domain repository here."
+    },
+    {
+      "id": "auth-session-account",
+      "filename": "auth_session_account_security.json",
+      "goal": "Build auth/session/account security flows: signup, login, logout, email verification, password reset/change, 2FA enrollment/recovery, account closure, and session/device management.",
+      "expected_docs": [
+        "Auth_Session_and_Security_Flows.md",
+        "Security_Operational_Control_Guide.md"
+      ],
+      "notes": "Parent is sole login authority. Product apps will trust parent-issued identity/session state."
+    },
+    {
+      "id": "profile-settings-addresses",
+      "filename": "profile_settings_addresses_preferences_api.json",
+      "goal": "Implement profile/settings/address/communication preference repositories, services, schemas, and APIs.",
+      "expected_docs": [
+        "Frontend_Backend_Contract_Map.md",
+        "Parent_Backend_API_Contract_Standards.md"
+      ],
+      "notes": "Username static. Email/phone/timezone/profile picture/Discord username display. Multiple billing/mailing addresses with normalized Google fields and display formatted address."
+    },
+    {
+      "id": "parent-pay-integration",
+      "filename": "parent_pay_integration_and_projection_foundation.json",
+      "goal": "Implement Pay client foundation, service authentication pattern, account_id linking, projection repositories/services for subscription/payment/entitlement/payment-method/product-access summaries.",
+      "expected_docs": [
+        "Parent_Pay_Integration_and_Projection_Strategy.md"
+      ],
+      "notes": "Parent may initiate commercial actions but Pay executes. Parent must not duplicate Pay commercial rules."
+    },
+    {
+      "id": "dashboard-launcher-billing",
+      "filename": "dashboard_launcher_billing_aggregation_api.json",
+      "goal": "Implement dashboard summary, launcher product access, billing snapshot, transaction/payment method reads, and manage-subscription initiation APIs.",
+      "expected_docs": [
+        "Dashboard_Launcher_Billing_Aggregation_Design.md",
+        "Frontend_Backend_Contract_Map.md",
+        "Parent_Pay_Integration_and_Projection_Strategy.md"
+      ],
+      "notes": "Pay unavailable should null/empty safe fields, block critical actions, and prevent product launch if entitlement cannot be trusted."
+    },
+    {
+      "id": "support-announcements-status",
+      "filename": "support_announcements_service_status_api.json",
+      "goal": "Implement support ticket creation, attachment metadata/storage abstraction, announcement reads, service status by product, and dashboard/support notification feed support.",
+      "expected_docs": [
+        "Support_Announcements_and_Status_Design.md",
+        "Security_Operational_Control_Guide.md"
+      ],
+      "notes": "No admin dashboard in phase 1."
+    },
+    {
+      "id": "rewards-application",
+      "filename": "rewards_objectives_badges_application_api.json",
+      "goal": "Implement rewards/objectives/badges read APIs, progress computation, milestone notification state, objective notification queue, reward event ingestion skeleton, and mark-viewed/skip presentation writes.",
+      "expected_docs": [
+        "Rewards_Application_and_Notification_Flows.md",
+        "Frontend_Backend_Contract_Map.md"
+      ],
+      "notes": "Frontend cannot directly award points. Product/admin/backend events trigger reward writes."
+    },
+    {
+      "id": "discord-integration",
+      "filename": "discord_integration_application_flow.json",
+      "goal": "Implement Discord OAuth capture/linkage flow, settings display, current status, and internal history preservation.",
+      "expected_docs": [
+        "Discord_Integration_Application_Flow.md"
+      ],
+      "notes": "Discord linkage does not affect rewards or product access."
+    },
+    {
+      "id": "background-jobs-security",
+      "filename": "background_jobs_and_security_hardening.json",
+      "goal": "Add worker scaffolding and hardened operational controls for Pay projection sync, email sending, support attachment processing, announcement publishing, Discord sync, stale session cleanup, request IDs, rate limiting, and audit hooks.",
+      "expected_docs": [
+        "Background_Jobs_Sync_and_Event_Processing.md",
+        "Security_Operational_Control_Guide.md",
+        "Agent_Non_Goals_and_Implementation_Guardrails.md"
+      ],
+      "notes": "Formal outbox can wait unless needed by implementation."
+    },
+    {
+      "id": "frontend-contract-regression",
+      "filename": "frontend_backend_contract_alignment.json",
+      "goal": "Add contract/regression checks ensuring API payloads support the stable frontend pages and modals.",
+      "expected_docs": [
+        "Frontend_Backend_Contract_Map.md",
+        "Parent_Backend_API_Contract_Standards.md"
+      ],
+      "notes": "Use normalized long-term payloads while supporting current UI surfaces."
+    }
+  ],
+  "global_guardrails": [
+    "Do not duplicate Pay commercial business rules in parent.",
+    "Do not store sensitive payment details in parent.",
+    "Do not build admin dashboards unless explicitly scoped.",
+    "Do not make Discord linkage affect rewards/access.",
+    "Do not allow frontend to directly award rewards/points/badges.",
+    "Progress entries must be appended at EOF.",
+    "Authoritative Docker tests must pass before marking spec items complete."
+  ]
+}

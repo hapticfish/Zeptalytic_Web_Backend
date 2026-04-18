@@ -514,6 +514,33 @@
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
 ## Iteration entry
+- Date/time: 2026-04-16T10:36:27.4912192-05:00
+- Goal for this iteration: Complete `rapi-010` by adding the first browser-facing rewards summary API slice for dashboard and rewards-page summary reads.
+- What I found (repo search summary): `git ls-files`, `rg`, targeted file reads, and the rewards API inventory confirmed the API layer still only exposed `GET /health` in `app/main.py`, with `app/api/routers/__init__.py`, `app/services/__init__.py`, `app/db/repositories/__init__.py`, and `app/schemas/__init__.py` still acting as placeholders. The relevant rewards summary data already lived in `app/db/models/rewards/reward_accounts.py`, `reward_milestones.py`, `reward_grants.py`, `reward_definitions.py`, `account_badges.py`, and `badge_definitions.py`, with account-side relationships registered in `app/db/models/accounts.py`. Existing route coverage lived in `tests/unit/test_health.py`, while rewards structure and DB behavior were already covered by `tests/unit/test_rewards_api_inventory.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`.
+- What I changed: Added a minimal rewards summary application chain in separate files: `app/db/repositories/reward_summary_repository.py`, `app/services/reward_summary_service.py`, `app/schemas/reward_summary.py`, and `app/api/routers/rewards_summary.py`. Added `get_db()` in `app/api/deps.py`, centralized API router registration in `app/api/routers/__init__.py`, and mounted the API router under `settings.api_v1_prefix` in `app/main.py`. The new `GET /api/v1/rewards/{account_id}/summary` route now returns current points, current tier, tier-band progress, next milestone summary, active granted perks, and earned badges using parent-owned rewards tables only. Added `tests/unit/test_rewards_summary_api.py` to cover router registration, happy-path summary serialization, and the 404 not-found path.
+- Why I changed: `rapi-010` is the first actual browser-facing rewards API item in the active spec. This implementation establishes the repository/service/schema/router pattern the inventory doc called for, while staying narrow: it exposes only parent-owned rewards summary reads and avoids pulling in auth, objectives-detail, notification-queue, or Pay-owned billing behavior that belong to later spec items.
+- Updated Files:
+  - app/api/deps.py
+  - app/api/routers/__init__.py
+  - app/main.py
+  - progress/progress.txt
+  - specs/rewards_api_application_layer.json
+- New Files:
+  - app/api/routers/rewards_summary.py
+  - app/db/repositories/reward_summary_repository.py
+  - app/schemas/reward_summary.py
+  - app/services/reward_summary_service.py
+  - tests/unit/test_rewards_summary_api.py
+- Removed Files:
+- Tests run + results:
+  - `python -m py_compile app/main.py app/api/deps.py app/api/routers/__init__.py app/api/routers/rewards_summary.py app/db/repositories/reward_summary_repository.py app/schemas/reward_summary.py app/services/reward_summary_service.py tests/unit/test_rewards_summary_api.py` -> passed
+  - `python -m pytest tests/unit/test_rewards_summary_api.py` -> could not run in the host shell because `pytest` is not installed outside Docker
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `113 passed in 2.74s`
+- Notes / risks: The green Docker run still emitted the expected duplicate-key and FK violation logs from negative-path regression tests, and `migrate` still exited `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit; the authoritative command itself exited `0`. `IMPLEMENTATION_PLAN.md`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `specs/rewards_api_application_layer.json`, and `progress/progress.txt` were already dirty in the worktree before or during this iteration and were left in place except for the durable-file updates required here.
+- Next: `rapi-020` is now the next open item in `specs/rewards_api_application_layer.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+## Iteration entry
 - Date/time: 2026-04-16T00:08:02.7722007-05:00
 - Goal for this iteration: Complete `rdb-040` by adding the reward catalog, grant, badge, and account-achievement schema slice and proving it through the authoritative Docker suite.
 - What I found (repo search summary): `git ls-files`, `rg`, and targeted reads showed the rewards package already had only the first six rewards tables in `app/db/models/rewards/`, with central registration still in `app/db/models/__init__.py` and metadata/Alembic discovery still on `app/db/bootstrap.py` -> `alembic/env.py`. Existing regression coverage for this slice already lived in `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, plus migrated-Postgres checks in `tests/integration/test_parent_db_constraints.py` and `tests/integration/test_parent_db_round_trips.py`. Those unit tests explicitly asserted that later rewards tables were still absent, so they had to move forward with this item.
@@ -1298,3 +1325,147 @@
 - Next: Active spec `specs/rewards_verification_and_regression.json` is now fully complete.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T10:23:47.7310062-05:00
+- Goal for this iteration: Complete `rapi-001` by inventorying the current rewards API/application repo reality and mapping the frontend rewards/objectives expectations to the parent backend surfaces that need to be built next.
+- What I found (repo search summary): `git ls-files`, `rg`, `git grep`, and targeted file reads showed the rewards domain is implemented only at the ORM/migration/test layer right now. The only live route remains `GET /health` in `app/main.py`; `app/api/routers/__init__.py`, `app/services/__init__.py`, `app/db/repositories/__init__.py`, and `app/schemas/__init__.py` are placeholder shells, with `app/api/deps.py` only exposing `get_settings()`. Rewards registration and wiring already flow through `app/db/models/rewards/__init__.py` -> `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`, with account relationships in `app/db/models/accounts.py`. Existing coverage for the target area already lived in `tests/unit/test_health.py`, `tests/unit/test_rewards_verification_inventory.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`. Frontend expectations for the upcoming API layer came from `docs/architecture/Zeptalytic_Feature_Ownership_Register.md`, `docs/architecture/Rewards_Objectives_Badges_Domain_Decision_Record.md`, `docs/architecture/Rewards_Objectives_Badges_Data_Model_Reference.md`, and `docs/architecture/Rewards_Objectives_Badges_UI_Interaction_Reference.md`.
+- What I changed: Added `docs/architecture/Rewards_API_Application_Inventory.md` as the durable inventory artifact for the active rewards API workstream. The document records current repo reality, the current registration/wiring path, the existing test baseline, and the frontend-driven parent backend surface split for rewards summary, objectives detail, reward notification queue handling, and internal progression primitives. Added `tests/unit/test_rewards_api_inventory.py` to lock that artifact’s required sections and confirm it references the existing baseline files. Marked `rapi-001` complete in `specs/rewards_api_application_layer.json`.
+- Why I changed: `rapi-001` is an inventory/specification step, not an endpoint implementation step. Capturing the baseline and next-surface map in a committed architecture artifact keeps later rewards API items grounded in the locked docs and current repo shape, while the unit test prevents that inventory from silently drifting or disappearing before the actual router/service/repository work starts.
+- Updated Files:
+  - docs/architecture/Rewards_API_Application_Inventory.md
+  - progress/progress.txt
+  - specs/rewards_api_application_layer.json
+  - tests/unit/test_rewards_api_inventory.py
+- New Files:
+  - docs/architecture/Rewards_API_Application_Inventory.md
+  - tests/unit/test_rewards_api_inventory.py
+- Removed Files:
+- Tests run + results:
+  - `python -m py_compile tests/unit/test_rewards_api_inventory.py` -> passed
+  - `python -m pytest tests/unit/test_rewards_api_inventory.py` -> could not run in the host shell because `pytest` is not installed outside Docker
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `110 passed in 2.76s`
+- Notes / risks: The green Docker run still emitted the expected duplicate-key and FK violation logs from negative-path regression tests, and `migrate` still exited `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit; the authoritative command itself exited `0`. `IMPLEMENTATION_PLAN.md`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, and `tests/unit/test_model_module_layout.py` were already dirty in the worktree before this iteration and were left in place.
+- Next: `rapi-010` is now the next open item in `specs/rewards_api_application_layer.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: pending
+## Iteration entry
+- Date/time: 2026-04-16T10:46:19.9068756-05:00
+- Goal for this iteration: Complete `rapi-020` by adding the parent objectives-detail API surface for grouped objectives, progress state, linked milestone data, and per-objective reward details.
+- What I found (repo search summary): `git ls-files`, `rg`, `git grep`, and targeted file reads confirmed the current API pattern already exists in the dirty worktree through `app/api/routers/rewards_summary.py`, `app/services/reward_summary_service.py`, `app/db/repositories/reward_summary_repository.py`, and `app/schemas/reward_summary.py`, with registration flowing through `app/api/routers/__init__.py` -> `app/main.py` and DB dependency injection in `app/api/deps.py`. The rewards-objectives data surface already existed in `app/db/models/rewards/objective_definitions.py`, `app/db/models/rewards/account_objective_progress.py`, `app/db/models/rewards/objective_reward_links.py`, `app/db/models/rewards/reward_definitions.py`, and `app/db/models/rewards/reward_milestones.py`. Existing tests covering the target area already lived in `tests/unit/test_rewards_summary_api.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`, which already lock milestone-objective linkage, sort ordering, repeatable progress state, and notification queue behavior.
+- What I changed: Added `app/api/routers/reward_objectives.py`, `app/services/reward_objective_service.py`, `app/db/repositories/reward_objective_repository.py`, and `app/schemas/reward_objectives.py` to expose `GET /api/v1/rewards/{account_id}/objectives`. The repository now verifies account existence, loads active objective definitions in grouped/sorted order, overlays account progress with a `not_started` default when no progress row exists, attaches linked milestone data, and joins objective reward definitions. I also registered the new router in `app/api/routers/__init__.py` and added focused route coverage in `tests/unit/test_reward_objectives_api.py`.
+- Why I changed: `rapi-020` requires a parent-owned objectives detail surface separate from billing truth and distinct from the summary endpoint. This implementation keeps the response aligned with the locked rewards docs by preserving organized grouping, milestone-objective linkage, repeatable objective state, and reward detail payloads needed by the objectives page.
+- Updated Files:
+  - app/api/routers/__init__.py
+  - app/api/routers/reward_objectives.py
+  - app/db/repositories/reward_objective_repository.py
+  - app/schemas/reward_objectives.py
+  - app/services/reward_objective_service.py
+  - progress/progress.txt
+  - specs/rewards_api_application_layer.json
+  - tests/unit/test_reward_objectives_api.py
+- New Files:
+  - app/api/routers/reward_objectives.py
+  - app/db/repositories/reward_objective_repository.py
+  - app/schemas/reward_objectives.py
+  - app/services/reward_objective_service.py
+  - tests/unit/test_reward_objectives_api.py
+- Removed Files:
+- Tests run + results:
+  - `python -m py_compile app/api/routers/reward_objectives.py app/services/reward_objective_service.py app/db/repositories/reward_objective_repository.py app/schemas/reward_objectives.py tests/unit/test_reward_objectives_api.py` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `116 passed in 2.83s`
+- Notes / risks: The green Docker run still emitted the expected duplicate-key and FK violation logs from negative-path regression tests, and `migrate` still exited `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit; the authoritative command itself exited `0`. `IMPLEMENTATION_PLAN.md`, `app/api/deps.py`, `app/main.py`, `progress/progress.txt`, `specs/rewards_api_application_layer.json`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, and `tests/unit/test_model_module_layout.py` were already dirty in the worktree before this iteration and were left in place. I did not create a commit because the worktree already contains unrelated uncommitted changes.
+- Next: `rapi-030` is now the next open item in `specs/rewards_api_application_layer.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: not created
+## Iteration entry
+- Date/time: 2026-04-16T12:33:20.0000000-05:00
+- Goal for this iteration: Complete `rapi-030` by adding the parent rewards notification queue API surface for ordered reveal, per-item seen transitions, and skip-all dismissal behavior.
+- What I found (repo search summary): `git ls-files`, `rg`, and `git grep` confirmed the queue behavior already existed only in the rewards ORM and DB regression layer. The relevant persistence model was `app/db/models/rewards/reward_notifications.py`, with current router wiring limited to `app/api/routers/__init__.py` -> `app/main.py` and only `rewards_summary` / `reward_objectives` registered. Existing API patterns already lived in `app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, `app/services/reward_summary_service.py`, `app/services/reward_objective_service.py`, `app/db/repositories/reward_summary_repository.py`, `app/db/repositories/reward_objective_repository.py`, `app/schemas/reward_summary.py`, and `app/schemas/reward_objectives.py`. Existing tests covering the target area already lived in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`, where the integration coverage already locked ordered queue persistence plus seen/skip-all state transitions.
+- What I changed: Added `app/api/routers/reward_notifications.py`, `app/services/reward_notification_service.py`, `app/db/repositories/reward_notification_repository.py`, and `app/schemas/reward_notifications.py` to expose `GET /api/v1/rewards/{account_id}/notifications`, `POST /api/v1/rewards/{account_id}/notifications/{notification_id}/seen`, and `POST /api/v1/rewards/{account_id}/notifications/skip-all`. The repository now verifies account existence, returns queued notifications in `sequence_order`, hydrates linked objective/reward/badge/event data for presentation, marks individual queued items as `seen`, and dismisses all remaining queued items with `skip_all` metadata when the user skips the queue. I registered the router in `app/api/routers/__init__.py` and added focused unit coverage in `tests/unit/test_reward_notifications_api.py` and `tests/unit/test_reward_notification_service.py`.
+- Why I changed: `rapi-030` requires the parent-owned application behavior behind the objectives-page reward queue described in the locked rewards docs. This slice keeps milestone/non-milestone distinctions visible through the payload, preserves ordered reveal semantics from the DB layer, and adds the minimal browser-facing transitions needed for sequential viewing and skip-all handling without overbuilding broader trigger orchestration.
+- Updated Files:
+  - app/api/routers/__init__.py
+  - app/api/routers/reward_notifications.py
+  - app/db/repositories/reward_notification_repository.py
+  - app/schemas/reward_notifications.py
+  - app/services/reward_notification_service.py
+  - progress/progress.txt
+  - specs/rewards_api_application_layer.json
+  - tests/unit/test_reward_notification_service.py
+  - tests/unit/test_reward_notifications_api.py
+- New Files:
+  - app/api/routers/reward_notifications.py
+  - app/db/repositories/reward_notification_repository.py
+  - app/schemas/reward_notifications.py
+  - app/services/reward_notification_service.py
+  - tests/unit/test_reward_notification_service.py
+  - tests/unit/test_reward_notifications_api.py
+- Removed Files:
+- Tests run + results:
+  - `python -m py_compile app/schemas/reward_notifications.py app/db/repositories/reward_notification_repository.py app/services/reward_notification_service.py app/api/routers/reward_notifications.py tests/unit/test_reward_notifications_api.py tests/unit/test_reward_notification_service.py` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `127 passed in 2.93s`
+- Notes / risks: The green Docker run still emitted the expected duplicate-key and FK violation logs from negative-path regression tests, and `migrate` still exited `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit; the authoritative command itself exited `0`. `IMPLEMENTATION_PLAN.md`, `app/api/deps.py`, `app/api/routers/__init__.py`, `app/main.py`, `progress/progress.txt`, `specs/rewards_api_application_layer.json`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, and `tests/unit/test_model_module_layout.py` were already dirty in the worktree before this iteration and were left in place. I did not create a commit because the worktree already contains unrelated uncommitted changes.
+- Next: `rapi-040` is now the next open item in `specs/rewards_api_application_layer.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: not created
+## Iteration entry
+- Date/time: 2026-04-16T12:46:49.8601936-05:00
+- Goal for this iteration: Complete `rapi-040` by adding the internal rewards progression/reversal scaffolding needed for future trigger-driven points, objective, and notification updates.
+- What I found (repo search summary): `git ls-files`, `rg`, `git grep`, and targeted file reads confirmed the current browser-facing rewards stack already existed in `app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, `app/api/routers/reward_notifications.py`, with registration through `app/api/routers/__init__.py` -> `app/main.py` and DB injection through `app/api/deps.py`. The existing application pattern was thin services over repository dataclasses in `app/services/reward_summary_service.py`, `app/services/reward_objective_service.py`, `app/services/reward_notification_service.py` and `app/db/repositories/reward_summary_repository.py`, `app/db/repositories/reward_objective_repository.py`, `app/db/repositories/reward_notification_repository.py`. The persistence surface needed for progression already existed in `app/db/models/rewards/reward_accounts.py`, `app/db/models/rewards/reward_events.py`, `app/db/models/rewards/reward_grants.py`, `app/db/models/rewards/reward_notifications.py`, `app/db/models/rewards/account_objective_progress.py`, `app/db/models/rewards/objective_definitions.py`, and `app/db/models/rewards/account_badges.py`. Existing tests already covering adjacent behavior lived in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/unit/test_reward_notifications_api.py`, `tests/unit/test_reward_notification_service.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`; those integration tests already locked ledger updates, reversals, repeatable progress, and queue state, but there was no reusable internal progression repository/service yet.
+- What I changed: Added `app/db/repositories/reward_progression_repository.py` and `app/services/reward_progression_service.py`. The new internal layer provides narrow primitives for awarding points into the reward ledger with reward-account snapshot recomputation, reversing an existing reward event with linked reward-grant/account-badge revocation, updating objective progress for repeatable and non-repeatable objectives, and queueing reward notifications with automatic sequence ordering. I added focused unit coverage in `tests/unit/test_reward_progression_service.py` and `tests/unit/test_reward_progression_repository.py`, including a SQLite helper that strips Postgres-only JSONB defaults while preserving the real ORM table shapes for repository regression checks.
+- Why I changed: `rapi-040` is about internal scaffolding for future trigger sources, not new browser routes. This implementation keeps the logic parent-owned, aligned with the locked rewards docs, and reusable by later trigger orchestration without hardcoding unsupported external sources into the API layer.
+- Updated Files:
+  - app/db/repositories/reward_progression_repository.py
+  - app/services/reward_progression_service.py
+  - progress/progress.txt
+  - specs/rewards_api_application_layer.json
+  - tests/unit/test_reward_progression_repository.py
+  - tests/unit/test_reward_progression_service.py
+- New Files:
+  - app/db/repositories/reward_progression_repository.py
+  - app/services/reward_progression_service.py
+  - tests/unit/test_reward_progression_repository.py
+  - tests/unit/test_reward_progression_service.py
+- Removed Files:
+- Tests run + results:
+  - `python -m py_compile app/db/repositories/reward_progression_repository.py app/services/reward_progression_service.py tests/unit/test_reward_progression_service.py tests/unit/test_reward_progression_repository.py` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `135 passed in 3.03s`
+- Notes / risks: The green Docker run still emitted the expected duplicate-key and FK violation logs from negative-path regression tests, and `migrate` still exited `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit; the authoritative command itself exited `0`. The worktree already contained unrelated dirty files before this iteration, so I did not create a commit. `rapi-050` is now the next open item in `specs/rewards_api_application_layer.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: not created
+## Iteration entry
+- Date/time: 2026-04-16T12:52:03.8886987-05:00
+- Goal for this iteration: Complete `rapi-050` by tightening rewards API/application test coverage around the existing summary, objectives, notification, and progression service surfaces.
+- What I found (repo search summary): `git ls-files`, `rg`, `git grep`, and targeted file reads showed the rewards browser API surface already exists in `app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, and `app/api/routers/reward_notifications.py`, all registered through `app/api/routers/__init__.py` and `app/main.py`, with DB injection from `app/api/deps.py`. The active application/service layer already lives in `app/services/reward_summary_service.py`, `app/services/reward_objective_service.py`, `app/services/reward_notification_service.py`, and `app/services/reward_progression_service.py`, backed by `app/db/repositories/reward_summary_repository.py`, `app/db/repositories/reward_objective_repository.py`, `app/db/repositories/reward_notification_repository.py`, and `app/db/repositories/reward_progression_repository.py`. Existing tests already covered route registration and response contracts in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/unit/test_reward_notifications_api.py`, queue mapping in `tests/unit/test_reward_notification_service.py`, repository behavior in `tests/unit/test_reward_progression_repository.py`, and migrated Postgres rewards constraints/round trips in `tests/integration/test_parent_db_constraints.py` and `tests/integration/test_parent_db_round_trips.py`. The remaining weak spot was `tests/unit/test_reward_progression_service.py`, which only partially covered the progression command surface.
+- What I changed: Extended `tests/unit/test_reward_progression_service.py` with additional regression coverage for successful reversal command forwarding, successful objective-completion forwarding, not-found handling for objective progression updates, and not-found handling for notification queueing. The new assertions verify explicit command fields are passed through to the repository layer and that the service raises `RewardProgressionNotFoundError` when the repository reports missing rows.
+- Why I changed: `rapi-050` is a test-only item, and the smallest missing slice was the core progression service behavior that future trigger orchestration will rely on. Strengthening that coverage closes the gap without changing the already-implemented rewards APIs or repository logic.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_api_application_layer.json
+  - tests/unit/test_reward_progression_service.py
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `python -m py_compile tests/unit/test_reward_progression_service.py` -> passed
+  - `python -m pytest tests/unit/test_reward_progression_service.py -q` -> could not run locally because the host Python environment does not have `pytest` installed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `139 passed in 2.96s`
+- Notes / risks: The authoritative Docker run remained green while still emitting the expected duplicate-key and FK-violation logs from negative-path regression tests, and `migrate` again exited `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit. The worktree already contained unrelated dirty files before this iteration, so I did not create a commit. `rapi-999` is now the next open item in `specs/rewards_api_application_layer.json`.
+- Sources used (only if needed; prefer
+ official docs): none
+- Commit: not created
+## Iteration entry
+- Date/time: 2026-04-16T14:36:13.2532798-05:00
+- Goal for this iteration: Complete `rapi-999` by validating the authoritative Docker topology and running the required full test suite green.
+- What I found (repo search summary): `git ls-files`, `rg`, `git grep`, and targeted file reads confirmed the closeout surface already exists. `docker-compose.test.yml` still defines the authoritative `db` -> `migrate` -> `test` topology, and `tests/unit/test_test_topology_contract.py` locks the expected services, health checks, Alembic readiness command, and `pytest -q` runtime command. The active rewards API/application wiring remains registered through `app/api/routers/__init__.py` -> `app/main.py` with DB injection in `app/api/deps.py`, and the existing coverage for the completed rewards surface already lives in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/unit/test_reward_notifications_api.py`, `tests/unit/test_reward_notification_service.py`, `tests/unit/test_reward_progression_service.py`, `tests/unit/test_reward_progression_repository.py`, plus `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`.
+- What I changed: Marked `rapi-999` complete in `specs/rewards_api_application_layer.json` and appended this closeout entry to `progress/progress.txt`. No application code changes were needed because this item is the green-suite completion gate.
+- Why I changed: `rapi-999` is explicitly the authoritative test-suite closeout item for the active rewards API/application spec. Once the required Docker command passed, the remaining work was to record that completion durably without disturbing unrelated dirty files in the worktree.
+- Updated Files:
+  - progress/progress.txt
+  - specs/rewards_api_application_layer.json
+- New Files:
+- Removed Files:
+- Tests run + results:
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `139 passed in 3.04s`
+- Notes / risks: The green authoritative run still emitted the expected duplicate-key and FK-violation logs from negative-path regression tests, and `migrate` again exited `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit; the command itself exited `0`. The worktree already contained unrelated dirty and untracked files before this iteration, so I did not create a commit.
+- Sources used (only if needed; prefer official docs): none
+- Commit: not created

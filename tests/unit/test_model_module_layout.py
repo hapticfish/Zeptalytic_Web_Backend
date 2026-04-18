@@ -2,6 +2,7 @@ from importlib import import_module
 from pathlib import Path
 
 import app.db.models as model_registry
+from app.db.base import Base
 from app.db.models.rewards import REWARD_MODEL_MODULES
 from app.db.models.account_security_settings import AccountSecuritySettings
 from app.db.models.accounts import Account
@@ -142,6 +143,31 @@ def test_rewards_package_registration_matches_expected_modules() -> None:
         for module_name in EXPECTED_MODEL_MODULES
         if module_name.startswith("app.db.models.rewards.")
     )
+
+
+def test_rewards_models_remain_split_one_table_per_file() -> None:
+    for module_name in REWARD_MODEL_MODULES:
+        module = import_module(module_name)
+        model_classes = [
+            value
+            for value in vars(module).values()
+            if isinstance(value, type)
+            and issubclass(value, Base)
+            and value is not Base
+            and value.__module__ == module_name
+        ]
+
+        assert len(model_classes) == 1, (
+            f"Rewards module '{module_name}' should expose exactly one mapped model, "
+            f"found {[model_class.__name__ for model_class in model_classes]}."
+        )
+
+
+def test_rewards_models_do_not_collapse_into_generic_registry_module() -> None:
+    rewards_module_path = Path(__file__).resolve().parents[2] / "app" / "db" / "models" / "rewards.py"
+
+    assert not rewards_module_path.exists()
+    assert "app.db.models.rewards" not in model_registry.MODEL_MODULES
 
 
 def test_expected_model_modules_are_registered_and_importable() -> None:

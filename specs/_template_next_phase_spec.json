@@ -1,0 +1,63 @@
+{
+  "id": "<spec_id>",
+  "title": "<Spec Title>",
+  "status": "active",
+  "owner": "Zeptalytic Web Backend",
+  "purpose": "<One paragraph explaining what this spec accomplishes and what it intentionally does not accomplish.>",
+  "context": {
+    "summary": "<Current repo state and why this spec is next.>",
+    "source_docs": [
+      "docs/architecture/<relevant_doc>.md"
+    ],
+    "previous_specs_or_dependencies": [
+      "<previous_spec_if_any>"
+    ],
+    "repo_reality_summary": [
+      "<Summarize current files, patterns, tests, and wiring discovered before writing this spec.>"
+    ]
+  },
+  "global_guardrails": [
+    "Search before editing.",
+    "Do not expand scope beyond this spec.",
+    "Do not add dependencies unless John explicitly approves them.",
+    "Do not duplicate Pay commercial business rules in parent.",
+    "Do not store sensitive payment details in parent.",
+    "Do not build admin dashboards unless explicitly scoped.",
+    "Do not redesign stable frontend pages.",
+    "Do not make Discord linkage affect rewards or product access unless this spec explicitly says so.",
+    "Do not allow frontend APIs to directly award points/rewards/badges.",
+    "Do not return raw ORM objects from routers.",
+    "Do not mark incomplete items complete.",
+    "Append progress entries to the absolute end of progress/progress.txt.",
+    "Run python -m compileall app tests alembic before marking complete.",
+    "Run docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test before marking complete."
+  ],
+  "expected_paths": {
+    "may_create_or_update": [],
+    "must_not_modify_without_strong_reason": []
+  },
+  "items": [
+    {
+      "id": "<item_id>",
+      "title": "<Item title>",
+      "description": "<Detailed implementation objective.>",
+      "acceptance_criteria": [
+        "<Observable result>",
+        "<Test or documentation expectation>",
+        "<Scope boundary or non-goal>"
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ],
+  "completion_definition": [
+    "All spec items have passes=true.",
+    "Relevant tests are added or updated.",
+    "python -m compileall app tests alembic passes.",
+    "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test passes.",
+    "progress/progress.txt is updated at EOF.",
+    "No unrelated dirty files are introduced.",
+    "No incomplete item is marked complete."
+  ]
+}

@@ -103,8 +103,8 @@ for ((i=1; i<=MAX_ITERS; i++)); do
   TERMINAL_MARKER="false"
   BLOCKED_MARKER="false"
   if [[ -f "$OUT_LAST" ]]; then
-    if grep -Eq "ALL_DONE|PLAN_DONE" "$OUT_LAST"; then
-      TERMINAL_MARKER="true"
+    if grep -Eq "ALL_DONE|PLAN_DONE|SPEC_DONE" "$OUT_LAST"; then
+  TERMINAL_MARKER="true"
     fi
     if grep -Eq "^ITERATION_BLOCKED\b" "$OUT_LAST"; then
       BLOCKED_MARKER="true"

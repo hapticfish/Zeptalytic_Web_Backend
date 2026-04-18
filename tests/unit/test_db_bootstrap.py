@@ -7,6 +7,22 @@ import app.db.bootstrap as bootstrap
 from app.db.models.rewards import REWARD_MODEL_MODULES
 
 
+EXPECTED_REWARD_TABLES = {
+    "account_badges",
+    "account_objective_progress",
+    "badge_definitions",
+    "objective_definitions",
+    "objective_reward_links",
+    "reward_accounts",
+    "reward_definitions",
+    "reward_events",
+    "reward_grants",
+    "reward_milestones",
+    "reward_notifications",
+    "reward_tier_definitions",
+}
+
+
 def test_get_target_metadata_imports_models(monkeypatch) -> None:
     called = False
 
@@ -95,6 +111,15 @@ def test_get_target_metadata_registers_split_model_tables() -> None:
         "reward_notifications",
         "reward_tier_definitions",
     }.issubset(set(metadata.tables))
+
+
+def test_get_target_metadata_registers_exact_rewards_table_surface() -> None:
+    metadata = bootstrap.get_target_metadata()
+    registered_reward_tables = {
+        table_name for table_name in metadata.tables if table_name in EXPECTED_REWARD_TABLES
+    }
+
+    assert registered_reward_tables == EXPECTED_REWARD_TABLES
 
 
 def test_reward_notification_module_and_table_are_registered_for_later_rewards_queue_item() -> None:

@@ -15,7 +15,9 @@
         "Search for any existing rewards/objectives-related routers/services/repositories/tests.",
         "Map the existing rewards/objectives frontend expectations to parent backend API surfaces."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T10:23:47.7310062-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rapi-010",
@@ -30,7 +32,9 @@
         "Implement summary routes/services/schemas/repository calls for current points, current tier, next milestone, and active perks summary.",
         "Keep parent-owned aggregation separate from Pay."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T10:36:27.4912192-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rapi-020",
@@ -45,7 +49,9 @@
         "Implement objectives listing/detail routes/services/schemas.",
         "Support organized presentation for milestone objectives and subscription/tier/product-specific objectives."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T10:46:19.9068756-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rapi-030",
@@ -60,7 +66,9 @@
         "Implement the parent backend behavior for queued objective completion presentation.",
         "Support ordered reveal, seen/consumed state, and skip-all transitions."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T12:33:20.0000000-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rapi-040",
@@ -73,7 +81,9 @@
         "Create internal service-layer primitives for award, reverse, complete-objective, and queue-presentation behavior.",
         "Do not overbuild external trigger orchestration not yet in scope."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T12:46:49.8601936-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rapi-050",
@@ -84,7 +94,9 @@
       "steps": [
         "Add/update integration and unit tests for the rewards API/application layer."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T12:52:03.8886987-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "rapi-999",
@@ -97,7 +109,9 @@
         "Run the full authoritative docker test suite.",
         "Only mark this item complete when green."
       ],
-      "passes": false
+      "passes": true,
+      "completed_at": "2026-04-16T14:36:13.2532798-05:00",
+      "completed_by": "codex"
     }
   ]
 }
