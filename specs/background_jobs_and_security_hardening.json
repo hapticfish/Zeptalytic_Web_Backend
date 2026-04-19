@@ -1,9 +1,6 @@
 {
-  "id": "",
-  "title": "Background Jobs and Secur
-
-
-  lp[j;aserf]ity Hardening Foundation",
+  "id": "background-jobs-and-security-hardening",
+  "title": "Background Jobs and Security Hardening Foundation",
   "status": "active",
   "owner": "Zeptalytic Web Backend",
   "purpose": "Establish the next-phase operational foundation for the parent backend: request ID propagation, worker entrypoint scaffolding that reuses already-built services, and lightweight security-control primitives for rate limiting and audit hooks on sensitive flows. This spec intentionally does not implement admin dashboards, broad asynchronous infrastructure, new database schema, duplicated Pay logic, or every future worker listed in the architecture docs.",
