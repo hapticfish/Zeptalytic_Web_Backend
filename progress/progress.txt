@@ -2874,3 +2874,208 @@
   - None.
 - Next recommended item:
   - Author and activate `specs/discord_integration_application_flow.json`
+
+[2026-04-19T08:32:26.3199706-05:00] Spec author iteration
+- Mode:
+  - `spec_author`
+- Selected roadmap item:
+  - `discord-integration`
+- Spec file created:
+  - `specs/discord_integration_application_flow.json`
+- Architecture docs used:
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+  - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
+  - `docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md`
+  - `docs/architecture/Frontend_Backend_Contract_Map.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md`
+  - `docs/architecture/Support_Announcements_and_Status_Design.md`
+  - `docs/architecture/Rewards_Application_and_Notification_Flows.md`
+  - `docs/architecture/Discord_Integration_Application_Flow.md`
+  - `docs/architecture/Background_Jobs_Sync_and_Event_Processing.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+  - `docs/architecture/Discord_Integration_Decision_Record.md`
+  - `docs/architecture/Discord_Rewards_Workstream_Sequence.md`
+- Repo search summary:
+  - `IMPLEMENTATION_PLAN.md` still references the completed rewards spec as active, but its next-workstream note explicitly recommends authoring `specs/discord_integration_application_flow.json` next.
+  - Existing router/service/repository foundations were confirmed in `app/api/deps.py`, `app/api/routers/v1/__init__.py`, `app/api/exception_handlers.py`, `app/db/repositories/__init__.py`, and `app/services/__init__.py`; there is no Discord-specific application slice wired into them yet.
+  - Existing Discord persistence already exists in `app/db/models/profiles.py` and `app/db/models/discord_connection_history.py`, and current safe display wiring already flows through `app/db/repositories/profile_settings_repository.py`, `app/services/profile_settings_service.py`, `app/schemas/profiles.py`, and `app/api/routers/v1/profiles.py`.
+  - `app/integrations/__init__.py` exposes only Pay client wiring today; no `discord_oauth_client.py`, Discord repository, Discord service, or `/api/v1/integrations` router exists yet.
+  - Existing Discord-related tests are schema-focused in `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, `tests/integration/test_parent_db_round_trips.py`, and `tests/unit/test_auth_models.py`; no Discord application-layer API/service/client tests currently exist.
+  - Repo-wide searches for `APIRouter`, `include_router`, `Repository`, `Service`, `BaseModel`, `RequestValidationError`, and `discord` were used to ground the spec in current wiring, error-handling conventions, DTO patterns, and coverage gaps.
+- Files changed:
+  - `specs/discord_integration_application_flow.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - No runtime application code was implemented.
+  - No database models, migrations, routers, services, repositories, schemas, workers, integrations, or tests were modified in this run.
+  - The spec explicitly excludes Discord-based rewards, launcher/product-access gating, admin dashboards, guild/bot management, Discord notifications, and new schema work unless a tiny support fix is proven necessary later.
+- Risks/assumptions:
+  - The implementation plan was not updated in this run, per instruction, so a later planning/activation step still needs to switch the active spec before build mode should target this new workstream.
+  - The eventual build may need a small config addition in `app/core/config.py` for Discord OAuth environment values, but the spec assumes this can be done without adding dependencies or storing long-lived tokens.
+  - The spec assumes the existing `profiles` plus `discord_connection_history` schema is sufficient for phase-1 connect/disconnect semantics and should not be reopened unless implementation uncovers a concrete blocker.
+- Next command to run:
+  - `./scripts/ralph-loop.sh plan 1`
+2026-04-19 23:34 CDT - Planning run refined the active Discord workstream against repo reality and corrected implementation-plan drift.
+- Mode: planning only
+- Repo search summary:
+  - Rehydration covered `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, `PROMPT.md`, the active Discord spec, `specs/next_phase_spec_sequence.json`, the required architecture docs, `git status`, and `git log -5 --oneline`.
+  - The repo already has the Discord schema foundation in place through `app/db/models/profiles.py`, `app/db/models/discord_connection_history.py`, Alembic revisions `20260415_2315_disc010_profile_discord_fields.py` and `20260415_2345_disc020_discord_history_table.py`, and matching bootstrap/constraint/round-trip tests.
+  - The existing browser-facing Discord surface is read-only profile display via `app/db/repositories/profile_settings_repository.py`, `app/services/profile_settings_service.py`, `app/schemas/profiles.py`, and `app/api/routers/v1/profiles.py`; there is still no dedicated Discord repository, service, OAuth client, dependency, or `/api/v1/integrations` router.
+  - Shared application-layer patterns remain stable in `app/api/deps.py`, `app/api/routers/v1/__init__.py`, `app/api/exception_handlers.py`, `app/db/repositories/__init__.py`, `app/services/__init__.py`, and `docker-compose.test.yml`.
+- Files changed:
+  - `IMPLEMENTATION_PLAN.md`
+  - `progress/progress.txt`
+- Planning updates:
+  - Corrected the `Active spec:` path in `IMPLEMENTATION_PLAN.md` to the actual repo file `specs/discord_integration_application_flow.json`.
+  - Replaced the stale follow-on note that still referenced the completed rewards workstream with the correct next roadmap target after Discord: background jobs/security hardening.
+  - Left the Discord spec itself unchanged because its scope and acceptance criteria already match current repo reality and roadmap boundaries.
+- Non-goals:
+  - No runtime application code, database models, migrations, routers, services, repositories, schemas, workers, integrations, or tests were modified.
+  - No dependencies were added.
+- Verification:
+  - Docs-only planning run; authoritative build verification commands were not run.
+- Next command to run:
+  - `./scripts/ralph-loop.sh build 1`
+
+2026-04-19T09:11:36.2270906-05:00
+- Active spec: `specs/discord_integration_application_flow.json`
+- Selected item: `diaf-010` - Add Discord Integration Repository and Service Foundation
+- Repo search summary:
+  - Searched `git ls-files`, `rg`, and repo directories before editing; confirmed current Discord persistence lives in `app/db/models/profiles.py` and `app/db/models/discord_connection_history.py`.
+  - Existing safe Discord display is currently embedded only in the profile-settings slice: `app/db/repositories/profile_settings_repository.py`, `app/services/profile_settings_service.py`, `app/schemas/profiles.py`, and `app/api/routers/v1/profiles.py`.
+  - Shared application-layer registration points remain `app/db/repositories/__init__.py`, `app/services/__init__.py`, `app/api/deps.py`, and `tests/unit/test_application_layer_foundation.py`.
+  - Existing tests covered schema/model/profile display behavior but there was no dedicated Discord integration repository/service test coverage.
+- Files changed:
+  - `app/db/repositories/discord_integration_repository.py`
+  - `app/db/repositories/__init__.py`
+  - `app/schemas/integrations.py`
+  - `app/schemas/__init__.py`
+  - `app/services/discord_integration_service.py`
+  - `app/services/__init__.py`
+  - `tests/unit/test_discord_integration_service.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `specs/discord_integration_application_flow.json`
+- Implementation summary:
+  - Added a focused Discord integration repository with persistence helpers for current-link reads, current-link updates/clears, and history appends using the existing schema only.
+  - Added a Discord integration service that owns connect/disconnect transaction boundaries, preserves prior linkage history on reconnect/disconnect, and returns safe browser DTOs without exposing `discord_user_id`.
+  - Added dedicated integration schemas and exported the new repository/service/schema builders through the package boundaries already used elsewhere in the app.
+  - Added unit regression coverage for initial connect, reconnect-to-different-account, disconnect, safe DTO shape, missing integration state, and package export/boundary expectations.
+- Tests run and results:
+  - `python -m pytest tests/unit/test_discord_integration_service.py tests/unit/test_application_layer_foundation.py` -> blocked in host interpreter because `pytest` is not installed there.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `336 passed in 6.65s`.
+- Blockers:
+  - None for the required verification commands.
+- Next recommended item:
+  - `diaf-020` - Implement Discord OAuth Client and Callback Validation Flow
+## 2026-04-19T09:21:36.3282700-05:00
+- Active spec:
+  - `specs/discord_integration_application_flow.json`
+- Selected item:
+  - `diaf-020` - Implement Discord OAuth Client and Callback Validation Flow
+- Repo search summary:
+  - Searched `app`, `tests`, `specs`, and `docs` with `git ls-files` and `rg` to locate existing Discord schema usage, router registration, service/repository boundaries, integration-client patterns, config settings, and error-handler conventions before editing.
+  - Confirmed the existing Discord foundation already lives in `app/db/repositories/discord_integration_repository.py`, `app/services/discord_integration_service.py`, `app/schemas/integrations.py`, `app/services/__init__.py`, `app/db/repositories/__init__.py`, and `app/schemas/__init__.py`, with current regression coverage in `tests/unit/test_discord_integration_service.py` and `tests/unit/test_application_layer_foundation.py`.
+  - Confirmed the closest client/config/dependency patterns are `app/integrations/pay_client.py`, `app/core/config.py`, `app/api/deps.py`, `app/api/exception_handlers.py`, `tests/unit/test_pay_client.py`, `tests/unit/test_config.py`, and `tests/unit/test_api_error_contract.py`.
+  - Gap addressed by this item: no Discord OAuth client existed, no Discord OAuth settings or dependency wiring existed, callback state validation was not implemented, and there were no focused OAuth client/state-validation tests.
+- Files changed:
+  - `app/api/deps.py`
+  - `app/api/exception_handlers.py`
+  - `app/core/config.py`
+  - `app/integrations/__init__.py`
+  - `app/integrations/discord_oauth_client.py`
+  - `app/services/discord_integration_service.py`
+  - `tests/unit/test_api_error_contract.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_config.py`
+  - `tests/unit/test_discord_integration_service.py`
+  - `tests/unit/test_discord_oauth_client.py`
+  - `specs/discord_integration_application_flow.json`
+- Implementation summary:
+  - Added a Discord OAuth client under `app/integrations/` that signs and validates account-bound OAuth state values, builds the Discord authorization URL, exchanges authorization codes for Discord identity data, and avoids token persistence.
+  - Added environment-backed Discord OAuth settings and dependency wiring in `app/api/deps.py` so the new client can be injected through the same boundary pattern used by the Pay client.
+  - Extended the Discord integration service with OAuth initiation and callback-completion methods that validate state before linking the Discord account through the existing repository/service transaction flow.
+  - Added shared API exception-handler coverage for invalid Discord OAuth state, Discord OAuth unavailability, invalid provider responses, and misconfiguration so callback failures can map into the standard error envelope.
+  - Added focused unit tests for Discord OAuth URL/state behavior, code exchange behavior, failure cases, service callback orchestration, error-shape translation, config fields, and package export wiring.
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `python -m pytest tests/unit/test_discord_oauth_client.py tests/unit/test_discord_integration_service.py tests/unit/test_api_error_contract.py tests/unit/test_application_layer_foundation.py tests/unit/test_config.py` -> blocked in the host interpreter because `pytest` is not installed there (`No module named pytest`).
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `346 passed in 6.72s`.
+- Blockers:
+  - None for the required verification commands.
+- Next recommended item:
+  - `diaf-030` - Expose Safe `/api/v1/integrations` Discord Routes
+2026-04-19T09:26:15.3365128-05:00
+- Active spec:
+  - `specs/discord_integration_application_flow.json`
+- Selected item:
+  - `diaf-030` - Expose Safe `/api/v1/integrations` Discord Routes
+- Repo search summary:
+  - Searched router/dependency/service/schema/test patterns with `git ls-files`, `git grep`, `rg`, `find`/`Get-ChildItem`, and `grep -R`.
+  - Found Discord foundation wiring already present in `app/api/deps.py`, `app/services/discord_integration_service.py`, `app/db/repositories/discord_integration_repository.py`, `app/integrations/discord_oauth_client.py`, and `app/schemas/integrations.py`.
+  - Found the canonical v1 router registration surface in `app/api/routers/v1/__init__.py` and router style patterns in `app/api/routers/v1/profiles.py` and `app/api/routers/v1/addresses.py`.
+  - Found existing Discord coverage in `tests/unit/test_discord_integration_service.py`, `tests/unit/test_discord_oauth_client.py`, `tests/unit/test_api_error_contract.py`, and `tests/unit/test_router_registration.py`, but no existing `/api/v1/integrations` router file or API tests.
+  - Identified a gap in shared exception wiring: `DiscordIntegrationNotFoundError` and `DiscordIntegrationLinkNotFoundError` existed in the service layer but were not yet translated through `app/api/exception_handlers.py`.
+- Files changed:
+  - `app/api/routers/v1/integrations.py`
+  - `app/api/routers/v1/__init__.py`
+  - `app/api/exception_handlers.py`
+  - `app/schemas/integrations.py`
+  - `app/schemas/__init__.py`
+  - `tests/unit/test_discord_integration_api.py`
+  - `tests/unit/test_router_registration.py`
+  - `specs/discord_integration_application_flow.json`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed
+  - `python -m pytest tests/unit/test_discord_integration_api.py tests/unit/test_router_registration.py tests/unit/test_api_error_contract.py -q` -> could not run locally because `pytest` is not installed in the host Python environment (`No module named pytest`)
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `354 passed in 6.89s`
+- Blockers:
+  - None for the required verification commands.
+- Next recommended item:
+  - `diaf-040` - Lock Discord Integration Regression Coverage
+2026-04-19T09:28:56.5352663-05:00
+- Active spec:
+  - `specs/discord_integration_application_flow.json`
+- Selected item:
+  - `diaf-040` - Lock Discord Integration Regression Coverage
+- Repo search summary:
+  - Searched the Discord slice and its registration/tests with `git ls-files`, `rg`, and direct file reads before changing anything.
+  - Confirmed the Discord integration wiring is already in place across `app/api/routers/v1/integrations.py`, `app/api/routers/v1/__init__.py`, `app/api/deps.py`, `app/services/discord_integration_service.py`, `app/db/repositories/discord_integration_repository.py`, `app/integrations/discord_oauth_client.py`, and `app/schemas/integrations.py`.
+  - Confirmed targeted regression coverage already exists in `tests/unit/test_discord_integration_service.py`, `tests/unit/test_discord_integration_api.py`, `tests/unit/test_discord_oauth_client.py`, `tests/unit/test_router_registration.py`, `tests/unit/test_api_error_contract.py`, and `tests/unit/test_application_layer_foundation.py`.
+  - Verified the remaining gap for the active spec item was durable artifact status, not missing runtime coverage: the tests for service transitions, API auth/error behavior, DTO safety, and router registration were present and green in the authoritative suite.
+- Files changed:
+  - `specs/discord_integration_application_flow.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed
+  - `python -m pytest tests/unit/test_discord_integration_service.py tests/unit/test_discord_integration_api.py tests/unit/test_discord_oauth_client.py tests/unit/test_router_registration.py tests/unit/test_api_error_contract.py tests/unit/test_application_layer_foundation.py` -> could not run locally because `pytest` is not installed in the host Python environment (`No module named pytest`)
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `354 passed in 7.24s`
+- Blockers:
+  - None for the required verification commands.
+- Next recommended item:
+  - `diaf-999` - Verify Discord Integration Application Slice
+2026-04-19T09:31:04.6266339-05:00
+- Active spec:
+  - `specs/discord_integration_application_flow.json`
+- Selected item:
+  - `diaf-999` - Verify Discord Integration Application Slice
+- Repo search summary:
+  - Searched the Discord integration slice before any edits with `git ls-files`, `git grep`, and `rg` across `app/`, `tests/`, and `specs/`.
+  - Confirmed the implemented runtime surface already exists in `app/api/routers/v1/integrations.py`, `app/api/deps.py`, `app/api/exception_handlers.py`, `app/services/discord_integration_service.py`, `app/db/repositories/discord_integration_repository.py`, `app/integrations/discord_oauth_client.py`, `app/schemas/integrations.py`, and `app/api/routers/v1/__init__.py`.
+  - Confirmed regression coverage already exists in `tests/unit/test_discord_integration_service.py`, `tests/unit/test_discord_integration_api.py`, `tests/unit/test_discord_oauth_client.py`, `tests/unit/test_router_registration.py`, `tests/unit/test_application_layer_foundation.py`, `tests/unit/test_api_error_contract.py`, and related config/profile tests.
+  - Verified the remaining gap for the active spec was authoritative verification only; no runtime implementation changes were required for this iteration.
+- Files changed:
+  - `specs/discord_integration_application_flow.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `354 passed in 7.42s`
+- Blockers:
+  - None for the required verification commands.
+- Next recommended item:
+  - Author or activate the next roadmap spec: `background_jobs_and_security_hardening.json`

@@ -6,6 +6,7 @@ from app.db.repositories.auth_repository import AuthRepository
 from app.db.repositories.communication_preference_repository import (
     CommunicationPreferenceRepository,
 )
+from app.db.repositories.discord_integration_repository import DiscordIntegrationRepository
 from app.db.repositories.pay_projection_repository import PayProjectionRepository
 from app.db.repositories.profile_settings_repository import ProfileSettingsRepository
 from app.db.repositories.reward_badge_repository import RewardBadgeRepository
@@ -21,6 +22,7 @@ __all__ = [
     "AddressRepository",
     "AuthRepository",
     "CommunicationPreferenceRepository",
+    "DiscordIntegrationRepository",
     "PayProjectionRepository",
     "ProfileSettingsRepository",
     "RewardBadgeRepository",

@@ -1,6 +1,6 @@
 # Zeptalytic Web Backend Implementation Plan
 
-Active spec: specs/rewards_objectives_badges_application_api.json
+Active spec: specs/discord_integration_application_flow.json
 
 ## Current phase
 
@@ -197,13 +197,7 @@ The following workstreams are treated as complete and should not be re-opened un
 
 ## Next workstream to author after the active spec
 
-After the active rewards/objectives/badges application workstream is complete, the next spec to author or activate should be the Discord integration application-flow workstream from the roadmap:
-
-```text
-specs/discord_integration_application_flow.json
-```
-
-That follow-on spec should stay focused on Discord application behavior and preserve the roadmap order from `specs/next_phase_spec_sequence.json`.
+After the active Discord integration application-flow workstream is complete, the next spec to author or activate should be the background jobs/security hardening workstream from the roadmap.
 
 ## Progress rule
 

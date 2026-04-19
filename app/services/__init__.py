@@ -39,6 +39,12 @@ from app.services.communication_preference_service import (
     build_communication_preference_service,
 )
 from app.services.dashboard_service import DashboardService, build_dashboard_service
+from app.services.discord_integration_service import (
+    DiscordIntegrationLinkNotFoundError,
+    DiscordIntegrationNotFoundError,
+    DiscordIntegrationService,
+    build_discord_integration_service,
+)
 from app.services.profile_settings_service import (
     ProfileSettingsNotFoundError,
     ProfileSettingsService,
@@ -113,6 +119,9 @@ __all__ = [
     "DuplicateAccountError",
     "EmailVerificationRequiredError",
     "EmailVerificationTokenInvalidError",
+    "DiscordIntegrationLinkNotFoundError",
+    "DiscordIntegrationNotFoundError",
+    "DiscordIntegrationService",
     "InvalidCredentialsError",
     "LauncherService",
     "PasswordResetTokenInvalidError",
@@ -127,6 +136,7 @@ __all__ = [
     "PayProjectionSyncMetadata",
     "build_communication_preference_service",
     "build_dashboard_service",
+    "build_discord_integration_service",
     "build_launcher_service",
     "build_pay_projection_service",
     "ProfileSettingsService",

@@ -15,6 +15,8 @@ from app.schemas import (
     CommunicationPreferenceSummary,
     CursorPageInfo,
     CursorPageResponse,
+    DiscordIntegrationReadResponse,
+    DiscordIntegrationSummary,
     MutationSuccessResponse,
     ProfileRouteContractResponse,
     ProfileSettingsSummary,
@@ -22,8 +24,20 @@ from app.schemas import (
     SupportTicketCreateRequest,
     SupportTicketListResponse,
 )
-from app.api.deps import get_pay_client, get_pay_projection_service
+from app.api.deps import (
+    get_discord_integration_service,
+    get_discord_oauth_client,
+    get_pay_client,
+    get_pay_projection_service,
+)
 from app.integrations import (
+    DiscordOAuthClient,
+    DiscordOAuthConfigurationError,
+    DiscordOAuthIdentity,
+    DiscordOAuthInvalidResponseError,
+    DiscordOAuthStateValidationError,
+    DiscordOAuthUnavailableError,
+    build_discord_oauth_client,
     PayClient,
     PayClientConfigurationError,
     PayClientInvalidResponseError,
@@ -37,6 +51,9 @@ from app.services import (
     BillingSummaryService,
     CommunicationPreferenceService,
     DashboardService,
+    DiscordIntegrationLinkNotFoundError,
+    DiscordIntegrationNotFoundError,
+    DiscordIntegrationService,
     SupportService,
     SupportTicketNotFoundError,
     SupportTicketValidationError,
@@ -61,6 +78,7 @@ from app.services import (
     build_billing_summary_service,
     build_communication_preference_service,
     build_dashboard_service,
+    build_discord_integration_service,
     build_launcher_service,
     build_pay_projection_service,
     build_profile_settings_service,
@@ -142,6 +160,7 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert build_billing_summary_service is not None
     assert build_communication_preference_service is not None
     assert build_dashboard_service is not None
+    assert build_discord_integration_service is not None
     assert build_launcher_service is not None
     assert build_pay_projection_service is not None
     assert build_profile_settings_service is not None
@@ -158,6 +177,9 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert BillingSummaryService is not None
     assert CommunicationPreferenceService is not None
     assert DashboardService is not None
+    assert DiscordIntegrationService is not None
+    assert DiscordIntegrationNotFoundError is not None
+    assert DiscordIntegrationLinkNotFoundError is not None
     assert LauncherService is not None
     assert PayProjectionSubscriptionSummary is not None
     assert PayProjectionEntitlementSummary is not None
@@ -179,6 +201,15 @@ def test_service_package_exports_reward_service_builders() -> None:
 
 
 def test_pay_integration_package_exports_client_boundary() -> None:
+    assert DiscordOAuthClient is not None
+    assert DiscordOAuthIdentity is not None
+    assert build_discord_oauth_client is not None
+    assert DiscordOAuthConfigurationError is not None
+    assert DiscordOAuthUnavailableError is not None
+    assert DiscordOAuthInvalidResponseError is not None
+    assert DiscordOAuthStateValidationError is not None
+    assert get_discord_oauth_client is not None
+    assert get_discord_integration_service is not None
     assert PayClient is not None
     assert build_pay_client is not None
     assert PayClientConfigurationError is not None
@@ -275,6 +306,7 @@ def test_reward_service_modules_define_repository_construction_boundary() -> Non
 def test_settings_service_modules_define_repository_construction_boundary() -> None:
     service_modules = [
         Path("app/services/profile_settings_service.py"),
+        Path("app/services/discord_integration_service.py"),
         Path("app/services/address_service.py"),
         Path("app/services/communication_preference_service.py"),
         Path("app/services/support_service.py"),
@@ -301,6 +333,8 @@ def test_settings_service_modules_define_repository_construction_boundary() -> N
 
 def test_settings_schema_package_exports_contract_safe_dtos() -> None:
     assert ProfileSettingsSummary is not None
+    assert DiscordIntegrationSummary is not None
+    assert DiscordIntegrationReadResponse is not None
     assert AddressSummary is not None
     assert CommunicationPreferenceSummary is not None
     assert ProfileRouteContractResponse is not None

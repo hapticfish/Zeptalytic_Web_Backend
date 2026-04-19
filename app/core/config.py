@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/zeptalytic_web_backend"
     pay_service_base_url: str = "http://localhost:8080"
     pay_service_internal_token: str | None = None
+    discord_oauth_base_url: str = "https://discord.com"
+    discord_oauth_client_id: str | None = None
+    discord_oauth_client_secret: str | None = None
+    discord_oauth_redirect_uri: str | None = None
+    discord_oauth_state_secret: str = "dev-discord-oauth-state-secret"
+    discord_oauth_state_ttl_seconds: int = 600
 
     model_config = SettingsConfigDict(
         env_file=".env",

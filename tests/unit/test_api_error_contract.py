@@ -3,9 +3,12 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_auth_service
+from app.api.exception_handlers import register_exception_handlers
+from app.integrations import DiscordOAuthStateValidationError
 from app.main import app
 from app.services.auth_service import AuthenticatedSessionContext
 
@@ -85,4 +88,24 @@ def test_invalid_uuid_returns_standard_validation_error_shape() -> None:
                 "type": "uuid_parsing",
             }
         ]
+    }
+
+
+def test_discord_oauth_state_errors_use_standard_error_shape() -> None:
+    local_app = FastAPI()
+    register_exception_handlers(local_app)
+
+    @local_app.get("/test/discord-oauth-state")
+    def discord_oauth_state_failure() -> None:
+        raise DiscordOAuthStateValidationError("expired_state")
+
+    response = TestClient(local_app).get("/test/discord-oauth-state")
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": {
+            "code": "discord_oauth_state_invalid",
+            "message": "Discord OAuth callback state is invalid.",
+            "details": {"reason": "expired_state"},
+        }
     }

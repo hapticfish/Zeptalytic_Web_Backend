@@ -1,0 +1,175 @@
+{
+  "id": "discord-integration-application-flow",
+  "title": "Discord Integration Application Flow",
+  "status": "active",
+  "owner": "Zeptalytic Web Backend",
+  "purpose": "Implement the first-phase Discord application layer for the parent backend: safe browser-facing integration status reads, Discord OAuth initiation and callback handling, current-link disconnect behavior, and preservation of current-vs-history linkage semantics using the already-complete schema foundation. This spec intentionally does not add new database models or migrations, does not make Discord affect rewards or product access, and does not introduce Discord bot, guild, or notification features.",
+  "context": {
+    "summary": "The roadmap and implementation plan both point to Discord integration as the next workstream after the completed rewards slice. Repo reality already includes the Discord schema correction work: active Discord linkage fields live on `profiles`, preserved history lives in `discord_connection_history`, and the settings profile read model already exposes safe Discord display data. What is still missing is the application-layer behavior described in the architecture docs: a dedicated Discord integration repository/service slice, a Discord OAuth client and state-validation flow, versioned integration routes, safe callback/connect/disconnect responses, and regression tests that lock the phase-1 behavior without reopening schema work.",
+    "source_docs": [
+      "docs/architecture/Spec_Authoring_and_Harness_Workflow.md",
+      "docs/architecture/Parent_Backend_Application_Architecture.md",
+      "docs/architecture/Parent_Backend_API_Contract_Standards.md",
+      "docs/architecture/Parent_Backend_Repository_Layer_Design.md",
+      "docs/architecture/Parent_Backend_Service_Layer_Design.md",
+      "docs/architecture/Frontend_Backend_Contract_Map.md",
+      "docs/architecture/Auth_Session_and_Security_Flows.md",
+      "docs/architecture/Discord_Integration_Application_Flow.md",
+      "docs/architecture/Security_Operational_Control_Guide.md",
+      "docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md",
+      "docs/architecture/Discord_Integration_Decision_Record.md"
+    ],
+    "previous_specs_or_dependencies": [
+      "specs/application_layer_foundation.json",
+      "specs/auth_session_account_security.json",
+      "specs/profile_settings_addresses_preferences_api.json",
+      "specs/discord_identity_schema_correction.json",
+      "specs/next_phase_spec_sequence.json"
+    ],
+    "repo_reality_summary": [
+      "`IMPLEMENTATION_PLAN.md` still lists the completed rewards spec as active, but its next-workstream note explicitly says the next spec to author should be `specs/discord_integration_application_flow.json`.",
+      "Discord persistence already exists: `app/db/models/profiles.py` carries `discord_user_id`, `discord_username`, and `discord_integration_status`, while `app/db/models/discord_connection_history.py` preserves historical linkage state.",
+      "The existing read surface is limited to profile/settings display: `app/db/repositories/profile_settings_repository.py`, `app/services/profile_settings_service.py`, `app/schemas/profiles.py`, and `app/api/routers/v1/profiles.py` expose Discord username and integration status as part of `/api/v1/profiles/me`.",
+      "There is no dedicated Discord repository, no Discord application service, no Discord-specific router under `/api/v1/integrations`, and no Discord OAuth client in `app/integrations/`; `app/integrations/__init__.py` currently exports only Pay client wiring.",
+      "Shared application-layer extension points already exist: `app/api/deps.py` centralizes service/client dependency wiring, `app/api/routers/v1/__init__.py` is the canonical router registration surface, and `app/api/exception_handlers.py` already enforces the standard error envelope for service exceptions.",
+      "Discord-related repo searches found schema and DB regression coverage in `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, `tests/integration/test_parent_db_round_trips.py`, and `tests/unit/test_auth_models.py`, but no application-layer tests for integration routes, OAuth state handling, connect/disconnect services, or Discord-specific dependency wiring.",
+      "The canonical constraints for this workstream are already visible in docs and code: profile DTOs must not expose `discord_user_id`, the parent backend must validate OAuth state/CSRF, and Discord linkage must remain unrelated to rewards, billing truth, or launcher access decisions."
+    ]
+  },
+  "global_guardrails": [
+    "Search before editing.",
+    "Do not expand scope beyond this spec.",
+    "Do not add dependencies unless John explicitly approves them.",
+    "Do not duplicate Pay commercial business rules in parent.",
+    "Do not store sensitive payment details in parent.",
+    "Do not build admin dashboards unless explicitly scoped.",
+    "Do not redesign stable frontend pages.",
+    "Do not make Discord linkage affect rewards or product access unless the spec explicitly says so.",
+    "Do not allow frontend APIs to directly award points/rewards/badges.",
+    "Do not return raw ORM objects from routers.",
+    "Do not mark incomplete items complete.",
+    "Append progress entries to the absolute end of `progress/progress.txt`.",
+    "Run `python -m compileall app tests alembic` before marking implementation items complete.",
+    "Run `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` before marking implementation items complete.",
+    "Treat Discord user ID, OAuth codes, OAuth state values, and any tokens as sensitive; do not expose them in normal browser DTOs or logs.",
+    "Do not reopen `profiles` or `discord_connection_history` schema design in this spec unless repo reality proves a tiny support correction is absolutely required, and document that correction explicitly if it occurs.",
+    "Keep Discord phase 1 limited to settings/signup linkage behavior, safe status presentation, and history preservation; do not add guild membership, bot management, Discord notifications, or reward/access coupling."
+  ],
+  "expected_paths": {
+    "may_create_or_update": [
+      "app/api/deps.py",
+      "app/api/exception_handlers.py",
+      "app/api/routers/v1/__init__.py",
+      "app/api/routers/v1/integrations.py",
+      "app/core/config.py",
+      "app/db/repositories/__init__.py",
+      "app/db/repositories/discord_integration_repository.py",
+      "app/integrations/__init__.py",
+      "app/integrations/discord_oauth_client.py",
+      "app/schemas/__init__.py",
+      "app/schemas/integrations.py",
+      "app/services/__init__.py",
+      "app/services/discord_integration_service.py",
+      "tests/unit/test_discord_integration_api.py",
+      "tests/unit/test_discord_integration_service.py",
+      "tests/unit/test_discord_oauth_client.py",
+      "tests/unit/test_router_registration.py",
+      "tests/unit/test_profiles_api.py",
+      "tests/unit/test_api_error_contract.py",
+      "tests/unit/test_application_layer_foundation.py"
+    ],
+    "must_not_modify_without_strong_reason": [
+      "alembic/",
+      "app/db/models/",
+      "app/db/bootstrap.py",
+      "tests/integration/",
+      "specs/discord_identity_schema_correction.json",
+      "specs/rewards_objectives_badges_application_api.json",
+      "IMPLEMENTATION_PLAN.md"
+    ]
+  },
+  "items": [
+    {
+      "id": "diaf-010",
+      "title": "Add Discord Integration Repository and Service Foundation",
+      "description": "Create a focused Discord integration repository/service slice that reads current Discord linkage status, updates the active profile linkage, appends history rows for connect/disconnect transitions, and keeps transaction ownership in the service layer. Reuse the existing Discord schema fields and history table rather than introducing new models.",
+      "acceptance_criteria": [
+        "A dedicated repository exists for Discord integration persistence concerns instead of overloading profile-settings or auth repositories further.",
+        "A dedicated application service exists for Discord integration behavior and owns connect/disconnect transaction boundaries.",
+        "The service returns safe browser DTOs that expose connection status and Discord username but not `discord_user_id`.",
+        "Connecting a different Discord account updates current profile linkage and preserves prior linkage state in `discord_connection_history` rather than deleting history.",
+        "No new database models or Alembic migrations are added unless a tiny support fix is proven necessary and explicitly documented in progress."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-19T09:11:36.2270906-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "diaf-020",
+      "title": "Implement Discord OAuth Client and Callback Validation Flow",
+      "description": "Introduce the minimum Discord OAuth client/configuration layer needed for phase-1 connect flow support. The flow should generate or validate state values, exchange authorization codes for Discord identity data, and surface domain-safe exceptions that the shared API error handler can translate.",
+      "acceptance_criteria": [
+        "A Discord OAuth client/config layer exists under `app/integrations/` and is wired through `app/api/deps.py` without adding third-party dependencies.",
+        "The callback flow validates OAuth state and rejects missing/invalid state values with standard API errors rather than generic server failures.",
+        "The implementation stores only the Discord data needed for phase 1 and does not require long-lived Discord token persistence.",
+        "Configuration stays in environment-backed settings and does not hardcode Discord client secrets, redirect URLs, or state-signing material.",
+        "The OAuth client/service error paths are covered by focused unit tests."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-19T09:21:36.3282700-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "diaf-030",
+      "title": "Expose Safe `/api/v1/integrations` Discord Routes",
+      "description": "Add the browser-facing Discord integration routes under the existing versioned router foundation. The route set should stay narrow: read current Discord status, initiate connect, handle callback completion, and disconnect current linkage using safe mutation responses and the standard error contract.",
+      "acceptance_criteria": [
+        "A versioned integrations router is registered through `app/api/routers/v1/__init__.py` without changing unrelated domain paths.",
+        "The router exposes a safe Discord status/read response suitable for the settings integrations card, plus connect/callback/disconnect endpoints needed by phase 1.",
+        "Authenticated-session requirements follow the existing app conventions, and normal user routes do not expose Discord user ID, raw OAuth codes, or provider tokens.",
+        "Disconnect behavior clears the current active linkage on `profiles` while preserving historical records separately.",
+        "This spec does not add Discord-specific admin routes, reward routes, billing routes, or launcher gating behavior."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-19T09:26:15.3365128-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "diaf-040",
+      "title": "Lock Discord Integration Regression Coverage",
+      "description": "Add targeted tests proving the new Discord application slice exists, is wired through the versioned router/dependency pattern, preserves DTO safety, and enforces OAuth state and disconnect semantics without reopening schema tests unnecessarily.",
+      "acceptance_criteria": [
+        "Unit tests cover Discord integration service behavior for initial connect, reconnect-to-different-account, and disconnect transitions.",
+        "API tests cover the versioned Discord routes, authenticated-session requirements, safe response shapes, and standard error behavior for invalid callback state or missing linkage.",
+        "Router-registration tests prove the new `/api/v1/integrations` surface is mounted through the canonical v1 router package.",
+        "Existing profile/settings tests are only updated as needed to reflect shared safe Discord display behavior; the work does not duplicate schema/integration test inventories."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-19T09:28:56.5352663-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "diaf-999",
+      "title": "Verify Discord Integration Application Slice",
+      "description": "Run the required verification suite after the Discord integration application flow is implemented and only mark the spec complete once the new slice and any touched existing tests pass cleanly.",
+      "acceptance_criteria": [
+        "`python -m compileall app tests alembic` passes.",
+        "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+        "Discord integration tests cover repository/service/router/client behavior and the standard error contract for callback validation or missing-link cases.",
+        "Only fully completed items are marked complete, and `progress/progress.txt` is appended at EOF."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-19T09:31:04.6266339-05:00",
+      "completed_by": "codex"
+    }
+  ],
+  "completion_definition": [
+    "All spec items have `passes=true`.",
+    "Relevant tests are added or updated for Discord integration repository, service, OAuth client, router registration, and safe DTO/error behavior.",
+    "`python -m compileall app tests alembic` passes.",
+    "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+    "`progress/progress.txt` is updated at EOF.",
+    "No unrelated dirty files are introduced.",
+    "No incomplete item is marked complete."
+  ]
+}

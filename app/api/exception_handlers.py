@@ -5,6 +5,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api.errors import build_error_response
+from app.integrations import (
+    DiscordOAuthConfigurationError,
+    DiscordOAuthInvalidResponseError,
+    DiscordOAuthStateValidationError,
+    DiscordOAuthUnavailableError,
+)
 from app.services.address_service import AddressNotFoundError, AddressUpdateValidationError
 from app.services.auth_service import (
     AccountAccessRestrictedError,
@@ -31,6 +37,10 @@ from app.services.reward_notification_service import (
 from app.services.profile_settings_service import (
     ProfileSettingsNotFoundError,
     ProfileSettingsUpdateValidationError,
+)
+from app.services.discord_integration_service import (
+    DiscordIntegrationLinkNotFoundError,
+    DiscordIntegrationNotFoundError,
 )
 from app.services.support_service import (
     SupportAccessRestrictedError,
@@ -95,6 +105,14 @@ def register_exception_handlers(app: FastAPI) -> None:
         profile_settings_update_validation_handler,
     )
     app.add_exception_handler(
+        DiscordIntegrationNotFoundError,
+        discord_integration_not_found_handler,
+    )
+    app.add_exception_handler(
+        DiscordIntegrationLinkNotFoundError,
+        discord_integration_link_not_found_handler,
+    )
+    app.add_exception_handler(
         CommunicationPreferenceNotFoundError,
         communication_preference_not_found_handler,
     )
@@ -120,6 +138,22 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         RewardNotificationNotFoundError,
         reward_notification_not_found_handler,
+    )
+    app.add_exception_handler(
+        DiscordOAuthStateValidationError,
+        discord_oauth_state_validation_handler,
+    )
+    app.add_exception_handler(
+        DiscordOAuthUnavailableError,
+        discord_oauth_unavailable_handler,
+    )
+    app.add_exception_handler(
+        DiscordOAuthInvalidResponseError,
+        discord_oauth_invalid_response_handler,
+    )
+    app.add_exception_handler(
+        DiscordOAuthConfigurationError,
+        discord_oauth_configuration_handler,
     )
     app.add_exception_handler(RequestValidationError, request_validation_error_handler)
 
@@ -215,6 +249,32 @@ async def profile_settings_update_validation_handler(
         code="profile_settings_update_invalid",
         message="Profile settings update is invalid.",
         details={"reason": str(exc)},
+        request_id=_request_id(request),
+    )
+
+
+async def discord_integration_not_found_handler(
+    request: Request,
+    exc: DiscordIntegrationNotFoundError,
+) -> JSONResponse:
+    del exc
+    return build_error_response(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="discord_integration_not_found",
+        message="Discord integration state not found.",
+        request_id=_request_id(request),
+    )
+
+
+async def discord_integration_link_not_found_handler(
+    request: Request,
+    exc: DiscordIntegrationLinkNotFoundError,
+) -> JSONResponse:
+    del exc
+    return build_error_response(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="discord_integration_link_not_found",
+        message="No active Discord connection was found.",
         request_id=_request_id(request),
     )
 
@@ -475,6 +535,58 @@ async def reward_notification_not_found_handler(
         status_code=status.HTTP_404_NOT_FOUND,
         code="reward_notification_not_found",
         message="Reward notification not found.",
+        request_id=_request_id(request),
+    )
+
+
+async def discord_oauth_state_validation_handler(
+    request: Request,
+    exc: DiscordOAuthStateValidationError,
+) -> JSONResponse:
+    return build_error_response(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        code="discord_oauth_state_invalid",
+        message="Discord OAuth callback state is invalid.",
+        details={"reason": exc.reason},
+        request_id=_request_id(request),
+    )
+
+
+async def discord_oauth_unavailable_handler(
+    request: Request,
+    exc: DiscordOAuthUnavailableError,
+) -> JSONResponse:
+    del exc
+    return build_error_response(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        code="discord_oauth_unavailable",
+        message="Discord OAuth is temporarily unavailable.",
+        request_id=_request_id(request),
+    )
+
+
+async def discord_oauth_invalid_response_handler(
+    request: Request,
+    exc: DiscordOAuthInvalidResponseError,
+) -> JSONResponse:
+    return build_error_response(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        code="discord_oauth_failed",
+        message="Discord OAuth could not be completed.",
+        details={"reason": str(exc)},
+        request_id=_request_id(request),
+    )
+
+
+async def discord_oauth_configuration_handler(
+    request: Request,
+    exc: DiscordOAuthConfigurationError,
+) -> JSONResponse:
+    del exc
+    return build_error_response(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        code="discord_oauth_unavailable",
+        message="Discord OAuth is temporarily unavailable.",
         request_id=_request_id(request),
     )
 

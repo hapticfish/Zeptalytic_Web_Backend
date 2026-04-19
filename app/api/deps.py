@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import SessionLocal
-from app.integrations import PayClient, build_pay_client
+from app.integrations import (
+    DiscordOAuthClient,
+    PayClient,
+    build_discord_oauth_client,
+    build_pay_client,
+)
 from app.services import (
     AnnouncementService,
     AddressService,
@@ -15,6 +20,7 @@ from app.services import (
     BillingSummaryService,
     CommunicationPreferenceService,
     DashboardService,
+    DiscordIntegrationService,
     LauncherService,
     PayProjectionService,
     ProfileSettingsService,
@@ -30,6 +36,7 @@ from app.services import (
     build_billing_summary_service,
     build_communication_preference_service,
     build_dashboard_service,
+    build_discord_integration_service,
     build_launcher_service,
     build_pay_projection_service,
     build_profile_settings_service,
@@ -50,6 +57,10 @@ def get_pay_client(active_settings=Depends(get_settings)) -> PayClient:
     return build_pay_client(active_settings)
 
 
+def get_discord_oauth_client(active_settings=Depends(get_settings)) -> DiscordOAuthClient:
+    return build_discord_oauth_client(active_settings)
+
+
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
@@ -66,6 +77,13 @@ def get_profile_settings_service(
     db: Session = Depends(get_db),
 ) -> ProfileSettingsService:
     return build_profile_settings_service(db)
+
+
+def get_discord_integration_service(
+    db: Session = Depends(get_db),
+    oauth_client: DiscordOAuthClient = Depends(get_discord_oauth_client),
+) -> DiscordIntegrationService:
+    return build_discord_integration_service(db, oauth_client)
 
 
 def get_support_service(db: Session = Depends(get_db)) -> SupportService:

@@ -8,6 +8,7 @@ from app.api.routers.v1.communication_preferences import (
     router as communication_preferences_router,
 )
 from app.api.routers.v1.dashboard import router as dashboard_router
+from app.api.routers.v1.integrations import router as integrations_router
 from app.api.routers.v1.launcher import router as launcher_router
 from app.api.routers.v1.profiles import router as profiles_router
 from app.api.routers.v1.rewards import router as rewards_router
@@ -115,6 +116,17 @@ def test_versioned_dashboard_launcher_billing_routers_are_canonical_registration
     assert ("/service-status", ("GET",)) in service_status_routes
 
 
+def test_versioned_integrations_router_is_canonical_registration_surface() -> None:
+    integration_routes = {
+        (route.path, tuple(sorted(route.methods or []))) for route in integrations_router.routes
+    }
+
+    assert ("/integrations/discord", ("GET",)) in integration_routes
+    assert ("/integrations/discord/connect", ("POST",)) in integration_routes
+    assert ("/integrations/discord/callback", ("GET",)) in integration_routes
+    assert ("/integrations/discord/disconnect", ("POST",)) in integration_routes
+
+
 def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
     routes = {route.path for route in app.routes}
     assert "/api/v1/auth/signup" in routes
@@ -163,3 +175,7 @@ def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
     assert "/api/v1/billing/subscription-restart" in routes
     assert "/api/v1/billing/promo-code/validate" in routes
     assert "/api/v1/billing/promo-code/apply" in routes
+    assert "/api/v1/integrations/discord" in routes
+    assert "/api/v1/integrations/discord/connect" in routes
+    assert "/api/v1/integrations/discord/callback" in routes
+    assert "/api/v1/integrations/discord/disconnect" in routes

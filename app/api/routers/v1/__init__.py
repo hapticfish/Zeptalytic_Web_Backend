@@ -8,6 +8,7 @@ from app.api.routers.v1.communication_preferences import (
     router as communication_preferences_router,
 )
 from app.api.routers.v1.dashboard import router as dashboard_router
+from app.api.routers.v1.integrations import router as integrations_router
 from app.api.routers.v1.launcher import router as launcher_router
 from app.api.routers.v1.profiles import router as profiles_router
 from app.api.routers.v1.rewards import router as rewards_router
@@ -26,3 +27,4 @@ api_router.include_router(rewards_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(launcher_router)
 api_router.include_router(billing_router)
+api_router.include_router(integrations_router)

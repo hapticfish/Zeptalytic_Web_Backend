@@ -77,6 +77,11 @@ from app.schemas.dashboard import (
     DashboardSummaryResponse,
     DashboardSystemStatusSummary,
 )
+from app.schemas.integrations import (
+    DiscordConnectInitiationResponse,
+    DiscordIntegrationReadResponse,
+    DiscordIntegrationSummary,
+)
 from app.schemas.reward_badges import RewardBadgeGalleryItem, RewardBadgeGalleryResponse
 from app.schemas.launcher import (
     LauncherBlockingReason,
@@ -148,6 +153,9 @@ __all__ = [
     "DashboardProgressSummary",
     "DashboardSummaryResponse",
     "DashboardSystemStatusSummary",
+    "DiscordConnectInitiationResponse",
+    "DiscordIntegrationReadResponse",
+    "DiscordIntegrationSummary",
     "DiscordProfileDisplaySummary",
     "ForgotPasswordRequest",
     "ForgotPasswordResponse",
