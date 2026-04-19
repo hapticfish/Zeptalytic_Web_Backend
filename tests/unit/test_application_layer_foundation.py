@@ -29,20 +29,27 @@ from app.integrations import (
 from app.services import (
     AddressService,
     AuthService,
+    BillingSummaryService,
     CommunicationPreferenceService,
+    DashboardService,
     PayProjectionEntitlementSummary,
     PayProjectionPaymentMethodSummary,
     PayProjectionPaymentSummary,
     PayProjectionProductAccessState,
     PayProjectionService,
     ProfileSettingsService,
+    LauncherService,
     RewardNotificationService,
     RewardObjectiveService,
+    RewardSummaryNotFoundError,
     RewardSummaryService,
     PayProjectionSubscriptionSummary,
     build_address_service,
     build_auth_service,
+    build_billing_summary_service,
     build_communication_preference_service,
+    build_dashboard_service,
+    build_launcher_service,
     build_pay_projection_service,
     build_profile_settings_service,
     build_reward_notification_service,
@@ -115,7 +122,10 @@ def test_api_error_response_serializes_standard_contract() -> None:
 def test_service_package_exports_reward_service_builders() -> None:
     assert build_address_service is not None
     assert build_auth_service is not None
+    assert build_billing_summary_service is not None
     assert build_communication_preference_service is not None
+    assert build_dashboard_service is not None
+    assert build_launcher_service is not None
     assert build_pay_projection_service is not None
     assert build_profile_settings_service is not None
     assert build_reward_summary_service is not None
@@ -123,7 +133,10 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert build_reward_notification_service is not None
     assert AddressService is not None
     assert AuthService is not None
+    assert BillingSummaryService is not None
     assert CommunicationPreferenceService is not None
+    assert DashboardService is not None
+    assert LauncherService is not None
     assert PayProjectionSubscriptionSummary is not None
     assert PayProjectionEntitlementSummary is not None
     assert PayProjectionPaymentSummary is not None
@@ -132,6 +145,7 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert PayProjectionService is not None
     assert ProfileSettingsService is not None
     assert RewardSummaryService is not None
+    assert RewardSummaryNotFoundError is not None
     assert RewardObjectiveService is not None
     assert RewardNotificationService is not None
 
@@ -166,13 +180,16 @@ def test_reward_router_modules_do_not_import_repositories_directly() -> None:
 
 
 def test_settings_router_modules_do_not_import_repositories_directly() -> None:
-    router_modules = [
-        Path("app/api/routers/v1/profiles.py"),
-        Path("app/api/routers/v1/addresses.py"),
-        Path("app/api/routers/v1/communication_preferences.py"),
-    ]
+    router_modules = {
+        Path("app/api/routers/v1/profiles.py"): "require_normal_authenticated_session_context",
+        Path("app/api/routers/v1/addresses.py"): "require_normal_authenticated_session_context",
+        Path("app/api/routers/v1/communication_preferences.py"): "require_normal_authenticated_session_context",
+        Path("app/api/routers/v1/dashboard.py"): "require_normal_authenticated_session_context",
+        Path("app/api/routers/v1/launcher.py"): "require_normal_authenticated_session_context",
+        Path("app/api/routers/v1/billing.py"): "require_authenticated_session_context",
+    }
 
-    for module_path in router_modules:
+    for module_path, expected_dependency in router_modules.items():
         parsed = ast.parse(module_path.read_text(encoding="utf-8"))
         direct_repository_imports = [
             node.module
@@ -185,7 +202,7 @@ def test_settings_router_modules_do_not_import_repositories_directly() -> None:
             node.id
             for node in ast.walk(parsed)
             if isinstance(node, ast.Name)
-            and node.id == "require_normal_authenticated_session_context"
+            and node.id == expected_dependency
         ]
         assert direct_repository_imports == [], module_path.as_posix()
         assert dependency_references, module_path.as_posix()
@@ -196,6 +213,8 @@ def test_reward_service_modules_define_repository_construction_boundary() -> Non
         Path("app/services/reward_summary_service.py"),
         Path("app/services/reward_objective_service.py"),
         Path("app/services/reward_notification_service.py"),
+        Path("app/services/dashboard_service.py"),
+        Path("app/services/billing_summary_service.py"),
     ]
 
     for module_path in service_modules:

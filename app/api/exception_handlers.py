@@ -20,6 +20,10 @@ from app.services.auth_service import (
     TwoFactorCodeInvalidError,
     TwoFactorNotEnabledError,
 )
+from app.services.billing_summary_service import (
+    BillingActionInvalidResponseError,
+    BillingActionUnavailableError,
+)
 from app.services.reward_notification_service import (
     RewardNotificationNotFoundError,
     RewardNotificationQueueNotFoundError,
@@ -71,6 +75,14 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         AddressUpdateValidationError,
         address_update_validation_handler,
+    )
+    app.add_exception_handler(
+        BillingActionUnavailableError,
+        billing_action_unavailable_handler,
+    )
+    app.add_exception_handler(
+        BillingActionInvalidResponseError,
+        billing_action_invalid_response_handler,
     )
     app.add_exception_handler(ProfileSettingsNotFoundError, profile_settings_not_found_handler)
     app.add_exception_handler(
@@ -137,6 +149,32 @@ async def address_update_validation_handler(
         code="address_update_invalid",
         message="Address update is invalid.",
         details={"reason": str(exc)},
+        request_id=_request_id(request),
+    )
+
+
+async def billing_action_unavailable_handler(
+    request: Request,
+    exc: BillingActionUnavailableError,
+) -> JSONResponse:
+    return build_error_response(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        code="billing_action_unavailable",
+        message="Billing action is temporarily unavailable.",
+        details={"action": exc.action},
+        request_id=_request_id(request),
+    )
+
+
+async def billing_action_invalid_response_handler(
+    request: Request,
+    exc: BillingActionInvalidResponseError,
+) -> JSONResponse:
+    return build_error_response(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        code="billing_action_failed",
+        message="Billing action could not be initiated.",
+        details={"action": exc.action},
         request_id=_request_id(request),
     )
 

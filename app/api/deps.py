@@ -11,14 +11,21 @@ from app.services import (
     AuthService,
     AuthenticationRequiredError,
     AuthenticatedSessionContext,
+    BillingSummaryService,
     CommunicationPreferenceService,
+    DashboardService,
+    LauncherService,
     PayProjectionService,
     ProfileSettingsService,
     build_address_service,
     build_auth_service,
+    build_billing_summary_service,
     build_communication_preference_service,
+    build_dashboard_service,
+    build_launcher_service,
     build_pay_projection_service,
     build_profile_settings_service,
+    build_reward_summary_service,
 )
 
 
@@ -63,6 +70,33 @@ def get_pay_projection_service(
     pay_client: PayClient = Depends(get_pay_client),
 ) -> PayProjectionService:
     return build_pay_projection_service(db, pay_client)
+
+
+def get_launcher_service(
+    pay_projection_service: PayProjectionService = Depends(get_pay_projection_service),
+) -> LauncherService:
+    return build_launcher_service(pay_projection_service)
+
+
+def get_billing_summary_service(
+    db: Session = Depends(get_db),
+    pay_projection_service: PayProjectionService = Depends(get_pay_projection_service),
+    pay_client: PayClient = Depends(get_pay_client),
+) -> BillingSummaryService:
+    return build_billing_summary_service(db, pay_projection_service, pay_client)
+
+
+def get_dashboard_service(
+    db: Session = Depends(get_db),
+    launcher_service: LauncherService = Depends(get_launcher_service),
+    billing_summary_service: BillingSummaryService = Depends(get_billing_summary_service),
+) -> DashboardService:
+    return build_dashboard_service(
+        db,
+        launcher_service,
+        billing_summary_service,
+        build_reward_summary_service(db),
+    )
 
 
 def get_optional_authenticated_session_context(

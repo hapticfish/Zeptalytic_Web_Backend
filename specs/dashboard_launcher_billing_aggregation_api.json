@@ -1,0 +1,201 @@
+{
+  "id": "dashboard-launcher-billing-aggregation-api",
+  "title": "Dashboard, Launcher, and Billing Aggregation API",
+  "status": "active",
+  "owner": "Zeptalytic Web Backend",
+  "purpose": "Implement the first browser-facing dashboard, launcher, and billing aggregation slice on top of the completed application foundation, auth/settings foundations, and Pay projection substrate. This spec focuses on safe read payloads, launcher eligibility decisions, billing read surfaces, and Pay-delegated mutation initiation endpoints. It intentionally does not implement support-ticket workflows, announcement management, service-status administration, rewards writes, Discord OAuth, background workers, admin dashboards, or any duplication of Pay commercial truth.",
+  "context": {
+    "summary": "The roadmap order, the completed `specs/parent_pay_integration_and_projection_foundation.json`, and the latest progress entry all point next to dashboard/launcher/billing aggregation. Repo reality shows the application foundation, auth/session flows, settings APIs, rewards read APIs, and Pay projection services are present, but there are still no dashboard, launcher, or billing routers, schemas, services, or tests. This spec should therefore add the first page-facing aggregation layer that consumes existing parent-owned and Pay-derived read models without reopening database or commercial-truth work.",
+    "source_docs": [
+      "docs/architecture/Spec_Authoring_and_Harness_Workflow.md",
+      "docs/architecture/Parent_Backend_Application_Architecture.md",
+      "docs/architecture/Parent_Backend_API_Contract_Standards.md",
+      "docs/architecture/Parent_Backend_Repository_Layer_Design.md",
+      "docs/architecture/Parent_Backend_Service_Layer_Design.md",
+      "docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md",
+      "docs/architecture/Frontend_Backend_Contract_Map.md",
+      "docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md",
+      "docs/architecture/Auth_Session_and_Security_Flows.md",
+      "docs/architecture/Security_Operational_Control_Guide.md",
+      "docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md"
+    ],
+    "previous_specs_or_dependencies": [
+      "specs/application_layer_foundation.json",
+      "specs/auth_session_account_security.json",
+      "specs/profile_settings_addresses_preferences_api.json",
+      "specs/parent_pay_integration_and_projection_foundation.json",
+      "specs/next_phase_spec_sequence.json"
+    ],
+    "repo_reality_summary": [
+      "`app/main.py` mounts `app.api.routers.api_router` under `settings.api_v1_prefix`, and `app/api/routers/v1/__init__.py` currently registers only auth, profiles, addresses, communication preferences, and rewards routers. There is no `/api/v1/dashboard`, `/api/v1/launcher`, or `/api/v1/billing` registration yet.",
+      "`app/api/deps.py` already exposes authenticated-session guards and a reusable `get_pay_projection_service(...)` dependency, so the aggregation slice can build on existing session enforcement and the completed Pay projection service instead of inventing a parallel access path.",
+      "`app/schemas/common.py` already defines `MutationSuccessResponse`, `ApiErrorResponse`, `CursorPageInfo`, and `CursorPageResponse`, and `tests/unit/test_application_layer_foundation.py` locks those shared conventions. New dashboard, launcher, and billing schemas should reuse these contracts rather than introducing incompatible response wrappers.",
+      "The completed Pay projection foundation now lives in `app/integrations/pay_client.py`, `app/db/repositories/pay_projection_repository.py`, `app/services/pay_projection_service.py`, `tests/unit/test_pay_client.py`, `tests/unit/test_pay_projection_repository.py`, and `tests/unit/test_pay_projection_service.py`. Those modules provide the current parent-side seam for subscription, entitlement, payment, payment-method, and product-access summaries.",
+      "Current settings/profile foundations already provide address and account-context patterns through `app/services/address_service.py`, `app/services/profile_settings_service.py`, `app/api/routers/v1/addresses.py`, and `tests/unit/test_addresses_api.py`. Billing-address reads should follow those existing service and DTO patterns rather than bypassing them with raw ORM access.",
+      "Rewards read services and routes already exist in `app/api/routers/v1/rewards.py`, `app/services/reward_summary_service.py`, `app/services/reward_objective_service.py`, and `app/services/reward_notification_service.py`, so dashboard milestone or progress sections can depend on current read models without adding reward-write behavior.",
+      "Searches found database models for announcements and service status in `app/db/models/announcements.py` and `app/db/models/service_statuses.py`, but there are no announcement or service-status repositories, services, schemas, routers, or tests yet. If the dashboard summary needs those sections now, the Build Agent must keep any added read-only support minimal and page-driven rather than implementing the broader support/status workstream early.",
+      "Searches across `app/` and `tests/` found no dashboard, launcher, or billing service modules, no page-shaped schemas under `app/schemas/`, and no unit tests such as `test_dashboard_api.py`, `test_launcher_api.py`, or `test_billing_api.py`. The future Build Agent must add both runtime slices and focused regression coverage for those new surfaces.",
+      "`tests/unit/test_router_registration.py` currently locks only auth, settings, and rewards route registration under `/api/v1`, which means the dashboard/launcher/billing spec should extend that same registration-testing pattern when the new routers are introduced.",
+      "The repo already contains `app/db/models/subscription_summaries.py`, `app/db/models/entitlement_summaries.py`, `app/db/models/payment_summaries.py`, `app/db/models/payment_method_summaries.py`, and `app/db/models/product_access_states.py`, so this spec should use those existing projection tables and must not add new database schema unless an exceptional tiny support fix is proven necessary."
+    ]
+  },
+  "global_guardrails": [
+    "Search before editing.",
+    "Do not expand scope beyond this spec.",
+    "Do not add dependencies unless John explicitly approves them.",
+    "Do not duplicate Pay commercial business rules in parent.",
+    "Do not store sensitive payment details in parent.",
+    "Do not build admin dashboards unless explicitly scoped.",
+    "Do not redesign stable frontend pages.",
+    "Do not make Discord linkage affect rewards or product access unless the spec explicitly says so.",
+    "Do not allow frontend APIs to directly award points/rewards/badges.",
+    "Do not return raw ORM objects from routers.",
+    "Do not mark incomplete items complete.",
+    "Append progress entries to the absolute end of `progress/progress.txt`.",
+    "Run `python -m compileall app tests alembic` before marking implementation items complete.",
+    "Run `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` before marking implementation items complete.",
+    "Keep Pay as the execution and commercial-truth owner for checkout, subscription changes, cancellations, restarts, promo validation/application, payments, payment methods, and entitlements.",
+    "Use existing auth/session guards so suspended users can reach billing-supporting surfaces but cannot receive launcher access, and require verified normal sessions for routes that should not be available to unverified accounts.",
+    "Do not introduce Stripe.js, SetupIntent handling, provider webhooks, or local payment-method mutation logic in this spec; only expose parent endpoints that delegate approved actions to Pay.",
+    "If minimal announcement or service-status reads are needed for the dashboard summary, keep them read-only and narrowly scoped to this page-facing aggregation slice rather than implementing the broader support/status management spec.",
+    "Reuse the standard error contract, mutation-success contract, and cursor pagination contract already established under `app/schemas/common.py`."
+  ],
+  "expected_paths": {
+    "may_create_or_update": [
+      "app/api/deps.py",
+      "app/api/routers/v1/__init__.py",
+      "app/api/routers/v1/dashboard.py",
+      "app/api/routers/v1/launcher.py",
+      "app/api/routers/v1/billing.py",
+      "app/schemas/__init__.py",
+      "app/schemas/dashboard.py",
+      "app/schemas/launcher.py",
+      "app/schemas/billing.py",
+      "app/schemas/common.py",
+      "app/services/__init__.py",
+      "app/services/dashboard_service.py",
+      "app/services/launcher_service.py",
+      "app/services/billing_summary_service.py",
+      "app/integrations/pay_client.py",
+      "app/db/repositories/__init__.py",
+      "app/db/repositories/pay_projection_repository.py",
+      "app/db/repositories/address_repository.py",
+      "app/db/repositories/announcement_repository.py",
+      "app/db/repositories/service_status_repository.py",
+      "tests/unit/test_application_layer_foundation.py",
+      "tests/unit/test_router_registration.py",
+      "tests/unit/test_dashboard_service.py",
+      "tests/unit/test_dashboard_api.py",
+      "tests/unit/test_launcher_service.py",
+      "tests/unit/test_launcher_api.py",
+      "tests/unit/test_billing_summary_service.py",
+      "tests/unit/test_billing_api.py",
+      "tests/unit/test_pay_client.py"
+    ],
+    "must_not_modify_without_strong_reason": [
+      "alembic/",
+      "app/db/models/",
+      "app/api/routers/v1/auth.py",
+      "app/api/routers/v1/profiles.py",
+      "app/api/routers/v1/addresses.py",
+      "app/api/routers/v1/communication_preferences.py",
+      "app/api/routers/v1/rewards.py",
+      "app/services/auth_service.py",
+      "app/services/profile_settings_service.py",
+      "app/services/address_service.py",
+      "app/services/reward_summary_service.py",
+      "app/services/reward_objective_service.py",
+      "app/services/reward_notification_service.py",
+      "tests/integration/",
+      "specs/application_layer_foundation.json",
+      "specs/auth_session_account_security.json",
+      "specs/profile_settings_addresses_preferences_api.json",
+      "specs/parent_pay_integration_and_projection_foundation.json"
+    ]
+  },
+  "items": [
+    {
+      "id": "dlba-010",
+      "title": "Define Safe Dashboard, Launcher, and Billing DTO Contracts",
+      "description": "Create the page-facing request and response schemas needed for dashboard summary, launcher products, billing snapshot, subscriptions, payment methods, transactions, and Pay-delegated billing action initiation. Reuse the shared mutation and cursor response contracts where appropriate, and keep DTOs explicit about safe display fields rather than exposing provider identifiers or raw ORM rows.",
+      "acceptance_criteria": [
+        "New schemas exist under `app/schemas/` for dashboard, launcher, and billing payloads, and are exported through `app/schemas/__init__.py` if that matches current package conventions.",
+        "Read responses distinguish parent-owned fields from Pay-derived or Pay-live-safe summaries in structure or naming without exposing sensitive provider payloads.",
+        "Billing transaction history and any other growing lists use the established cursor pagination contract instead of page-number pagination.",
+        "Mutation initiation requests and responses for checkout, promo validation/application, and subscription lifecycle actions use the standard mutation or action-result shape rather than ad hoc envelopes.",
+        "Tests lock the new schema contracts and confirm they reuse the common API conventions already established in the foundation spec."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-18T23:00:05.9633297-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "dlba-020",
+      "title": "Implement Dashboard, Launcher, and Billing Aggregation Services",
+      "description": "Add the service-layer orchestration for page-shaped dashboard, launcher, and billing reads by composing existing auth/account context, Pay projection summaries, parent-owned addresses, rewards read models, and any minimal read-only service-status or announcement access needed for the dashboard. These services should own fallback behavior and launch-blocking decisions without inventing commercial truth locally.",
+      "acceptance_criteria": [
+        "Service modules exist for dashboard, launcher, and billing aggregation and follow the established router -> service -> repository or integration dependency direction.",
+        "Launcher decisions account for account status, email verification, Pay projection availability, entitlement status, and product access or provisioning state, returning a safe blocked or pending response when launch eligibility cannot be trusted.",
+        "Billing aggregation reads use Pay projections and Pay live reads only where the architecture requires them, while parent-owned billing or mailing addresses are sourced from parent persistence.",
+        "Dashboard aggregation returns a normalized summary payload that includes launcher and billing summary sections plus any progress or status sections included in scope, with safe null or empty fallback behavior when Pay is unavailable.",
+        "Tests cover normal read behavior, Pay-unavailable fallback behavior, and at least one launcher-blocking scenario such as suspended account, unverified account, or provision-pending access."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-18T23:11:32.5555376-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "dlba-030",
+      "title": "Expose Versioned Read Endpoints for Dashboard, Launcher, and Billing",
+      "description": "Add `/api/v1/dashboard`, `/api/v1/launcher`, and `/api/v1/billing` routers that expose the aggregation reads through explicit DTOs and current auth guards. Keep route registration, dependency wiring, and router-level tests aligned with the project’s existing versioned-router patterns.",
+      "acceptance_criteria": [
+        "New versioned routers are registered in `app/api/routers/v1/__init__.py` and mounted through the existing `/api/v1` application router path.",
+        "Read endpoints exist for at least dashboard summary, launcher products, billing snapshot, billing subscriptions, billing payment methods, and billing transactions, using explicit response models.",
+        "Authenticated route guards are chosen deliberately so billing access continues to work for suspended users where the architecture allows it, while launcher actions remain blocked for ineligible accounts through service-level decisions.",
+        "Routers depend on services and shared dependency helpers instead of importing repositories directly.",
+        "API tests and router-registration tests prove the new paths are mounted under `/api/v1` and return the standard error shape or safe DTO responses."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-18T23:19:40.9006983-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "dlba-040",
+      "title": "Add Pay-Delegated Billing Action Initiation Endpoints",
+      "description": "Expose the limited billing action endpoints that the parent backend is allowed to initiate while leaving commercial execution to Pay. This includes action initiation for checkout, plan or subscription change, cancellation, restart, and promo code validation or application only if the underlying Pay contract is available through the current integration seam.",
+      "acceptance_criteria": [
+        "Billing action endpoints delegate through the Pay client or a billing service boundary and do not implement local subscription, payment, pricing, or entitlement truth.",
+        "If Pay is unavailable, critical billing actions return the standard error shape and do not mutate local projection rows as if the commercial action succeeded.",
+        "Any action responses return only safe redirect URLs, session identifiers, client secrets, or summarized initiation metadata that the parent is allowed to surface.",
+        "No raw card data, CVV, webhook handling, or local payment-method credential storage is introduced.",
+        "Tests cover at least one successful delegated initiation path and one Pay-unavailable or invalid-response failure path."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-18T23:28:13.2627863-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "dlba-999",
+      "title": "Verify Dashboard, Launcher, and Billing Aggregation Completion",
+      "description": "Run the required verification suite after the aggregation services, routers, DTOs, and focused tests land. Only mark this spec complete when the new dashboard, launcher, and billing slice is implemented without broadening into later support/status, Discord, worker, or admin workstreams.",
+      "acceptance_criteria": [
+        "`python -m compileall app tests alembic` passes.",
+        "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+        "Focused tests cover dashboard, launcher, and billing schema contracts, service behavior, router registration, route responses, and delegated Pay-action fallback behavior.",
+        "Progress is appended at EOF, and only fully completed items are marked complete."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-18T23:31:43.1075041-05:00",
+      "completed_by": "codex"
+    }
+  ],
+  "completion_definition": [
+    "All spec items have `passes=true`.",
+    "Relevant tests are added or updated for dashboard, launcher, billing read contracts, delegated action initiation, and safe fallback behavior.",
+    "`python -m compileall app tests alembic` passes.",
+    "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+    "`progress/progress.txt` is updated at EOF.",
+    "No unrelated dirty files are introduced.",
+    "No incomplete item is marked complete."
+  ]
+}

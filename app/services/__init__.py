@@ -27,16 +27,24 @@ from app.services.auth_service import (
     TwoFactorNotEnabledError,
     build_auth_service,
 )
+from app.services.billing_summary_service import (
+    BillingActionInvalidResponseError,
+    BillingActionUnavailableError,
+    BillingSummaryService,
+    build_billing_summary_service,
+)
 from app.services.communication_preference_service import (
     CommunicationPreferenceService,
     build_communication_preference_service,
 )
+from app.services.dashboard_service import DashboardService, build_dashboard_service
 from app.services.profile_settings_service import (
     ProfileSettingsNotFoundError,
     ProfileSettingsService,
     ProfileSettingsUpdateValidationError,
     build_profile_settings_service,
 )
+from app.services.launcher_service import LauncherService, build_launcher_service
 from app.services.pay_projection_service import (
     PayProjectionEntitlementSummary,
     PayProjectionPaymentMethodSummary,
@@ -58,6 +66,7 @@ from app.services.reward_objective_service import (
 )
 from app.services.reward_progression_service import RewardProgressionService
 from app.services.reward_summary_service import (
+    RewardSummaryNotFoundError,
     RewardSummaryService,
     build_reward_summary_service,
 )
@@ -73,11 +82,17 @@ __all__ = [
     "AuthenticationRequiredError",
     "AuthService",
     "AuthenticatedSessionContext",
+    "BillingActionInvalidResponseError",
+    "BillingActionUnavailableError",
+    "BillingSummaryService",
+    "build_billing_summary_service",
     "CurrentPasswordInvalidError",
+    "DashboardService",
     "DuplicateAccountError",
     "EmailVerificationRequiredError",
     "EmailVerificationTokenInvalidError",
     "InvalidCredentialsError",
+    "LauncherService",
     "PasswordResetTokenInvalidError",
     "CommunicationPreferenceService",
     "PayProjectionEntitlementSummary",
@@ -89,10 +104,13 @@ __all__ = [
     "PayProjectionSubscriptionSummary",
     "PayProjectionSyncMetadata",
     "build_communication_preference_service",
+    "build_dashboard_service",
+    "build_launcher_service",
     "build_pay_projection_service",
     "ProfileSettingsService",
     "ProfileSettingsNotFoundError",
     "ProfileSettingsUpdateValidationError",
+    "RewardSummaryNotFoundError",
     "build_profile_settings_service",
     "SessionDevice",
     "SessionNotFoundError",

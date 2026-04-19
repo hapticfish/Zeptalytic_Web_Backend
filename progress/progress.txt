@@ -2277,3 +2277,208 @@
   - None.
 - Next recommended item:
   - Author or activate `specs/dashboard_launcher_billing_aggregation_api.json` for the next roadmap workstream.
+
+[2026-04-18T22:53:00-05:00] Spec author iteration
+- Mode:
+  - `spec_author`
+- Selected roadmap item:
+  - `dashboard-launcher-billing` from `specs/next_phase_spec_sequence.json`
+- Spec file created:
+  - `specs/dashboard_launcher_billing_aggregation_api.json`
+- Architecture docs used:
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+  - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
+  - `docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md`
+  - `docs/architecture/Frontend_Backend_Contract_Map.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md`
+  - `docs/architecture/Support_Announcements_and_Status_Design.md`
+  - `docs/architecture/Rewards_Application_and_Notification_Flows.md`
+  - `docs/architecture/Discord_Integration_Application_Flow.md`
+  - `docs/architecture/Background_Jobs_Sync_and_Event_Processing.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+- Repo search summary:
+  - Confirmed `specs/parent_pay_integration_and_projection_foundation.json` is complete and `IMPLEMENTATION_PLAN.md` names `specs/dashboard_launcher_billing_aggregation_api.json` as the next workstream after the active spec.
+  - Searched router and registration wiring through `app/main.py`, `app/api/routers/v1/__init__.py`, `app/api/deps.py`, and `tests/unit/test_router_registration.py`; found only auth, profiles, addresses, communication preferences, and rewards mounted under `/api/v1`, with no dashboard, launcher, or billing router yet.
+  - Searched common DTO and API-convention surfaces through `app/schemas/common.py` and `tests/unit/test_application_layer_foundation.py`; found reusable mutation-success, standard error, and cursor pagination contracts already locked by tests.
+  - Searched Pay integration and projection files through `app/integrations/pay_client.py`, `app/db/repositories/pay_projection_repository.py`, `app/services/pay_projection_service.py`, `tests/unit/test_pay_client.py`, `tests/unit/test_pay_projection_repository.py`, and `tests/unit/test_pay_projection_service.py`; found the completed projection foundation that future aggregation services should consume.
+  - Searched for dashboard, launcher, billing, service-status, and announcement code with `git grep`; found projection models in `app/db/models/subscription_summaries.py`, `app/db/models/entitlement_summaries.py`, `app/db/models/payment_summaries.py`, `app/db/models/payment_method_summaries.py`, and `app/db/models/product_access_states.py`, plus parent models in `app/db/models/announcements.py` and `app/db/models/service_statuses.py`, but no aggregation schemas, services, routers, or read-only repositories for those surfaces.
+  - Searched existing service and API patterns in `app/services/address_service.py`, `app/services/profile_settings_service.py`, `app/services/reward_summary_service.py`, `app/api/routers/v1/addresses.py`, and `tests/unit/test_addresses_api.py`; found the current builder/export and router-to-service style that the future dashboard/launcher/billing slice should follow.
+- Files changed:
+  - `specs/dashboard_launcher_billing_aggregation_api.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - No runtime application code, tests, models, migrations, routers, services, repositories, or integrations were modified in this spec-authoring run.
+  - The new spec explicitly avoids support-ticket workflows, announcement or service-status administration, Discord OAuth, background workers, admin dashboards, rewards writes, and any duplication of Pay commercial logic.
+- Risks/assumptions:
+  - `IMPLEMENTATION_PLAN.md` still points at the completed parent-Pay spec as active; this run assumes John wants only the next spec authored, not activated.
+  - Dashboard summary requirements mention notifications and system status, but the repo does not yet have announcement or service-status repositories or services; the build pass may need narrowly scoped read-only helpers without prematurely implementing the broader support/status workstream.
+  - Pay live-read endpoints for checkout, plan changes, cancellations, restarts, promo handling, transactions, and payment methods may require small `app/integrations/pay_client.py` expansion, but the parent must continue delegating all commercial truth to Pay.
+- Next command to run:
+  - `./scripts/ralph-loop.sh plan 1`
+2026-04-18 23:02:11 - Planning run normalized the implementation-plan active-spec references after verifying repo reality against the new dashboard aggregation spec.
+- Read `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, `PROMPT.md`, the last progress entries, `specs/dashboard_launcher_billing_aggregation_api.json`, `specs/next_phase_spec_sequence.json`, the locked next-phase architecture docs, `docker-compose.test.yml`, `alembic/env.py`, and model registration paths.
+- Ran repo-topology searches across routers, exception handlers, schemas, repositories, services, `app/`, and `tests/`; confirmed Pay projection foundation code and tests are present, while dashboard/launcher/billing routers, services, schemas, and tests are still absent.
+- Corrected `IMPLEMENTATION_PLAN.md` so the active spec path uses the real dashboard spec filename, the current-phase narrative no longer points at the completed Pay foundation spec, and the next queued workstream now advances to support/announcements/service status.
+- No runtime application code, tests, models, migrations, routers, services, repositories, integrations, or dependencies were changed in this planning run.
+[2026-04-18T23:00:05.9633297-05:00] Build iteration - active spec `specs/dashboard_launcher_billing_aggregation_api.json`
+- Selected item:
+  - `dlba-010` - Define Safe Dashboard, Launcher, and Billing DTO Contracts
+- Repo search summary:
+  - Searched `app/schemas`, `app/api/routers/v1`, `app/services`, and `tests/unit` with `git ls-files`, `rg`, and `Get-Content` before editing.
+  - Confirmed there were no existing `app/schemas/dashboard.py`, `app/schemas/launcher.py`, or `app/schemas/billing.py` modules, and no dashboard/launcher/billing schema tests yet.
+  - Confirmed `app/schemas/common.py` already defines the shared `MutationSuccessResponse`, `ApiErrorResponse`, `CursorPageInfo`, and generic `CursorPageResponse` contracts that new DTOs needed to reuse.
+  - Confirmed `app/schemas/__init__.py` is the package export surface, while existing schema patterns live in `app/schemas/addresses.py`, `app/schemas/profiles.py`, and rewards schema modules.
+  - Confirmed current wiring patterns and test coverage through `tests/unit/test_application_layer_foundation.py`, `tests/unit/test_router_registration.py`, `app/api/routers/v1/addresses.py`, `app/services/pay_projection_service.py`, and `app/services/__init__.py`.
+  - The gap for this item was a safe DTO layer that distinguishes parent-owned vs Pay-derived/live sections without exposing provider identifiers or raw repository/ORM payloads.
+- Files changed:
+  - `app/schemas/__init__.py`
+  - `app/schemas/billing.py`
+  - `app/schemas/dashboard.py`
+  - `app/schemas/launcher.py`
+  - `tests/unit/test_dashboard_launcher_billing_schemas.py`
+  - `specs/dashboard_launcher_billing_aggregation_api.json`
+- Implementation summary:
+  - Added explicit dashboard, launcher, and billing schema modules for page-facing read payloads and billing action initiation requests/responses.
+  - Structured the new DTOs with `parent_*`, `pay_projection_*`, and `pay_*` sections so later services and routers can preserve source ownership boundaries without leaking provider-only identifiers.
+  - Reused the shared mutation-success contract for billing action initiation responses and the shared cursor pagination contract for billing transaction history.
+  - Added focused schema regression coverage for export wiring, nested Pay projection sections, parent-owned dashboard sections, cursor-based transaction payloads, and forbidden extra request fields.
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`266 passed in 6.28s`).
+- Blockers:
+  - None.
+- Next recommended item:
+  - `dlba-020` - Implement Dashboard, Launcher, and Billing Aggregation Services
+[2026-04-18T23:11:32.5555376-05:00] Build iteration - active spec `specs/dashboard_launcher_billing_aggregation_api.json`
+- Selected item:
+  - `dlba-020` - Implement Dashboard, Launcher, and Billing Aggregation Services
+- Repo search summary:
+  - Searched `app/services`, `app/db/repositories`, `app/api/deps.py`, `app/schemas`, and `tests/unit` with `git ls-files`, `rg`, and `Get-Content` before editing.
+  - Confirmed the existing service pattern in `app/services/address_service.py`, `app/services/profile_settings_service.py`, `app/services/reward_summary_service.py`, and `app/services/pay_projection_service.py`: services build safe DTOs and expose `build_*` factories instead of returning ORM rows.
+  - Confirmed the current aggregation dependencies already available were `AuthenticatedSessionContext` in `app/services/auth_service.py`, parent-owned address reads in `app/db/repositories/address_repository.py`, and Pay-derived projection reads in `app/db/repositories/pay_projection_repository.py` plus `app/services/pay_projection_service.py`.
+  - Confirmed there were still no `announcement_repository.py`, `service_status_repository.py`, `dashboard_service.py`, `launcher_service.py`, `billing_summary_service.py`, or related service tests, which was the direct gap for this item.
+  - Confirmed `tests/unit/test_application_layer_foundation.py` locks service-package export and builder conventions, while `tests/unit/test_pay_projection_service.py` already covered Pay-unavailable fallback behavior that the new aggregation services needed to preserve.
+- Files changed:
+  - `app/db/repositories/__init__.py`
+  - `app/db/repositories/announcement_repository.py`
+  - `app/db/repositories/service_status_repository.py`
+  - `app/services/__init__.py`
+  - `app/services/billing_summary_service.py`
+  - `app/services/dashboard_service.py`
+  - `app/services/launcher_service.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_billing_summary_service.py`
+  - `tests/unit/test_dashboard_service.py`
+  - `tests/unit/test_launcher_service.py`
+  - `specs/dashboard_launcher_billing_aggregation_api.json`
+  - `progress/progress.txt`
+- Implementation summary:
+  - Added `LauncherService` to compute safe launcher eligibility from account status, email verification, Pay projection availability, entitlement state, and product access/provisioning state.
+  - Added `BillingSummaryService` to assemble billing snapshot, subscription, payment-method, and transaction payloads from Pay projections plus parent-owned billing addresses without introducing local commercial truth.
+  - Added `DashboardService` to compose launcher, billing, rewards progress, current service-status summaries, and notification feed sections for the page-shaped dashboard response.
+  - Added minimal read-only `AnnouncementRepository` and `ServiceStatusRepository` to support dashboard notifications and system-status reads without expanding into the broader support/status workstream.
+  - Added regression coverage for launcher blocking scenarios, Pay-unavailable billing fallback behavior, dashboard composition behavior, and service export/builder wiring.
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`276 passed in 6.58s`).
+  - `python -m pytest ...` could not run locally because `pytest` is not installed in the host Python environment; authoritative Docker verification succeeded.
+- Blockers:
+  - None.
+- Next recommended item:
+  - `dlba-030` - Expose Versioned Read Endpoints for Dashboard, Launcher, and Billing
+[2026-04-18T23:19:40.9006983-05:00] Build iteration - active spec `specs/dashboard_launcher_billing_aggregation_api.json`
+- Selected item:
+  - `dlba-030` - Expose Versioned Read Endpoints for Dashboard, Launcher, and Billing
+- Repo search summary:
+  - Searched router, dependency, schema, and test surfaces with `git ls-files`, `git grep`, `rg`, and `Get-Content` before editing.
+  - Confirmed `app/api/routers/v1/__init__.py` only registered auth, profile, address, communication-preference, and rewards routers, so `/api/v1/dashboard`, `/api/v1/launcher`, and `/api/v1/billing` registration was still the direct gap.
+  - Confirmed the current dependency pattern in `app/api/deps.py` builds services through `get_*_service` helpers and session guards, and existing routers such as `app/api/routers/v1/addresses.py` depend on services instead of repositories.
+  - Confirmed dashboard/launcher/billing schemas and services already existed in `app/schemas/dashboard.py`, `app/schemas/launcher.py`, `app/schemas/billing.py`, `app/services/dashboard_service.py`, `app/services/launcher_service.py`, and `app/services/billing_summary_service.py`, so this iteration only needed to wire versioned routers and API regression coverage.
+  - Confirmed `tests/unit/test_router_registration.py` and `tests/unit/test_application_layer_foundation.py` already lock registration and router-import conventions, and there were no existing `test_dashboard_api.py`, `test_launcher_api.py`, or `test_billing_api.py` modules yet.
+- Files changed:
+  - `app/api/deps.py`
+  - `app/api/routers/v1/__init__.py`
+  - `app/api/routers/v1/dashboard.py`
+  - `app/api/routers/v1/launcher.py`
+  - `app/api/routers/v1/billing.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_router_registration.py`
+  - `tests/unit/test_dashboard_api.py`
+  - `tests/unit/test_launcher_api.py`
+  - `tests/unit/test_billing_api.py`
+  - `specs/dashboard_launcher_billing_aggregation_api.json`
+  - `progress/progress.txt`
+- Implementation summary:
+  - Added `get_dashboard_service`, `get_launcher_service`, and `get_billing_summary_service` dependency helpers in `app/api/deps.py` so the router layer follows the existing dependency-construction pattern.
+  - Added versioned `dashboard`, `launcher`, and `billing` routers with explicit response models and service dependencies.
+  - Used verified normal-session guards for dashboard and launcher reads, and authenticated-session guards for billing reads so suspended users retain billing access while launcher gating remains a service-level decision.
+  - Added API tests for safe DTO responses, verified-session enforcement on dashboard and launcher, suspended-user billing access, billing transaction query validation, and router-registration coverage under `/api/v1`.
+  - Updated the AST import-guard regression to reflect the intended billing guard instead of incorrectly assuming every new router must use the verified-session dependency.
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`283 passed in 6.49s`).
+  - `python -m pytest ...` could not run in the host environment because `pytest` is not installed there; Docker verification succeeded.
+- Blockers:
+  - None.
+- Next recommended item:
+  - `dlba-040` - Add Pay-Delegated Billing Action Initiation Endpoints
+[2026-04-18T23:28:13.2627863-05:00] Build iteration - active spec `specs/dashboard_launcher_billing_aggregation_api.json`
+- Selected item:
+  - `dlba-040` - Add Pay-Delegated Billing Action Initiation Endpoints
+- Repo search summary:
+  - Searched billing router, billing service, Pay client seam, exception handling, and tests with `git ls-files`, `rg`, and `Get-Content` before editing.
+  - Confirmed [app/api/routers/v1/billing.py](C:/Users/jquin/Desktop/Dev/Zeptalytic_Web_Backend/app/api/routers/v1/billing.py) only exposed read endpoints, while [app/schemas/billing.py](C:/Users/jquin/Desktop/Dev/Zeptalytic_Web_Backend/app/schemas/billing.py) already contained action DTOs for checkout, subscription lifecycle changes, and promo code operations.
+  - Confirmed [app/integrations/pay_client.py](C:/Users/jquin/Desktop/Dev/Zeptalytic_Web_Backend/app/integrations/pay_client.py) already provided the generic delegated request seam through `PayClient.request_json(...)`, so the missing work was action orchestration and router exposure rather than a new integration dependency.
+  - Confirmed [app/api/exception_handlers.py](C:/Users/jquin/Desktop/Dev/Zeptalytic_Web_Backend/app/api/exception_handlers.py) is the standard error-envelope translation layer, so billing action failure handling needed new service exceptions instead of router-level `HTTPException` branches.
+  - Confirmed existing coverage in [tests/unit/test_billing_api.py](C:/Users/jquin/Desktop/Dev/Zeptalytic_Web_Backend/tests/unit/test_billing_api.py), [tests/unit/test_billing_summary_service.py](C:/Users/jquin/Desktop/Dev/Zeptalytic_Web_Backend/tests/unit/test_billing_summary_service.py), and [tests/unit/test_router_registration.py](C:/Users/jquin/Desktop/Dev/Zeptalytic_Web_Backend/tests/unit/test_router_registration.py) covered billing reads and route mounting, but there was no delegated billing-action success/failure coverage yet.
+- Files changed:
+  - `app/api/deps.py`
+  - `app/api/exception_handlers.py`
+  - `app/api/routers/v1/billing.py`
+  - `app/services/__init__.py`
+  - `app/services/billing_summary_service.py`
+  - `tests/unit/test_billing_api.py`
+  - `tests/unit/test_billing_summary_service.py`
+  - `tests/unit/test_router_registration.py`
+  - `specs/dashboard_launcher_billing_aggregation_api.json`
+  - `progress/progress.txt`
+- Implementation summary:
+  - Extended `BillingSummaryService` with Pay-delegated initiation methods for checkout, subscription change, cancellation, restart, promo validation, and promo application while keeping Pay as the execution owner.
+  - Reused the existing `PayClient` seam for delegated action requests and added billing-specific service exceptions so unavailable or invalid Pay responses flow through the standard API error contract.
+  - Added versioned POST billing action routes under `/api/v1/billing` using the existing authenticated-session guard so suspended users retain billing access without granting launcher eligibility.
+  - Added regression coverage for one successful checkout initiation path, Pay-unavailable checkout failure behavior, service-layer invalid/unavailable Pay responses, and route registration for the new POST endpoints.
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`288 passed in 6.37s`).
+  - `python -m pytest ...` could not run in the host environment because `pytest` is not installed there; authoritative Docker verification succeeded.
+- Blockers:
+  - None.
+- Next recommended item:
+  - `dlba-999` - Verify Dashboard, Launcher, and Billing Aggregation Completion
+
+## 2026-04-18T23:31:43.1075041-05:00
+- Active spec:
+  - `specs/dashboard_launcher_billing_aggregation_api.json`
+- Selected item:
+  - `dlba-999` - Verify Dashboard, Launcher, and Billing Aggregation Completion
+- Repo search summary:
+  - Searched with `git ls-files` and `rg` across `app`, `tests`, and `specs` and confirmed the dashboard, launcher, and billing slice was already implemented in the dirty worktree before this iteration.
+  - Verified router wiring in `app/api/routers/v1/__init__.py`, dependency registration in `app/api/deps.py`, billing exception mapping in `app/api/exception_handlers.py`, DTO exports in `app/schemas/__init__.py`, and service/repository modules under `app/services/` and `app/db/repositories/`.
+  - Verified focused coverage exists in `tests/unit/test_dashboard_launcher_billing_schemas.py`, `tests/unit/test_dashboard_service.py`, `tests/unit/test_launcher_service.py`, `tests/unit/test_billing_summary_service.py`, `tests/unit/test_dashboard_api.py`, `tests/unit/test_launcher_api.py`, `tests/unit/test_billing_api.py`, and `tests/unit/test_router_registration.py`.
+- Files changed:
+  - `specs/dashboard_launcher_billing_aggregation_api.json`
+  - `progress/progress.txt`
+- Implementation summary:
+  - Performed the `dlba-999` closeout pass only: rehydrated the active architecture docs, confirmed the existing dashboard/launcher/billing implementation and tests matched the active spec, and recorded authoritative verification.
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`288 passed in 6.68s`).
+- Blockers:
+  - None.
+- Next recommended item:
+  - Activate or author `specs/support_announcements_service_status_api.json` as the next roadmap workstream.

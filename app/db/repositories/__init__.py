@@ -1,5 +1,6 @@
 """Database repository layer."""
 
+from app.db.repositories.announcement_repository import AnnouncementRepository
 from app.db.repositories.address_repository import AddressRepository
 from app.db.repositories.auth_repository import AuthRepository
 from app.db.repositories.communication_preference_repository import (
@@ -11,8 +12,10 @@ from app.db.repositories.reward_notification_repository import RewardNotificatio
 from app.db.repositories.reward_objective_repository import RewardObjectiveRepository
 from app.db.repositories.reward_progression_repository import RewardProgressionRepository
 from app.db.repositories.reward_summary_repository import RewardSummaryRepository
+from app.db.repositories.service_status_repository import ServiceStatusRepository
 
 __all__ = [
+    "AnnouncementRepository",
     "AddressRepository",
     "AuthRepository",
     "CommunicationPreferenceRepository",
@@ -22,4 +25,5 @@ __all__ = [
     "RewardObjectiveRepository",
     "RewardProgressionRepository",
     "RewardSummaryRepository",
+    "ServiceStatusRepository",
 ]
