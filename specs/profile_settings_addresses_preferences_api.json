@@ -1,0 +1,225 @@
+{
+  "id": "profile-settings-addresses-preferences",
+  "title": "Profile, Settings, Addresses, and Communication Preferences APIs",
+  "status": "active",
+  "owner": "Zeptalytic Web Backend",
+  "purpose": "Implement the parent-owned application-layer slice for authenticated profile/settings behavior: profile summary and update APIs, communication preference read/update APIs, and billing or mailing address management APIs on top of the already-migrated parent tables. This spec intentionally does not implement Pay client or billing projections, dashboard aggregation, support flows, rewards writes, Discord OAuth connection flows, admin surfaces, or new database schema work.",
+  "context": {
+    "summary": "The application-layer foundation and auth/session/account security specs are complete, and the roadmap plus implementation plan both point next to the profile/settings/addresses/preferences workstream. Repo reality shows the parent-owned tables for accounts, profiles, profile preferences, communication preferences, and addresses already exist and are partially seeded during signup, but there is still no dedicated repository, service, schema, or `/api/v1` router slice for this domain. The next build workstream should therefore turn the existing persistence substrate into safe authenticated settings APIs without reopening schema design, Pay ownership boundaries, or the later Discord OAuth and billing workstreams.",
+    "source_docs": [
+      "docs/architecture/Spec_Authoring_and_Harness_Workflow.md",
+      "docs/architecture/Parent_Backend_Application_Architecture.md",
+      "docs/architecture/Parent_Backend_API_Contract_Standards.md",
+      "docs/architecture/Parent_Backend_Repository_Layer_Design.md",
+      "docs/architecture/Parent_Backend_Service_Layer_Design.md",
+      "docs/architecture/Frontend_Backend_Contract_Map.md",
+      "docs/architecture/Auth_Session_and_Security_Flows.md",
+      "docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md",
+      "docs/architecture/Discord_Integration_Application_Flow.md",
+      "docs/architecture/Security_Operational_Control_Guide.md",
+      "docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md"
+    ],
+    "previous_specs_or_dependencies": [
+      "specs/application_layer_foundation.json",
+      "specs/auth_session_account_security.json",
+      "specs/next_phase_spec_sequence.json"
+    ],
+    "repo_reality_summary": [
+      "`app/api/routers/v1/__init__.py`, `app/main.py`, `app/api/deps.py`, `app/api/errors.py`, and `app/api/exception_handlers.py` already provide the canonical `/api/v1` router registration, authenticated-session dependencies, and standard error contract that this settings slice should reuse.",
+      "Signup in `app/services/auth_service.py` already creates baseline parent-owned rows through `app/db/repositories/auth_repository.py`: `Account`, `Profile`, `ProfilePreference`, `CommunicationPreference`, and `AccountSecuritySettings`, so the settings slice should build on those existing records rather than recreate account bootstrap behavior.",
+      "The current persistence substrate is spread across `app/db/models/accounts.py` (`email`, `username`, `email_verified_at`), `app/db/models/profiles.py` (`display_name`, `phone`, `timezone`, `profile_image_url`, Discord display fields), `app/db/models/profile_preferences.py` (`preferred_language`), `app/db/models/communication_preferences.py` (marketing/product-update/announcement flags), and `app/db/models/addresses.py` (parent-owned structured address fields plus `formatted_address` and `is_primary`).",
+      "There are currently no profile/settings/address/communication repositories under `app/db/repositories/`, no profile/settings/address services under `app/services/`, no dedicated schemas under `app/schemas/`, and no `/api/v1/profiles`, `/api/v1/addresses`, or `/api/v1/communication-preferences` routers registered in `app/api/routers/v1/__init__.py`.",
+      "Existing tests already prove the database substrate is real in `tests/unit/test_auth_models.py`, `tests/integration/test_parent_db_round_trips.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/unit/test_router_registration.py`, but there are no application-layer tests yet for profile summary/update flows, communication preference mutations, or address CRUD and primary-selection behavior.",
+      "Repo searches show the current address model lacks the richer Google component, lat/lng, and geocoding fields described in long-term frontend-contract notes; only the existing structured address columns and `formatted_address` are available today, so this spec should stay within the current schema and avoid reopening migrations.",
+      "Repo searches also show the current database allows multiple `is_primary=true` addresses per account across different rows, including the permissive regression in `tests/integration/test_parent_db_constraints.py`; the application layer should therefore define and test explicit primary-selection behavior without assuming a stronger DB constraint already exists.",
+      "Discord linkage fields are present on `profiles`, but the dedicated OAuth/settings connection flow is still a later roadmap item. This settings spec may expose safe read-only Discord status/username fields already stored on the profile, but it must not implement OAuth connect or disconnect behavior."
+    ]
+  },
+  "global_guardrails": [
+    "Search before editing.",
+    "Do not expand scope beyond this spec.",
+    "Do not add dependencies unless John explicitly approves them.",
+    "Do not duplicate Pay commercial business rules in parent.",
+    "Do not store sensitive payment details in parent.",
+    "Do not build admin dashboards unless explicitly scoped.",
+    "Do not redesign stable frontend pages.",
+    "Do not make Discord linkage affect rewards or product access unless the spec explicitly says so.",
+    "Do not allow frontend APIs to directly award points/rewards/badges.",
+    "Do not return raw ORM objects from routers.",
+    "Do not mark incomplete items complete.",
+    "Append progress entries to the absolute end of `progress/progress.txt`.",
+    "Run `python -m compileall app tests alembic` before marking implementation items complete.",
+    "Run `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` before marking implementation items complete.",
+    "Keep this workstream on parent-owned settings state; do not expand into Pay payment-method management, billing projections, or dashboard aggregation.",
+    "Treat Discord fields in profile/settings responses as display-only data from existing parent records; do not implement OAuth connect/disconnect flows in this spec.",
+    "Use the existing auth/session dependencies for authenticated and email-verified gating, and preserve the documented suspended-user restrictions instead of inventing a separate auth model here.",
+    "Stay within the current database schema for profiles, profile preferences, communication preferences, and addresses unless John explicitly approves a follow-on schema correction."
+  ],
+  "expected_paths": {
+    "may_create_or_update": [
+      "app/api/deps.py",
+      "app/api/routers/v1/__init__.py",
+      "app/api/routers/v1/profiles.py",
+      "app/api/routers/v1/addresses.py",
+      "app/api/routers/v1/communication_preferences.py",
+      "app/db/repositories/__init__.py",
+      "app/db/repositories/profile_settings_repository.py",
+      "app/db/repositories/address_repository.py",
+      "app/db/repositories/communication_preference_repository.py",
+      "app/schemas/__init__.py",
+      "app/schemas/profiles.py",
+      "app/schemas/addresses.py",
+      "app/schemas/communication_preferences.py",
+      "app/services/__init__.py",
+      "app/services/profile_settings_service.py",
+      "app/services/address_service.py",
+      "app/services/communication_preference_service.py",
+      "tests/unit/test_router_registration.py",
+      "tests/unit/test_profiles_api.py",
+      "tests/unit/test_profile_settings_service.py",
+      "tests/unit/test_addresses_api.py",
+      "tests/unit/test_address_service.py",
+      "tests/unit/test_communication_preferences_api.py",
+      "tests/unit/test_communication_preference_service.py",
+      "tests/unit/test_auth_api.py",
+      "tests/unit/test_auth_service.py"
+    ],
+    "must_not_modify_without_strong_reason": [
+      "alembic/",
+      "app/db/models/",
+      "app/integrations/",
+      "app/workers/",
+      "app/api/routers/v1/auth.py",
+      "app/api/routers/v1/rewards.py",
+      "app/services/auth_service.py",
+      "app/db/repositories/auth_repository.py",
+      "specs/application_layer_foundation.json",
+      "specs/auth_session_account_security.json"
+    ]
+  },
+  "items": [
+    {
+      "id": "psap-010",
+      "title": "Establish Settings Slice Repositories, DTOs, and Router Wiring",
+      "description": "Create the application-layer foundation for the settings domain under the existing `/api/v1` package: repository modules for parent-owned profile/settings/address reads and writes, safe DTO modules for browser contracts, and canonical router registration for `/profiles`, `/addresses`, and `/communication-preferences`. Keep the repository and service boundaries explicit and reuse the shared auth/session dependencies rather than inventing a parallel access pattern.",
+      "acceptance_criteria": [
+        "Canonical versioned routers exist for `/api/v1/profiles`, `/api/v1/addresses`, and `/api/v1/communication-preferences` and are registered through `app/api/routers/v1/__init__.py`.",
+        "Safe DTOs exist for this workstream and do not expose raw ORM objects, internal database implementation details, Discord user IDs, or auth secrets.",
+        "Repository and service modules exist for the settings slice and follow the established router -> service -> repository dependency direction.",
+        "The new routing and DTO foundation does not implement Pay billing flows, Discord OAuth flows, or unrelated rewards/support behavior.",
+        "Tests prove the new routes are mounted through `app.main` and that the settings slice uses the existing auth dependency pattern."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "psap-020",
+      "title": "Implement Profile and Account Settings Read API",
+      "description": "Implement the authenticated profile/settings read endpoint that assembles the user-facing settings profile card from the existing parent-owned tables. This slice should stay read-focused so the first build iteration after router wiring can lock the DTO shape for static username display, account email, display name, phone, timezone, profile image URL, preferred language, and safe Discord display metadata already stored on the profile.",
+      "acceptance_criteria": [
+        "A profile/settings read endpoint returns a normalized safe DTO composed from `accounts`, `profiles`, and `profile_preferences`, including username, email, display name, phone, timezone, preferred language, profile image URL, and safe Discord display status or username when present.",
+        "Routers use authenticated and email-verified session guards consistent with the existing auth slice, and suspended or closed account behavior is not weakened.",
+        "The response does not expose Discord user IDs, auth/session internals, or raw ORM rows.",
+        "Tests cover a happy-path read plus at least one guarded or not-found-style failure path."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "psap-025",
+      "title": "Implement Profile and Account Settings Update API",
+      "description": "Implement the authenticated profile/settings mutation endpoint for safe partial updates to fields already modeled in the current schema. This slice should cover mutable profile or preference fields while keeping username immutable and preserving auth-security semantics if account email editing is included.",
+      "acceptance_criteria": [
+        "A profile/settings mutation endpoint supports updating only fields already modeled in the current schema, including appropriate profile and profile-preference fields, while keeping username immutable.",
+        "If account email is editable in this spec, the implementation preserves auth-security semantics and documented verification requirements instead of treating email as a casual profile field.",
+        "Routers use authenticated and email-verified session guards consistent with the existing auth slice, and suspended or closed account behavior is not weakened.",
+        "Tests cover at least one happy-path update and at least one invalid-update or guarded failure path."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "psap-030",
+      "title": "Implement Communication Preference Read or Update APIs",
+      "description": "Implement the parent-owned communication preference surface for the settings page on top of the existing `communication_preferences` row created at signup. Keep the scope to the currently modeled email-channel flags and avoid inventing SMS, Discord notification delivery, or newsletter-provider integration behavior that is not yet present in the repo.",
+      "acceptance_criteria": [
+        "An authenticated settings endpoint returns the current communication preference flags from `communication_preferences` using a safe DTO.",
+        "An authenticated mutation endpoint updates the existing modeled flags for marketing emails, product updates, and announcement emails using standard mutation-success conventions or a small updated summary DTO.",
+        "The implementation does not add unsupported channels such as SMS or Discord notifications and does not couple these settings to rewards, launcher, or product-access decisions.",
+        "Repository and service logic stay limited to parent-owned preference persistence and validation.",
+        "Tests cover read and update behavior plus at least one invalid or unauthorized request path."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "psap-040",
+      "title": "Implement Address List and Mutation APIs",
+      "description": "Implement authenticated address-management APIs for listing, creating, updating, and deleting addresses using the existing parent-owned `addresses` table. Keep this slice focused on the current structured address fields and ownership enforcement without reopening migrations for richer geocoding fields or new billing-commercial logic.",
+      "acceptance_criteria": [
+        "Authenticated endpoints exist for address list, create, update, and delete behavior under `/api/v1/addresses`.",
+        "Address DTOs and validation cover the currently modeled structured address fields and `formatted_address`, and they clearly distinguish parent-owned address data from Pay-owned payment-method truth.",
+        "The implementation does not add Google geocoding, lat/lng storage, payment-method management, or other schema-dependent behavior outside the current model.",
+        "Tests cover list plus create, update, and delete behavior, ownership enforcement, and at least one invalid address or not-found path."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "psap-045",
+      "title": "Implement Address Primary-Selection Behavior",
+      "description": "Implement explicit authenticated set-primary behavior for addresses on top of the existing permissive `addresses` table. The service layer should define deterministic primary-selection rules for user actions without assuming a stronger database constraint already exists.",
+      "acceptance_criteria": [
+        "An authenticated endpoint exists for explicit set-primary behavior under `/api/v1/addresses`.",
+        "The service layer defines deterministic primary-address behavior for user actions even though the current database schema allows multiple `is_primary=true` rows.",
+        "Primary-address behavior stays within the current schema and does not introduce migration work or Pay-owned billing logic.",
+        "Tests cover the primary-selection transition, ownership enforcement, and at least one not-found or invalid-address path."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "psap-050",
+      "title": "Lock Settings Contract and Guard Behavior with Focused Tests",
+      "description": "Add targeted application-layer tests that prove the new settings slice follows the shared API contract, router registration, and auth-guard rules already established in the foundation and auth specs. Keep these tests focused on profile/settings/address/preference behavior rather than broad end-to-end billing or Discord scenarios.",
+      "acceptance_criteria": [
+        "Router-registration tests assert the new versioned settings routes are mounted under `/api/v1` alongside the existing auth and rewards routes.",
+        "API tests assert safe response DTO shapes and the shared standard error contract for at least representative guarded or not-found failures.",
+        "Service tests cover profile/settings composition, communication preference updates, and address primary-selection logic without requiring unrelated integration clients.",
+        "The new tests do not reopen completed rewards or auth scope except where a small regression assertion is necessary to prove shared guard behavior remains intact."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "psap-999",
+      "title": "Verify Profile and Settings Slice Completion",
+      "description": "Run the required verification suite after the profile/settings/addresses/communication-preferences slice is implemented and only mark the spec complete once the new routers, services, repositories, schemas, and tests pass without introducing unrelated roadmap work.",
+      "acceptance_criteria": [
+        "`python -m compileall app tests alembic` passes.",
+        "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+        "Settings-focused tests cover router registration, DTO contracts, guarded profile/settings behavior, communication preference updates, and address CRUD or primary-selection behavior.",
+        "Only fully completed items are marked complete, and progress is appended at EOF."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ],
+  "completion_definition": [
+    "All spec items have `passes=true`.",
+    "Relevant tests are added or updated for router registration, profile/settings DTOs, communication preferences, address mutations, and address primary-selection behavior.",
+    "`python -m compileall app tests alembic` passes.",
+    "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+    "`progress/progress.txt` is updated at EOF.",
+    "No unrelated dirty files are introduced.",
+    "No incomplete item is marked complete."
+  ]
+}

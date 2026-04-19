@@ -1820,3 +1820,59 @@
   - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`201 passed`).
 - Blockers: none.
 - Next recommended item: author or activate `specs/profile_settings_addresses_preferences_api.json` in roadmap order.
+## 2026-04-18T20:52:00.4923288-05:00
+- Mode: `spec_author`
+- Selected roadmap item: `profile-settings-addresses` from `specs/next_phase_spec_sequence.json`
+- Spec file created: `specs/profile_settings_addresses_preferences_api.json`
+- Architecture docs used:
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+  - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
+  - `docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md`
+  - `docs/architecture/Frontend_Backend_Contract_Map.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md`
+  - `docs/architecture/Support_Announcements_and_Status_Design.md`
+  - `docs/architecture/Rewards_Application_and_Notification_Flows.md`
+  - `docs/architecture/Discord_Integration_Application_Flow.md`
+  - `docs/architecture/Background_Jobs_Sync_and_Event_Processing.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+- Repo search summary:
+  - Confirmed the roadmap and implementation plan both point next to `specs/profile_settings_addresses_preferences_api.json`, while `specs/application_layer_foundation.json` and `specs/auth_session_account_security.json` already appear complete.
+  - Confirmed current application wiring in `app/main.py`, `app/api/routers/v1/__init__.py`, `app/api/deps.py`, `app/api/errors.py`, and `app/api/exception_handlers.py`; only auth and rewards routers are currently registered under `/api/v1`.
+  - Confirmed parent-owned persistence substrate already exists in `app/db/models/accounts.py`, `app/db/models/profiles.py`, `app/db/models/profile_preferences.py`, `app/db/models/communication_preferences.py`, and `app/db/models/addresses.py`, with signup bootstrap in `app/services/auth_service.py` and `app/db/repositories/auth_repository.py`.
+  - Confirmed there are no dedicated profile/settings/address/communication repository modules, service modules, schema modules, or versioned routers yet under `app/db/repositories/`, `app/services/`, `app/schemas/`, or `app/api/routers/v1/`.
+  - Confirmed existing test coverage for this domain is currently persistence-oriented in `tests/unit/test_auth_models.py`, `tests/integration/test_parent_db_round_trips.py`, and `tests/integration/test_parent_db_constraints.py`, plus router-registration coverage in `tests/unit/test_router_registration.py`; no profile/settings/address API or service tests exist yet.
+  - Confirmed repo gaps that should constrain the build scope: `addresses` currently exposes only structured address fields plus `formatted_address` and lacks Google component or lat/lng columns, and the DB currently permits multiple primary addresses so primary-selection behavior must be defined at the application layer without assuming stronger constraints.
+- Files changed:
+  - `specs/profile_settings_addresses_preferences_api.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - No runtime application code implementation.
+  - No database model or Alembic migration changes.
+  - No Pay client, billing projection, or payment-method-management work.
+  - No dashboard, support, rewards, background-job, or admin-dashboard work.
+  - No Discord OAuth connect or disconnect flow implementation.
+- Risks/assumptions:
+  - The build should stay within the current profile/address schema and defer richer geocoding or Google-normalization data until a later approved schema spec.
+  - Email-edit behavior may require careful reuse of auth verification rules because account email lives on `accounts`, not `profiles`.
+  - Address primary-selection semantics need to be enforced in service logic because current DB behavior is intentionally permissive.
+- Next command to run: `./scripts/ralph-loop.sh plan 1`
+## 2026-04-18T21:01:37.2505315-05:00
+- Mode: `plan`
+- Active spec reviewed: `specs/profile_settings_addresses_preferences_api.json`
+- Planning-only adjustments:
+  - Corrected `IMPLEMENTATION_PLAN.md` so the `Active spec:` line points to the actual authored spec file instead of the stale hyphenated path.
+  - Refined `specs/profile_settings_addresses_preferences_api.json` to split oversized build items into smaller iterations: profile read vs. profile update, and address CRUD vs. explicit primary-selection behavior.
+- Repo reality summary:
+  - `/api/v1` registration currently includes only auth and rewards via `app/api/routers/v1/__init__.py` and `app/main.py`; the settings slice is still absent from runtime wiring.
+  - Parent-owned persistence for this workstream already exists in `accounts`, `profiles`, `profile_preferences`, `communication_preferences`, and `addresses`, with signup bootstrap in `app/services/auth_service.py` and `app/db/repositories/auth_repository.py`.
+  - The current DB still permits multiple primary addresses, so explicit application-layer primary-selection behavior remains a required build concern.
+  - Existing coverage is still foundation/auth/rewards- and persistence-oriented; there are no current settings-domain service or API tests yet.
+- Verification:
+  - No runtime code changed.
+  - No tests run in this planning-only pass.
+- Next recommended command: `./scripts/ralph-loop.sh build 1`

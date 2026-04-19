@@ -1,6 +1,6 @@
 # Zeptalytic Web Backend Implementation Plan
 
-Active spec: specs/auth_session_account_security.json
+Active spec: specs/profile_settings_addresses_preferences_api.json
 
 ## Current phase
 
