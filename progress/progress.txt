@@ -1946,3 +1946,152 @@
   - Host-local `pytest` remains unavailable, but required authoritative Docker verification passed, so this did not block completion.
 - Next recommended item:
   - `psap-025` - `Implement Profile and Account Settings Update API`
+2026-04-18T21:26:16.3057117-05:00
+- Active spec: `specs/profile_settings_addresses_preferences_api.json`
+- Selected item: `psap-025` - `Implement Profile and Account Settings Update API`
+- Repo search summary:
+  - Searched `git ls-files`, `rg`, and `git grep` across `app/` and `tests/` and confirmed the current profile slice was read-only in `app/api/routers/v1/profiles.py`, `app/services/profile_settings_service.py`, `app/db/repositories/profile_settings_repository.py`, and `app/schemas/profiles.py`.
+  - Verified current wiring through `app/api/deps.py`, `app/api/routers/v1/__init__.py`, and `app/main.py`; the profiles slice already used `require_normal_authenticated_session_context` and `get_profile_settings_service`.
+  - Found existing coverage in `tests/unit/test_profiles_api.py`, `tests/unit/test_profile_settings_service.py`, and `tests/unit/test_router_registration.py`; gaps were the missing mutation DTO, repository update helper, `PATCH /api/v1/profiles/me`, and invalid-update coverage.
+- Files changed:
+  - `app/api/exception_handlers.py`
+  - `app/api/routers/v1/profiles.py`
+  - `app/db/repositories/profile_settings_repository.py`
+  - `app/schemas/__init__.py`
+  - `app/schemas/profiles.py`
+  - `app/services/__init__.py`
+  - `app/services/profile_settings_service.py`
+  - `specs/profile_settings_addresses_preferences_api.json`
+  - `tests/unit/test_profile_settings_service.py`
+  - `tests/unit/test_profiles_api.py`
+  - `tests/unit/test_router_registration.py`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_profile_settings_service.py tests/unit/test_profiles_api.py tests/unit/test_router_registration.py` -> blocked in the host environment because `pytest` is not installed.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `219 passed in 6.06s` for the `test` service.
+- Blockers:
+  - Host-local `pytest` remains unavailable, but the required authoritative Docker verification passed, so this did not block completion.
+- Next recommended item:
+  - `psap-030` - `Implement Communication Preference Read or Update APIs`
+2026-04-18T21:33:30.6226963-05:00
+- Active spec: `specs/profile_settings_addresses_preferences_api.json`
+- Selected item: `psap-030` - `Implement Communication Preference Read or Update APIs`
+- Repo search summary:
+  - Searched `git ls-files`, `rg`, and `git grep` and confirmed the communication-preference slice already had placeholder wiring in `app/api/routers/v1/communication_preferences.py`, `app/services/communication_preference_service.py`, `app/db/repositories/communication_preference_repository.py`, and `app/schemas/communication_preferences.py`.
+  - Verified the existing auth/session guard path in `app/api/deps.py` and route registration in `app/api/routers/v1/__init__.py`; this slice already depended on `require_normal_authenticated_session_context` and `get_communication_preference_service`.
+  - Confirmed the parent-owned persistence substrate already existed in `app/db/models/communication_preferences.py` and was bootstrapped during signup via `app/db/repositories/auth_repository.py` and `app/services/auth_service.py`.
+  - Found coverage gaps in `tests/unit/test_communication_preferences_api.py` and `tests/unit/test_router_registration.py`: only the hidden contract endpoint was tested, with no read/update endpoint, no service regression test, and no communication-preference-specific not-found/update validation behavior.
+- Files changed:
+  - `app/api/exception_handlers.py`
+  - `app/api/routers/v1/communication_preferences.py`
+  - `app/db/repositories/communication_preference_repository.py`
+  - `app/schemas/communication_preferences.py`
+  - `app/services/communication_preference_service.py`
+  - `specs/profile_settings_addresses_preferences_api.json`
+  - `tests/unit/test_communication_preference_service.py`
+  - `tests/unit/test_communication_preferences_api.py`
+  - `tests/unit/test_router_registration.py`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `227 passed in 5.96s` for the `test` service.
+- Blockers:
+  - None.
+- Next recommended item:
+  - `psap-040` - `Implement Address List and Mutation APIs`
+## 2026-04-18T21:47:14.6243490-05:00
+- Active spec:
+  - `specs/profile_settings_addresses_preferences_api.json`
+- Selected item:
+  - `psap-040` - `Implement Address List and Mutation APIs`
+- Repo search summary:
+  - `git ls-files`, `rg`, and `git grep` confirmed the address slice already had `app/api/routers/v1/addresses.py`, `app/services/address_service.py`, `app/db/repositories/address_repository.py`, and `app/schemas/addresses.py`, but only the `/_contract` endpoint was implemented.
+  - Existing wiring and guard patterns came from `app/api/deps.py`, `app/api/routers/v1/profiles.py`, `app/api/routers/v1/communication_preferences.py`, `app/services/profile_settings_service.py`, `app/services/communication_preference_service.py`, and `app/api/exception_handlers.py`.
+  - Existing tests covering the target area were `tests/unit/test_addresses_api.py` and `tests/unit/test_router_registration.py`; there was no address service test yet, and the router-registration assertions did not cover CRUD paths.
+  - The address model in `app/db/models/addresses.py` already exposed the current structured fields plus `formatted_address` and `is_primary`, and repo searches confirmed this item should stay within that schema and leave explicit primary-selection behavior for `psap-045`.
+- Files changed:
+  - `app/api/exception_handlers.py`
+  - `app/api/routers/v1/addresses.py`
+  - `app/db/repositories/address_repository.py`
+  - `app/schemas/__init__.py`
+  - `app/schemas/addresses.py`
+  - `app/services/__init__.py`
+  - `app/services/address_service.py`
+  - `tests/unit/test_address_service.py`
+  - `tests/unit/test_addresses_api.py`
+  - `tests/unit/test_router_registration.py`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `240 passed in 6.22s` for the `test` service.
+- Blockers:
+  - None.
+- Next recommended item:
+  - `psap-045` - `Implement Address Primary-Selection Behavior`
+
+## 2026-04-18T21:52:02.1926784-05:00
+- Active spec:
+  - `specs/profile_settings_addresses_preferences_api.json`
+- Selected item:
+  - `psap-045` - `Implement Address Primary-Selection Behavior`
+- Repo search summary:
+  - Searched with `git ls-files` and `rg` across `app/api/routers/v1/addresses.py`, `app/services/address_service.py`, `app/db/repositories/address_repository.py`, `app/schemas/addresses.py`, `tests/unit/test_addresses_api.py`, `tests/unit/test_address_service.py`, and `tests/unit/test_router_registration.py`.
+  - Existing wiring already mounted `/api/v1/addresses` through the versioned router and enforced `require_normal_authenticated_session_context` via `get_address_service`.
+  - Existing address behavior covered list/create/update/delete only; there was no explicit set-primary route, no repository method to clear competing primaries, and no service method for deterministic primary selection.
+  - Existing tests covered address CRUD and router registration, but not the account-scoped primary-selection transition or its not-found path.
+- Files changed:
+  - `app/api/routers/v1/addresses.py`
+  - `app/db/repositories/address_repository.py`
+  - `app/services/address_service.py`
+  - `tests/unit/test_address_service.py`
+  - `tests/unit/test_addresses_api.py`
+  - `tests/unit/test_router_registration.py`
+  - `specs/profile_settings_addresses_preferences_api.json`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `python -m pytest tests/unit/test_address_service.py tests/unit/test_addresses_api.py tests/unit/test_router_registration.py` -> blocked locally because `pytest` is not installed in the host Python environment (`No module named pytest`).
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `244 passed in 6.14s` for the `test` service.
+- Blockers:
+  - None.
+- Next recommended item:
+  - `psap-050` - `Lock Settings Contract and Guard Behavior with Focused Tests`
+
+## 2026-04-18T21:55:36.5094250-05:00
+- Active spec:
+  - `specs/profile_settings_addresses_preferences_api.json`
+- Selected item:
+  - `psap-050` - `Lock Settings Contract and Guard Behavior with Focused Tests`
+- Repo search summary:
+  - Searched with `git ls-files`, `git grep`, `rg`, and `Get-ChildItem` across `app/api/routers/v1/__init__.py`, `app/api/routers/v1/profiles.py`, `app/api/routers/v1/addresses.py`, `app/api/routers/v1/communication_preferences.py`, `app/api/deps.py`, `app/api/exception_handlers.py`, `app/services/profile_settings_service.py`, `app/services/address_service.py`, `app/services/communication_preference_service.py`, `app/db/repositories/profile_settings_repository.py`, `app/db/repositories/address_repository.py`, `app/db/repositories/communication_preference_repository.py`, and the settings-slice unit tests.
+  - Confirmed canonical `/api/v1` registration already flows through `app/api/routers/v1/__init__.py` and `app/main.py`, with shared auth/session guards supplied by `app/api/deps.py`.
+  - Confirmed the settings slice already has explicit router -> service -> repository wiring for profiles, addresses, and communication preferences, with safe DTOs in `app/schemas/profiles.py`, `app/schemas/addresses.py`, and `app/schemas/communication_preferences.py`.
+  - Confirmed focused tests already cover router registration, representative guarded and not-found API failures using the standard error shape, profile/settings composition, communication preference updates, and address primary-selection behavior.
+- Files changed:
+  - `specs/profile_settings_addresses_preferences_api.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `244 passed in 6.23s` for the `test` service.
+- Blockers:
+  - None.
+- Next recommended item:
+  - `psap-999` - `Verify Profile and Settings Slice Completion`
+
+## 2026-04-18T21:58:11.2839947-05:00
+- Active spec:
+  - `specs/profile_settings_addresses_preferences_api.json`
+- Selected item:
+  - `psap-999` - `Verify Profile and Settings Slice Completion`
+- Repo search summary:
+  - Searched with `git ls-files`, `git grep`, `rg`, and `Get-ChildItem` across the settings-slice routers, services, repositories, schemas, and unit tests.
+  - Confirmed current wiring in `app/main.py`, `app/api/routers/v1/__init__.py`, and `app/api/deps.py` mounts `/api/v1/profiles`, `/api/v1/addresses`, and `/api/v1/communication-preferences` through the shared auth/session dependency pattern.
+  - Confirmed the settings slice implementation exists in `app/api/routers/v1/profiles.py`, `app/api/routers/v1/addresses.py`, `app/api/routers/v1/communication_preferences.py`, `app/services/profile_settings_service.py`, `app/services/address_service.py`, `app/services/communication_preference_service.py`, `app/db/repositories/profile_settings_repository.py`, `app/db/repositories/address_repository.py`, and `app/db/repositories/communication_preference_repository.py`.
+  - Confirmed focused coverage already exists in `tests/unit/test_profiles_api.py`, `tests/unit/test_profile_settings_service.py`, `tests/unit/test_addresses_api.py`, `tests/unit/test_address_service.py`, `tests/unit/test_communication_preferences_api.py`, `tests/unit/test_communication_preference_service.py`, and `tests/unit/test_router_registration.py`.
+- Files changed:
+  - `specs/profile_settings_addresses_preferences_api.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `244 passed in 6.23s` for the `test` service.
+- Blockers:
+  - None.
+- Next recommended item:
+  - Author or activate the parent-to-Pay integration and projection foundation workstream in roadmap order.

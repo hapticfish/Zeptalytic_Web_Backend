@@ -1,6 +1,14 @@
 """Pydantic request/response schemas."""
 
-from app.schemas.addresses import AddressRouteContractResponse, AddressSummary
+from app.schemas.addresses import (
+    AddressCreateRequest,
+    AddressDeleteResponse,
+    AddressListResponse,
+    AddressReadResponse,
+    AddressRouteContractResponse,
+    AddressSummary,
+    AddressUpdateRequest,
+)
 from app.schemas.auth import (
     AccountClosureRequest,
     AccountClosureResponse,
@@ -48,11 +56,17 @@ from app.schemas.profiles import (
     ProfileRouteContractResponse,
     ProfileSettingsReadResponse,
     ProfileSettingsSummary,
+    ProfileSettingsUpdateRequest,
 )
 
 __all__ = [
     "AddressRouteContractResponse",
+    "AddressCreateRequest",
+    "AddressDeleteResponse",
+    "AddressListResponse",
+    "AddressReadResponse",
     "AddressSummary",
+    "AddressUpdateRequest",
     "AuthAccountSummary",
     "AccountClosureRequest",
     "AccountClosureResponse",
@@ -77,6 +91,7 @@ __all__ = [
     "ProfileRouteContractResponse",
     "ProfileSettingsReadResponse",
     "ProfileSettingsSummary",
+    "ProfileSettingsUpdateRequest",
     "ResendEmailVerificationResponse",
     "RevokeOtherSessionsResponse",
     "RevokeSessionResponse",

@@ -46,16 +46,25 @@ def test_versioned_auth_router_is_canonical_registration_surface() -> None:
 
 
 def test_versioned_settings_routers_are_canonical_registration_surfaces() -> None:
-    profile_paths = {route.path for route in profiles_router.routes}
+    profile_routes = {
+        (route.path, tuple(sorted(route.methods or []))) for route in profiles_router.routes
+    }
     address_paths = {route.path for route in addresses_router.routes}
-    communication_preference_paths = {
-        route.path for route in communication_preferences_router.routes
+    communication_preference_routes = {
+        (route.path, tuple(sorted(route.methods or [])))
+        for route in communication_preferences_router.routes
     }
 
-    assert "/profiles/_contract" in profile_paths
-    assert "/profiles/me" in profile_paths
+    assert ("/profiles/_contract", ("GET",)) in profile_routes
+    assert ("/profiles/me", ("GET",)) in profile_routes
+    assert ("/profiles/me", ("PATCH",)) in profile_routes
     assert "/addresses/_contract" in address_paths
-    assert "/communication-preferences/_contract" in communication_preference_paths
+    assert "/addresses/me" in address_paths
+    assert "/addresses/me/{address_id}" in address_paths
+    assert "/addresses/me/{address_id}/primary" in address_paths
+    assert ("/communication-preferences/_contract", ("GET",)) in communication_preference_routes
+    assert ("/communication-preferences/me", ("GET",)) in communication_preference_routes
+    assert ("/communication-preferences/me", ("PATCH",)) in communication_preference_routes
 
 
 def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
@@ -81,7 +90,11 @@ def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
     assert "/api/v1/profiles/_contract" in routes
     assert "/api/v1/profiles/me" in routes
     assert "/api/v1/addresses/_contract" in routes
+    assert "/api/v1/addresses/me" in routes
+    assert "/api/v1/addresses/me/{address_id}" in routes
+    assert "/api/v1/addresses/me/{address_id}/primary" in routes
     assert "/api/v1/communication-preferences/_contract" in routes
+    assert "/api/v1/communication-preferences/me" in routes
     assert "/api/v1/rewards/{account_id}/summary" in routes
     assert "/api/v1/rewards/{account_id}/objectives" in routes
     assert "/api/v1/rewards/{account_id}/notifications" in routes

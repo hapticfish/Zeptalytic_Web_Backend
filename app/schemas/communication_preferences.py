@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.schemas.common import MutationSuccessResponse
 
@@ -16,6 +16,18 @@ class CommunicationPreferenceSummary(BaseModel):
     announcement_emails_enabled: bool
     created_at: datetime
     updated_at: datetime
+
+
+class CommunicationPreferenceReadResponse(BaseModel):
+    preferences: CommunicationPreferenceSummary
+
+
+class CommunicationPreferenceUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    marketing_emails_enabled: bool | None = None
+    product_updates_enabled: bool | None = None
+    announcement_emails_enabled: bool | None = None
 
 
 class CommunicationPreferenceRouteContractResponse(MutationSuccessResponse):

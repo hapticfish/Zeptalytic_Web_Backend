@@ -32,6 +32,12 @@ class ProfileSettingsRepository:
     def __init__(self, db: Session) -> None:
         self._db = db
 
+    def commit(self) -> None:
+        self._db.commit()
+
+    def rollback(self) -> None:
+        self._db.rollback()
+
     def get_profile_settings(self, account_id: UUID) -> ProfileSettingsRecord | None:
         row = self._db.execute(
             select(Account, Profile, ProfilePreference)
@@ -57,3 +63,26 @@ class ProfileSettingsRepository:
             created_at=profile.created_at,
             updated_at=profile.updated_at,
         )
+
+    def update_profile_settings(
+        self,
+        account_id: UUID,
+        *,
+        profile_updates: dict[str, object],
+        preference_updates: dict[str, object],
+    ) -> ProfileSettingsRecord | None:
+        profile = self._db.get(Profile, account_id)
+        preferences = self._db.get(ProfilePreference, account_id)
+
+        if profile is None or preferences is None:
+            return None
+
+        for field_name, value in profile_updates.items():
+            setattr(profile, field_name, value)
+
+        for field_name, value in preference_updates.items():
+            setattr(preferences, field_name, value)
+
+        self._db.flush()
+
+        return self.get_profile_settings(account_id)

@@ -24,6 +24,12 @@ class CommunicationPreferenceRepository:
     def __init__(self, db: Session) -> None:
         self._db = db
 
+    def commit(self) -> None:
+        self._db.commit()
+
+    def rollback(self) -> None:
+        self._db.rollback()
+
     def get_for_account(self, account_id: UUID) -> CommunicationPreferenceRecord | None:
         preference = self._db.scalar(
             select(CommunicationPreference).where(CommunicationPreference.account_id == account_id)
@@ -39,3 +45,19 @@ class CommunicationPreferenceRepository:
             created_at=preference.created_at,
             updated_at=preference.updated_at,
         )
+
+    def update_for_account(
+        self,
+        account_id: UUID,
+        *,
+        updates: dict[str, bool],
+    ) -> CommunicationPreferenceRecord | None:
+        preference = self._db.get(CommunicationPreference, account_id)
+        if preference is None:
+            return None
+
+        for field_name, value in updates.items():
+            setattr(preference, field_name, value)
+
+        self._db.flush()
+        return self.get_for_account(account_id)

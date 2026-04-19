@@ -5,6 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api.errors import build_error_response
+from app.services.address_service import AddressNotFoundError, AddressUpdateValidationError
 from app.services.auth_service import (
     AccountAccessRestrictedError,
     AuthenticationRequiredError,
@@ -23,7 +24,14 @@ from app.services.reward_notification_service import (
     RewardNotificationNotFoundError,
     RewardNotificationQueueNotFoundError,
 )
-from app.services.profile_settings_service import ProfileSettingsNotFoundError
+from app.services.profile_settings_service import (
+    ProfileSettingsNotFoundError,
+    ProfileSettingsUpdateValidationError,
+)
+from app.services.communication_preference_service import (
+    CommunicationPreferenceNotFoundError,
+    CommunicationPreferenceUpdateValidationError,
+)
 from app.services.reward_objective_service import RewardObjectivesNotFoundError
 from app.services.reward_summary_service import RewardSummaryNotFoundError
 
@@ -59,7 +67,24 @@ def register_exception_handlers(app: FastAPI) -> None:
     )
     app.add_exception_handler(TwoFactorCodeInvalidError, two_factor_code_invalid_handler)
     app.add_exception_handler(SessionNotFoundError, session_not_found_handler)
+    app.add_exception_handler(AddressNotFoundError, address_not_found_handler)
+    app.add_exception_handler(
+        AddressUpdateValidationError,
+        address_update_validation_handler,
+    )
     app.add_exception_handler(ProfileSettingsNotFoundError, profile_settings_not_found_handler)
+    app.add_exception_handler(
+        ProfileSettingsUpdateValidationError,
+        profile_settings_update_validation_handler,
+    )
+    app.add_exception_handler(
+        CommunicationPreferenceNotFoundError,
+        communication_preference_not_found_handler,
+    )
+    app.add_exception_handler(
+        CommunicationPreferenceUpdateValidationError,
+        communication_preference_update_validation_handler,
+    )
     app.add_exception_handler(RewardSummaryNotFoundError, reward_summary_not_found_handler)
     app.add_exception_handler(RewardObjectivesNotFoundError, reward_objectives_not_found_handler)
     app.add_exception_handler(
@@ -90,6 +115,32 @@ async def reward_summary_not_found_handler(
     )
 
 
+async def address_not_found_handler(
+    request: Request,
+    exc: AddressNotFoundError,
+) -> JSONResponse:
+    del exc
+    return build_error_response(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="address_not_found",
+        message="Address not found.",
+        request_id=_request_id(request),
+    )
+
+
+async def address_update_validation_handler(
+    request: Request,
+    exc: AddressUpdateValidationError,
+) -> JSONResponse:
+    return build_error_response(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        code="address_update_invalid",
+        message="Address update is invalid.",
+        details={"reason": str(exc)},
+        request_id=_request_id(request),
+    )
+
+
 async def profile_settings_not_found_handler(
     request: Request,
     exc: ProfileSettingsNotFoundError,
@@ -99,6 +150,45 @@ async def profile_settings_not_found_handler(
         status_code=status.HTTP_404_NOT_FOUND,
         code="profile_settings_not_found",
         message="Profile settings not found.",
+        request_id=_request_id(request),
+    )
+
+
+async def profile_settings_update_validation_handler(
+    request: Request,
+    exc: ProfileSettingsUpdateValidationError,
+) -> JSONResponse:
+    return build_error_response(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        code="profile_settings_update_invalid",
+        message="Profile settings update is invalid.",
+        details={"reason": str(exc)},
+        request_id=_request_id(request),
+    )
+
+
+async def communication_preference_not_found_handler(
+    request: Request,
+    exc: CommunicationPreferenceNotFoundError,
+) -> JSONResponse:
+    del exc
+    return build_error_response(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="communication_preferences_not_found",
+        message="Communication preferences not found.",
+        request_id=_request_id(request),
+    )
+
+
+async def communication_preference_update_validation_handler(
+    request: Request,
+    exc: CommunicationPreferenceUpdateValidationError,
+) -> JSONResponse:
+    return build_error_response(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        code="communication_preferences_update_invalid",
+        message="Communication preferences update is invalid.",
+        details={"reason": str(exc)},
         request_id=_request_id(request),
     )
 

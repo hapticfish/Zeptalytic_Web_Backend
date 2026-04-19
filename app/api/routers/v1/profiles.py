@@ -6,7 +6,11 @@ from app.api.deps import (
     get_profile_settings_service,
     require_normal_authenticated_session_context,
 )
-from app.schemas.profiles import ProfileRouteContractResponse, ProfileSettingsReadResponse
+from app.schemas.profiles import (
+    ProfileRouteContractResponse,
+    ProfileSettingsReadResponse,
+    ProfileSettingsUpdateRequest,
+)
 from app.services import AuthenticatedSessionContext, ProfileSettingsService
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
@@ -27,3 +31,12 @@ def get_my_profile_settings(
     service: ProfileSettingsService = Depends(get_profile_settings_service),
 ) -> ProfileSettingsReadResponse:
     return service.get_profile_settings(context.account_id)
+
+
+@router.patch("/me", response_model=ProfileSettingsReadResponse)
+def update_my_profile_settings(
+    payload: ProfileSettingsUpdateRequest,
+    context: AuthenticatedSessionContext = Depends(require_normal_authenticated_session_context),
+    service: ProfileSettingsService = Depends(get_profile_settings_service),
+) -> ProfileSettingsReadResponse:
+    return service.update_profile_settings(context.account_id, payload)

@@ -7,7 +7,11 @@ from fastapi.testclient import TestClient
 
 from app.api.deps import get_auth_service, get_profile_settings_service
 from app.main import app
-from app.schemas.profiles import ProfileSettingsReadResponse, ProfileSettingsSummary
+from app.schemas.profiles import (
+    ProfileSettingsReadResponse,
+    ProfileSettingsSummary,
+    ProfileSettingsUpdateRequest,
+)
 from app.services.auth_service import (
     AuthenticatedSessionContext,
     EmailVerificationRequiredError,
@@ -17,6 +21,7 @@ from app.services.auth_service import (
 class StubProfileSettingsService:
     def __init__(self, response: ProfileSettingsReadResponse | None = None) -> None:
         self._response = response
+        self.updated_calls: list[dict[str, object]] = []
 
     def describe_contract(self):  # noqa: ANN001
         return {
@@ -31,6 +36,23 @@ class StubProfileSettingsService:
             from app.services.profile_settings_service import ProfileSettingsNotFoundError
 
             raise ProfileSettingsNotFoundError(f"missing {account_id}")
+        return self._response
+
+    def update_profile_settings(
+        self,
+        account_id,  # noqa: ANN001
+        payload: ProfileSettingsUpdateRequest,
+    ):
+        if self._response is None:
+            from app.services.profile_settings_service import ProfileSettingsNotFoundError
+
+            raise ProfileSettingsNotFoundError(f"missing {account_id}")
+        self.updated_calls.append(
+            {
+                "account_id": account_id,
+                "payload": payload.model_dump(exclude_unset=True),
+            }
+        )
         return self._response
 
 
@@ -217,3 +239,93 @@ def test_profiles_me_endpoint_returns_not_found_when_profile_settings_missing() 
             "details": {},
         }
     }
+
+
+def test_profiles_patch_me_endpoint_updates_profile_settings() -> None:
+    context = _build_context()
+    response_payload = ProfileSettingsReadResponse(
+        profile=ProfileSettingsSummary(
+            account_id=context.account_id,
+            username="profile-user",
+            email="profile-user@example.com",
+            display_name="Updated User",
+            phone="+1-312-555-0101",
+            timezone="America/Denver",
+            profile_image_url=None,
+            preferred_language="es",
+            discord={
+                "username": "profile-user#1234",
+                "integration_status": "connected",
+            },
+            created_at=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+            updated_at=datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
+        )
+    )
+    auth_service = StubAuthService(context)
+    profile_service = StubProfileSettingsService(response_payload)
+    app.dependency_overrides[get_auth_service] = lambda: auth_service
+    app.dependency_overrides[get_profile_settings_service] = lambda: profile_service
+
+    try:
+        client.cookies.set("zeptalytic_session", "profiles-token")
+        response = client.patch(
+            "/api/v1/profiles/me",
+            json={
+                "display_name": "Updated User",
+                "timezone": "America/Denver",
+                "preferred_language": "es",
+            },
+        )
+    finally:
+        client.cookies.clear()
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert auth_service.received_tokens == ["profiles-token"]
+    assert profile_service.updated_calls == [
+        {
+            "account_id": context.account_id,
+            "payload": {
+                "display_name": "Updated User",
+                "timezone": "America/Denver",
+                "preferred_language": "es",
+            },
+        }
+    ]
+    assert response.json()["profile"]["display_name"] == "Updated User"
+    assert response.json()["profile"]["preferred_language"] == "es"
+
+
+def test_profiles_patch_me_endpoint_rejects_unknown_mutation_fields() -> None:
+    auth_service = StubAuthService(_build_context())
+    app.dependency_overrides[get_auth_service] = lambda: auth_service
+    app.dependency_overrides[get_profile_settings_service] = lambda: StubProfileSettingsService(
+        ProfileSettingsReadResponse(
+            profile=ProfileSettingsSummary(
+                account_id=auth_service._context.account_id,
+                username="profile-user",
+                email="profile-user@example.com",
+                display_name="Profile User",
+                phone=None,
+                timezone=None,
+                profile_image_url=None,
+                preferred_language=None,
+                discord={
+                    "username": None,
+                    "integration_status": "pending",
+                },
+                created_at=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+                updated_at=datetime(2026, 4, 18, 12, 30, tzinfo=timezone.utc),
+            )
+        )
+    )
+
+    try:
+        client.cookies.set("zeptalytic_session", "profiles-token")
+        response = client.patch("/api/v1/profiles/me", json={"username": "should-not-change"})
+    finally:
+        client.cookies.clear()
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"

@@ -137,9 +137,9 @@
         "Routers use authenticated and email-verified session guards consistent with the existing auth slice, and suspended or closed account behavior is not weakened.",
         "Tests cover at least one happy-path update and at least one invalid-update or guarded failure path."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T21:26:16.3057117-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "psap-030",
@@ -152,9 +152,9 @@
         "Repository and service logic stay limited to parent-owned preference persistence and validation.",
         "Tests cover read and update behavior plus at least one invalid or unauthorized request path."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T21:33:30.6226963-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "psap-040",
@@ -166,9 +166,9 @@
         "The implementation does not add Google geocoding, lat/lng storage, payment-method management, or other schema-dependent behavior outside the current model.",
         "Tests cover list plus create, update, and delete behavior, ownership enforcement, and at least one invalid address or not-found path."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T21:47:14.6243490-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "psap-045",
@@ -180,9 +180,9 @@
         "Primary-address behavior stays within the current schema and does not introduce migration work or Pay-owned billing logic.",
         "Tests cover the primary-selection transition, ownership enforcement, and at least one not-found or invalid-address path."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T21:52:02.1926784-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "psap-050",
@@ -194,9 +194,9 @@
         "Service tests cover profile/settings composition, communication preference updates, and address primary-selection logic without requiring unrelated integration clients.",
         "The new tests do not reopen completed rewards or auth scope except where a small regression assertion is necessary to prove shared guard behavior remains intact."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T21:55:36.5094250-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "psap-999",
@@ -208,9 +208,9 @@
         "Settings-focused tests cover router registration, DTO contracts, guarded profile/settings behavior, communication preference updates, and address CRUD or primary-selection behavior.",
         "Only fully completed items are marked complete, and progress is appended at EOF."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T21:58:11.2839947-05:00",
+      "completed_by": "codex"
     }
   ],
   "completion_definition": [
