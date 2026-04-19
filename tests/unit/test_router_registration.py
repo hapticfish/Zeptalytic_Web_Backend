@@ -1,5 +1,6 @@
 from app.api.routers import api_router
 from app.api.routers.v1 import api_router as versioned_api_router
+from app.api.routers.v1.announcements import router as announcements_router
 from app.api.routers.v1.addresses import router as addresses_router
 from app.api.routers.v1.billing import router as billing_router
 from app.api.routers.v1.auth import router as auth_router
@@ -10,6 +11,8 @@ from app.api.routers.v1.dashboard import router as dashboard_router
 from app.api.routers.v1.launcher import router as launcher_router
 from app.api.routers.v1.profiles import router as profiles_router
 from app.api.routers.v1.rewards import router as rewards_router
+from app.api.routers.v1.service_status import router as service_status_router
+from app.api.routers.v1.support import router as support_router
 from app.main import app
 
 
@@ -71,6 +74,15 @@ def test_versioned_settings_routers_are_canonical_registration_surfaces() -> Non
 
 
 def test_versioned_dashboard_launcher_billing_routers_are_canonical_registration_surfaces() -> None:
+    support_routes = {
+        (route.path, tuple(sorted(route.methods or []))) for route in support_router.routes
+    }
+    announcement_routes = {
+        (route.path, tuple(sorted(route.methods or []))) for route in announcements_router.routes
+    }
+    service_status_routes = {
+        (route.path, tuple(sorted(route.methods or []))) for route in service_status_router.routes
+    }
     dashboard_routes = {
         (route.path, tuple(sorted(route.methods or []))) for route in dashboard_router.routes
     }
@@ -93,6 +105,11 @@ def test_versioned_dashboard_launcher_billing_routers_are_canonical_registration
     assert ("/billing/subscription-restart", ("POST",)) in billing_routes
     assert ("/billing/promo-code/validate", ("POST",)) in billing_routes
     assert ("/billing/promo-code/apply", ("POST",)) in billing_routes
+    assert ("/support/tickets", ("GET",)) in support_routes
+    assert ("/support/tickets", ("POST",)) in support_routes
+    assert ("/support/tickets/{ticket_id}", ("GET",)) in support_routes
+    assert ("/announcements", ("GET",)) in announcement_routes
+    assert ("/service-status", ("GET",)) in service_status_routes
 
 
 def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
@@ -123,6 +140,10 @@ def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
     assert "/api/v1/addresses/me/{address_id}/primary" in routes
     assert "/api/v1/communication-preferences/_contract" in routes
     assert "/api/v1/communication-preferences/me" in routes
+    assert "/api/v1/support/tickets" in routes
+    assert "/api/v1/support/tickets/{ticket_id}" in routes
+    assert "/api/v1/announcements" in routes
+    assert "/api/v1/service-status" in routes
     assert "/api/v1/rewards/{account_id}/summary" in routes
     assert "/api/v1/rewards/{account_id}/objectives" in routes
     assert "/api/v1/rewards/{account_id}/notifications" in routes

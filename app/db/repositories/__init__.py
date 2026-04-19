@@ -13,6 +13,7 @@ from app.db.repositories.reward_objective_repository import RewardObjectiveRepos
 from app.db.repositories.reward_progression_repository import RewardProgressionRepository
 from app.db.repositories.reward_summary_repository import RewardSummaryRepository
 from app.db.repositories.service_status_repository import ServiceStatusRepository
+from app.db.repositories.support_repository import SupportRepository
 
 __all__ = [
     "AnnouncementRepository",
@@ -26,4 +27,5 @@ __all__ = [
     "RewardProgressionRepository",
     "RewardSummaryRepository",
     "ServiceStatusRepository",
+    "SupportRepository",
 ]

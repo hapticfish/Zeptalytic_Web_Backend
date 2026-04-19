@@ -9,6 +9,7 @@ from app.schemas.addresses import (
     AddressSummary,
     AddressUpdateRequest,
 )
+from app.schemas.announcements import AnnouncementListItem, AnnouncementListResponse
 from app.schemas.auth import (
     AccountClosureRequest,
     AccountClosureResponse,
@@ -89,6 +90,17 @@ from app.schemas.profiles import (
     ProfileSettingsSummary,
     ProfileSettingsUpdateRequest,
 )
+from app.schemas.service_status import ServiceStatusListItem, ServiceStatusListResponse
+from app.schemas.support import (
+    SupportAttachmentMetadataReference,
+    SupportAttachmentSummary,
+    SupportRouteContractResponse,
+    SupportTicketCreateRequest,
+    SupportTicketCreateResponse,
+    SupportTicketDetailResponse,
+    SupportTicketListResponse,
+    SupportTicketSummary,
+)
 
 __all__ = [
     "AddressRouteContractResponse",
@@ -106,6 +118,8 @@ __all__ = [
     "AuthSessionSummary",
     "ApiErrorDetail",
     "ApiErrorResponse",
+    "AnnouncementListItem",
+    "AnnouncementListResponse",
     "BillingActionInitiationResponse",
     "BillingActionResult",
     "BillingAddressBookSummary",
@@ -155,7 +169,17 @@ __all__ = [
     "ResetPasswordResponse",
     "SessionDeviceListResponse",
     "SessionDeviceSummary",
+    "ServiceStatusListItem",
+    "ServiceStatusListResponse",
     "SignupRequest",
+    "SupportAttachmentMetadataReference",
+    "SupportAttachmentSummary",
+    "SupportRouteContractResponse",
+    "SupportTicketCreateRequest",
+    "SupportTicketCreateResponse",
+    "SupportTicketDetailResponse",
+    "SupportTicketListResponse",
+    "SupportTicketSummary",
     "TwoFactorChallengeResponse",
     "TwoFactorCodeChallengeRequest",
     "TwoFactorEnrollmentResponse",

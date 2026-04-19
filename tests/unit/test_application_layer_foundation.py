@@ -10,6 +10,7 @@ from app.schemas import (
     AddressRouteContractResponse,
     AddressSummary,
     ApiErrorResponse,
+    AnnouncementListResponse,
     CommunicationPreferenceRouteContractResponse,
     CommunicationPreferenceSummary,
     CursorPageInfo,
@@ -17,6 +18,9 @@ from app.schemas import (
     MutationSuccessResponse,
     ProfileRouteContractResponse,
     ProfileSettingsSummary,
+    ServiceStatusListResponse,
+    SupportTicketCreateRequest,
+    SupportTicketListResponse,
 )
 from app.api.deps import get_pay_client, get_pay_projection_service
 from app.integrations import (
@@ -27,11 +31,15 @@ from app.integrations import (
     build_pay_client,
 )
 from app.services import (
+    AnnouncementService,
     AddressService,
     AuthService,
     BillingSummaryService,
     CommunicationPreferenceService,
     DashboardService,
+    SupportService,
+    SupportTicketNotFoundError,
+    SupportTicketValidationError,
     PayProjectionEntitlementSummary,
     PayProjectionPaymentMethodSummary,
     PayProjectionPaymentSummary,
@@ -43,7 +51,9 @@ from app.services import (
     RewardObjectiveService,
     RewardSummaryNotFoundError,
     RewardSummaryService,
+    ServiceStatusService,
     PayProjectionSubscriptionSummary,
+    build_announcement_service,
     build_address_service,
     build_auth_service,
     build_billing_summary_service,
@@ -55,6 +65,8 @@ from app.services import (
     build_reward_notification_service,
     build_reward_objective_service,
     build_reward_summary_service,
+    build_service_status_service,
+    build_support_service,
 )
 
 
@@ -120,6 +132,7 @@ def test_api_error_response_serializes_standard_contract() -> None:
 
 
 def test_service_package_exports_reward_service_builders() -> None:
+    assert build_announcement_service is not None
     assert build_address_service is not None
     assert build_auth_service is not None
     assert build_billing_summary_service is not None
@@ -129,8 +142,11 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert build_pay_projection_service is not None
     assert build_profile_settings_service is not None
     assert build_reward_summary_service is not None
+    assert build_service_status_service is not None
     assert build_reward_objective_service is not None
     assert build_reward_notification_service is not None
+    assert build_support_service is not None
+    assert AnnouncementService is not None
     assert AddressService is not None
     assert AuthService is not None
     assert BillingSummaryService is not None
@@ -148,6 +164,10 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert RewardSummaryNotFoundError is not None
     assert RewardObjectiveService is not None
     assert RewardNotificationService is not None
+    assert ServiceStatusService is not None
+    assert SupportService is not None
+    assert SupportTicketNotFoundError is not None
+    assert SupportTicketValidationError is not None
 
 
 def test_pay_integration_package_exports_client_boundary() -> None:
@@ -184,6 +204,9 @@ def test_settings_router_modules_do_not_import_repositories_directly() -> None:
         Path("app/api/routers/v1/profiles.py"): "require_normal_authenticated_session_context",
         Path("app/api/routers/v1/addresses.py"): "require_normal_authenticated_session_context",
         Path("app/api/routers/v1/communication_preferences.py"): "require_normal_authenticated_session_context",
+        Path("app/api/routers/v1/support.py"): "require_authenticated_session_context",
+        Path("app/api/routers/v1/announcements.py"): "require_authenticated_session_context",
+        Path("app/api/routers/v1/service_status.py"): "require_authenticated_session_context",
         Path("app/api/routers/v1/dashboard.py"): "require_normal_authenticated_session_context",
         Path("app/api/routers/v1/launcher.py"): "require_normal_authenticated_session_context",
         Path("app/api/routers/v1/billing.py"): "require_authenticated_session_context",
@@ -210,11 +233,13 @@ def test_settings_router_modules_do_not_import_repositories_directly() -> None:
 
 def test_reward_service_modules_define_repository_construction_boundary() -> None:
     service_modules = [
+        Path("app/services/announcement_service.py"),
         Path("app/services/reward_summary_service.py"),
         Path("app/services/reward_objective_service.py"),
         Path("app/services/reward_notification_service.py"),
         Path("app/services/dashboard_service.py"),
         Path("app/services/billing_summary_service.py"),
+        Path("app/services/service_status_service.py"),
     ]
 
     for module_path in service_modules:
@@ -241,6 +266,7 @@ def test_settings_service_modules_define_repository_construction_boundary() -> N
         Path("app/services/profile_settings_service.py"),
         Path("app/services/address_service.py"),
         Path("app/services/communication_preference_service.py"),
+        Path("app/services/support_service.py"),
     ]
 
     for module_path in service_modules:
@@ -269,3 +295,10 @@ def test_settings_schema_package_exports_contract_safe_dtos() -> None:
     assert ProfileRouteContractResponse is not None
     assert AddressRouteContractResponse is not None
     assert CommunicationPreferenceRouteContractResponse is not None
+
+
+def test_support_schema_package_exports_contract_safe_dtos() -> None:
+    assert SupportTicketCreateRequest is not None
+    assert SupportTicketListResponse is not None
+    assert AnnouncementListResponse is not None
+    assert ServiceStatusListResponse is not None

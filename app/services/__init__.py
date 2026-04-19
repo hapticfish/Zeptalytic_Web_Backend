@@ -1,5 +1,6 @@
 """Service-layer business orchestration."""
 
+from app.services.announcement_service import AnnouncementService, build_announcement_service
 from app.services.address_service import (
     AddressNotFoundError,
     AddressService,
@@ -70,12 +71,25 @@ from app.services.reward_summary_service import (
     RewardSummaryService,
     build_reward_summary_service,
 )
+from app.services.service_status_service import (
+    ServiceStatusService,
+    build_service_status_service,
+)
+from app.services.support_service import (
+    SupportAccessRestrictedError,
+    SupportService,
+    SupportTicketNotFoundError,
+    SupportTicketValidationError,
+    build_support_service,
+)
 
 __all__ = [
+    "AnnouncementService",
     "AddressService",
     "AddressNotFoundError",
     "AddressUpdateValidationError",
     "AccountAccessRestrictedError",
+    "build_announcement_service",
     "build_address_service",
     "AuthClientInfo",
     "AuthMutationResult",
@@ -122,8 +136,15 @@ __all__ = [
     "RewardObjectiveService",
     "RewardProgressionService",
     "RewardSummaryService",
+    "ServiceStatusService",
+    "SupportAccessRestrictedError",
+    "SupportService",
+    "SupportTicketNotFoundError",
+    "SupportTicketValidationError",
     "build_auth_service",
     "build_reward_notification_service",
     "build_reward_objective_service",
     "build_reward_summary_service",
+    "build_service_status_service",
+    "build_support_service",
 ]

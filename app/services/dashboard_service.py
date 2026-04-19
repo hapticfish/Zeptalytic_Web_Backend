@@ -10,10 +10,12 @@ from app.schemas.dashboard import (
     DashboardSummaryResponse,
     DashboardSystemStatusSummary,
 )
+from app.services.announcement_service import AnnouncementService
 from app.services.auth_service import AuthenticatedSessionContext
 from app.services.billing_summary_service import BillingSummaryService
 from app.services.launcher_service import LauncherService
 from app.services.reward_summary_service import RewardSummaryNotFoundError, RewardSummaryService
+from app.services.service_status_service import ServiceStatusService
 
 PRODUCT_NAMES = {
     "altra": "ALTRA",
@@ -28,14 +30,14 @@ class DashboardService:
         launcher_service: LauncherService,
         billing_summary_service: BillingSummaryService,
         reward_summary_service: RewardSummaryService,
-        announcement_repository: AnnouncementRepository,
-        service_status_repository: ServiceStatusRepository,
+        announcement_service: AnnouncementService,
+        service_status_service: ServiceStatusService,
     ) -> None:
         self._launcher_service = launcher_service
         self._billing_summary_service = billing_summary_service
         self._reward_summary_service = reward_summary_service
-        self._announcement_repository = announcement_repository
-        self._service_status_repository = service_status_repository
+        self._announcement_service = announcement_service
+        self._service_status_service = service_status_service
 
     def get_summary(self, context: AuthenticatedSessionContext) -> DashboardSummaryResponse:
         launcher = self._launcher_service.get_products(context)
@@ -91,7 +93,7 @@ class DashboardService:
                 detail=record.message,
                 updated_at=record.updated_at,
             )
-            for record in self._service_status_repository.list_current_statuses()
+            for record in self._service_status_service.list_current_statuses().items
         ]
 
     def _build_notifications(self) -> list[DashboardNotificationSummary]:
@@ -102,7 +104,7 @@ class DashboardService:
                 body=record.body,
                 published_at=record.published_at,
             )
-            for record in self._announcement_repository.list_active_announcements(limit=10)
+            for record in self._announcement_service.list_announcements(limit=10).items
         ]
 
 
@@ -116,6 +118,6 @@ def build_dashboard_service(
         launcher_service=launcher_service,
         billing_summary_service=billing_summary_service,
         reward_summary_service=reward_summary_service,
-        announcement_repository=AnnouncementRepository(db),
-        service_status_repository=ServiceStatusRepository(db),
+        announcement_service=AnnouncementService(AnnouncementRepository(db)),
+        service_status_service=ServiceStatusService(ServiceStatusRepository(db)),
     )

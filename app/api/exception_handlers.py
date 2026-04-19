@@ -32,6 +32,11 @@ from app.services.profile_settings_service import (
     ProfileSettingsNotFoundError,
     ProfileSettingsUpdateValidationError,
 )
+from app.services.support_service import (
+    SupportAccessRestrictedError,
+    SupportTicketNotFoundError,
+    SupportTicketValidationError,
+)
 from app.services.communication_preference_service import (
     CommunicationPreferenceNotFoundError,
     CommunicationPreferenceUpdateValidationError,
@@ -96,6 +101,15 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         CommunicationPreferenceUpdateValidationError,
         communication_preference_update_validation_handler,
+    )
+    app.add_exception_handler(
+        SupportAccessRestrictedError,
+        support_access_restricted_handler,
+    )
+    app.add_exception_handler(SupportTicketNotFoundError, support_ticket_not_found_handler)
+    app.add_exception_handler(
+        SupportTicketValidationError,
+        support_ticket_validation_handler,
     )
     app.add_exception_handler(RewardSummaryNotFoundError, reward_summary_not_found_handler)
     app.add_exception_handler(RewardObjectivesNotFoundError, reward_objectives_not_found_handler)
@@ -226,6 +240,45 @@ async def communication_preference_update_validation_handler(
         status_code=status.HTTP_400_BAD_REQUEST,
         code="communication_preferences_update_invalid",
         message="Communication preferences update is invalid.",
+        details={"reason": str(exc)},
+        request_id=_request_id(request),
+    )
+
+
+async def support_access_restricted_handler(
+    request: Request,
+    exc: SupportAccessRestrictedError,
+) -> JSONResponse:
+    return build_error_response(
+        status_code=status.HTTP_403_FORBIDDEN,
+        code="support_access_restricted",
+        message="Support access is restricted.",
+        details={"status": exc.status},
+        request_id=_request_id(request),
+    )
+
+
+async def support_ticket_not_found_handler(
+    request: Request,
+    exc: SupportTicketNotFoundError,
+) -> JSONResponse:
+    del exc
+    return build_error_response(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="support_ticket_not_found",
+        message="Support ticket not found.",
+        request_id=_request_id(request),
+    )
+
+
+async def support_ticket_validation_handler(
+    request: Request,
+    exc: SupportTicketValidationError,
+) -> JSONResponse:
+    return build_error_response(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        code="support_ticket_invalid",
+        message="Support ticket request is invalid.",
         details={"reason": str(exc)},
         request_id=_request_id(request),
     )

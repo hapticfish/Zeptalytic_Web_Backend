@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.integrations import PayClient, build_pay_client
 from app.services import (
+    AnnouncementService,
     AddressService,
     AuthService,
     AuthenticationRequiredError,
@@ -17,6 +18,9 @@ from app.services import (
     LauncherService,
     PayProjectionService,
     ProfileSettingsService,
+    ServiceStatusService,
+    SupportService,
+    build_announcement_service,
     build_address_service,
     build_auth_service,
     build_billing_summary_service,
@@ -26,6 +30,8 @@ from app.services import (
     build_pay_projection_service,
     build_profile_settings_service,
     build_reward_summary_service,
+    build_service_status_service,
+    build_support_service,
 )
 
 
@@ -53,6 +59,18 @@ def get_profile_settings_service(
     db: Session = Depends(get_db),
 ) -> ProfileSettingsService:
     return build_profile_settings_service(db)
+
+
+def get_support_service(db: Session = Depends(get_db)) -> SupportService:
+    return build_support_service(db)
+
+
+def get_announcement_service(db: Session = Depends(get_db)) -> AnnouncementService:
+    return build_announcement_service(db)
+
+
+def get_service_status_service(db: Session = Depends(get_db)) -> ServiceStatusService:
+    return build_service_status_service(db)
 
 
 def get_address_service(db: Session = Depends(get_db)) -> AddressService:

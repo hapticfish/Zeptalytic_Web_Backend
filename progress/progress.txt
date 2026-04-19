@@ -2482,3 +2482,210 @@
   - None.
 - Next recommended item:
   - Activate or author `specs/support_announcements_service_status_api.json` as the next roadmap workstream.
+## 2026-04-18T23:58:45.5931532-05:00
+- Mode:
+  - `spec_author`
+- Selected roadmap item:
+  - `support-announcements-status`
+- Spec file created:
+  - `specs/support_announcements_service_status_api.json`
+- Architecture docs used:
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+  - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
+  - `docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md`
+  - `docs/architecture/Frontend_Backend_Contract_Map.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md`
+  - `docs/architecture/Support_Announcements_and_Status_Design.md`
+  - `docs/architecture/Rewards_Application_and_Notification_Flows.md`
+  - `docs/architecture/Discord_Integration_Application_Flow.md`
+  - `docs/architecture/Background_Jobs_Sync_and_Event_Processing.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+- Repo search summary:
+  - Confirmed the roadmap and implementation plan both point to support/announcements/service status as the next spec after the now-complete dashboard/launcher/billing workstream.
+  - Confirmed persistence substrate already exists in `app/db/models/support_tickets.py`, `app/db/models/support_ticket_messages.py`, `app/db/models/support_ticket_attachments.py`, `app/db/models/announcements.py`, and `app/db/models/service_statuses.py`, plus the matching Alembic revisions under `alembic/versions/`.
+  - Confirmed locked vocabularies already exist in `app/db/vocabularies.py` for support request types, priorities, ticket statuses, message author types, attachment scan statuses, announcement scope and severity, and service-status values.
+  - Confirmed `app/db/repositories/announcement_repository.py` and `app/db/repositories/service_status_repository.py` already provide narrow read-only query seams used by `app/services/dashboard_service.py`, but there is still no `app/db/repositories/support_repository.py`.
+  - Confirmed there are still no dedicated support, announcement, or service-status API routers in `app/api/routers/v1/`, and `app/api/routers/v1/__init__.py` currently mounts only auth, profiles, addresses, communication preferences, rewards, dashboard, launcher, and billing routers.
+  - Confirmed `app/api/deps.py` already exposes the current auth guard pattern the future build should reuse, and `app/api/routers/v1/auth.py` already models support availability for active, pending-verification, and suspended users via `can_access_support`.
+  - Confirmed there are no support, announcement, or service-status schema modules under `app/schemas/` and no dedicated services exported from `app/services/__init__.py` for this workstream yet.
+  - Confirmed tests already lock general router-registration, error-envelope, service-boundary, and dashboard-feed behavior in `tests/unit/test_router_registration.py`, `tests/unit/test_api_error_contract.py`, `tests/unit/test_application_layer_foundation.py`, and `tests/unit/test_dashboard_service.py`, but there are no `test_support_api.py`, `test_support_service.py`, `test_announcement_api.py`, or `test_service_status_api.py` modules yet.
+- Files changed:
+  - `specs/support_announcements_service_status_api.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - No runtime application code, database models, Alembic migrations, routers, services, repositories, integrations, workers, or tests were modified in this spec-authoring run.
+  - The generated spec explicitly excludes admin dashboards, broad customer conversation tooling, live file-upload transport implementation, worker infrastructure, Discord flows, rewards writes, Pay-logic duplication, and stable frontend redesign.
+- Risks and assumptions:
+  - Assumes the existing support tables and locked vocabularies are the intended substrate and that the next build iteration should stay application-layer only.
+  - Assumes the current dashboard announcement and service-status reads should be preserved or refactored minimally behind shared services rather than reworked into a broader content-management system.
+  - Assumes attachment handling in the near-term build will stop at metadata or storage-abstraction boundaries unless a later spec explicitly scopes the full upload-processing path.
+- Next command to run:
+  - `./scripts/ralph-loop.sh plan 1`
+## 2026-04-19T00:03:51.8638600-05:00
+- Mode:
+  - `plan`
+- Active spec reviewed:
+  - `specs/support_announcements_service_status_api.json`
+- Planning updates:
+  - Corrected `IMPLEMENTATION_PLAN.md` so the active-spec path matches the support spec file on disk and the prose no longer says dashboard/launcher/billing is still active.
+  - Updated the implementation plan's next-workstream note so rewards/objectives/badges is the queued follow-on after the support slice, preserving roadmap order from `specs/next_phase_spec_sequence.json`.
+  - Refined the support spec repo-reality summary so it now describes the support workstream as the active implementation target rather than the next spec to author.
+- Repo reality confirmed:
+  - Support, announcement, and service-status tables already exist under `app/db/models/`, and model metadata/bootstrap plus Alembic discovery already import that substrate without needing planning-time topology changes.
+  - `app/db/repositories/announcement_repository.py` and `app/db/repositories/service_status_repository.py` are present and currently feed `app/services/dashboard_service.py`; there is still no support repository, support service, support router, announcement router, or service-status router.
+  - `app/api/deps.py` already provides the auth/session guard ladder the support build should reuse, and current unit tests already lock router registration, DTO conventions, and dashboard feed composition patterns.
+- Verification:
+  - Not run. This was a planning-only docs/spec pass with no runtime implementation changes.
+- Files changed:
+  - `IMPLEMENTATION_PLAN.md`
+  - `specs/support_announcements_service_status_api.json`
+  - `progress/progress.txt`
+- Next recommended action:
+  - Run build against `sass-010` in `specs/support_announcements_service_status_api.json`.
+- Date/time:
+  - `2026-04-19T00:12:22.2199313-05:00`
+- Mode:
+  - `build`
+- Active spec:
+  - `specs/support_announcements_service_status_api.json`
+- Selected item:
+  - `sass-010` - Define Safe DTO Contracts for Support, Announcements, and Service Status
+- Repo search summary:
+  - `app/schemas/common.py`, `app/schemas/__init__.py`, and existing schema modules under `app/schemas/` define the current DTO and export conventions, including `MutationSuccessResponse` and `CursorPageResponse`.
+  - `app/db/models/support_tickets.py`, `app/db/models/support_ticket_attachments.py`, `app/db/models/announcements.py`, and `app/db/models/service_statuses.py` already provide the persistence fields this item needs to shape into safe DTOs.
+  - `app/db/repositories/announcement_repository.py` and `app/db/repositories/service_status_repository.py` already expose read seams used by `app/services/dashboard_service.py`, but there were no dedicated support, announcement, or service-status schema modules yet.
+  - Existing tests in `tests/unit/test_application_layer_foundation.py`, `tests/unit/test_dashboard_launcher_billing_schemas.py`, and `tests/unit/test_router_registration.py` lock shared schema/export and route-registration patterns; there were no support/announcement/service-status schema regression tests before this iteration.
+- Files changed:
+  - `app/schemas/support.py`
+  - `app/schemas/announcements.py`
+  - `app/schemas/service_status.py`
+  - `app/schemas/__init__.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_support_announcements_status_schemas.py`
+  - `specs/support_announcements_service_status_api.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` - passed
+  - `python -m pytest tests/unit/test_support_announcements_status_schemas.py tests/unit/test_application_layer_foundation.py` - blocked locally because `pytest` is not installed in the host Python environment
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` - passed (`298 passed`)
+- Blockers:
+  - None for authoritative verification. Local host `python -m pytest` is unavailable because `pytest` is not installed outside Docker.
+- Next recommended item:
+  - `sass-020` - Implement Support Repository and Service Orchestration
+## 2026-04-19T00:18:57.1051051-05:00
+- Mode:
+  - `build`
+- Active spec:
+  - `specs/support_announcements_service_status_api.json`
+- Selected item:
+  - `sass-020` - Implement Support Repository and Service Orchestration
+- Repo search summary:
+  - `git ls-files`, `rg`, and direct file reads confirmed the support persistence substrate already exists in `app/db/models/support_tickets.py`, `app/db/models/support_ticket_messages.py`, and `app/db/models/support_ticket_attachments.py`, while `app/db/repositories/support_repository.py` and `app/services/support_service.py` were still missing.
+  - Existing repository/service patterns were taken from `app/db/repositories/address_repository.py`, `app/db/repositories/announcement_repository.py`, `app/db/repositories/service_status_repository.py`, `app/services/address_service.py`, and `app/services/profile_settings_service.py`.
+  - Shared wiring and export boundaries were confirmed in `app/db/repositories/__init__.py`, `app/services/__init__.py`, and `tests/unit/test_application_layer_foundation.py`.
+  - Existing support-safe DTOs from `app/schemas/support.py` already covered ticket create, summary, detail, attachment, and cursor pagination responses, so this iteration stayed in the repository/service layer and reused those contracts.
+- Files changed:
+  - `app/db/repositories/support_repository.py`
+  - `app/db/repositories/__init__.py`
+  - `app/services/support_service.py`
+  - `app/services/__init__.py`
+  - `tests/unit/test_support_service.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `specs/support_announcements_service_status_api.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` - passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` - passed (`304 passed`)
+- Blockers:
+  - None
+- Next recommended item:
+  - `sass-030` - Add Announcement and Service-Status Read Services
+## 2026-04-19T00:25:57.9400099-05:00
+- Mode:
+  - `build`
+- Active spec:
+  - `specs/support_announcements_service_status_api.json`
+- Selected item:
+  - `sass-030` - Add Announcement and Service-Status Read Services
+- Repo search summary:
+  - `git ls-files`, `rg`, `git grep`, and direct file reads confirmed the existing announcement and service-status read substrate already lived in `app/db/repositories/announcement_repository.py` and `app/db/repositories/service_status_repository.py`, with dashboard-only reuse wired in `app/services/dashboard_service.py`.
+  - Service/export and dependency patterns were taken from `app/services/__init__.py`, `app/api/deps.py`, and `tests/unit/test_application_layer_foundation.py`, while `tests/unit/test_dashboard_service.py` locked the current dashboard DTO behavior that needed to remain stable.
+  - Existing DTO contracts for this slice were already present in `app/schemas/announcements.py`, `app/schemas/service_status.py`, and `tests/unit/test_support_announcements_status_schemas.py`, so this iteration stayed focused on the service seam and dashboard reuse instead of expanding into routers.
+- Files changed:
+  - `app/services/announcement_service.py`
+  - `app/services/service_status_service.py`
+  - `app/services/dashboard_service.py`
+  - `app/services/__init__.py`
+  - `tests/unit/test_announcement_service.py`
+  - `tests/unit/test_service_status_service.py`
+  - `tests/unit/test_dashboard_service.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `specs/support_announcements_service_status_api.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` - passed
+  - `python -m pytest tests/unit/test_announcement_service.py tests/unit/test_service_status_service.py tests/unit/test_dashboard_service.py tests/unit/test_application_layer_foundation.py` - blocked locally because `pytest` is not installed in the host Python environment
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` - passed (`308 passed`)
+- Blockers:
+  - None for authoritative verification. Local host `python -m pytest` is unavailable because `pytest` is not installed outside Docker.
+- Next recommended item:
+  - `sass-040` - Expose Versioned Support, Announcement, and Service-Status Endpoints
+2026-04-19T00:31:19.4915461-05:00
+- Active spec: `specs/support_announcements_service_status_api.json`
+- Selected item: `sass-040` - Expose Versioned Support, Announcement, and Service-Status Endpoints
+- Repo search summary:
+  - `app/api/routers/v1/__init__.py` only registered auth, profile, address, communication-preference, rewards, dashboard, launcher, and billing routers before this iteration.
+  - `app/api/deps.py` already held the authenticated, verified, and normal-authenticated session guard pattern used by existing v1 routers.
+  - `app/services/support_service.py`, `app/services/announcement_service.py`, and `app/services/service_status_service.py` already exposed the support, announcement, and status application seams needed by the router layer.
+  - `tests/unit/test_router_registration.py`, `tests/unit/test_application_layer_foundation.py`, and `tests/unit/test_api_error_contract.py` already locked router-registration and error-envelope conventions, but there were no support, announcement, or service-status API tests yet.
+  - Gap addressed: add versioned routers, service dependency providers, support exception-to-error mapping, route registration coverage, and endpoint tests without pulling repositories into routers.
+- Files changed:
+  - `app/api/deps.py`
+  - `app/api/exception_handlers.py`
+  - `app/api/routers/v1/__init__.py`
+  - `app/api/routers/v1/support.py`
+  - `app/api/routers/v1/announcements.py`
+  - `app/api/routers/v1/service_status.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_router_registration.py`
+  - `tests/unit/test_support_api.py`
+  - `tests/unit/test_announcement_api.py`
+  - `tests/unit/test_service_status_api.py`
+  - `specs/support_announcements_service_status_api.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` - passed
+  - `python -m pytest tests/unit/test_support_api.py tests/unit/test_announcement_api.py tests/unit/test_service_status_api.py tests/unit/test_router_registration.py tests/unit/test_application_layer_foundation.py tests/unit/test_api_error_contract.py` - blocked locally because `pytest` is not installed in the host Python environment
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` - passed (`314 passed`)
+- Blockers:
+  - None for authoritative verification. Local host `python -m pytest` is unavailable because `pytest` is not installed outside Docker.
+- Next recommended item:
+  - `sass-999` - Verify Support, Announcement, and Service-Status Slice Completion
+2026-04-19T00:33:19.1126436-05:00
+- Active spec:
+  - `specs/support_announcements_service_status_api.json`
+- Selected item:
+  - `sass-999` - Verify Support, Announcement, and Service-Status Slice Completion
+- Repo search summary:
+  - `app/api/routers/v1/support.py`, `app/api/routers/v1/announcements.py`, and `app/api/routers/v1/service_status.py` already define the versioned routers, with registration in `app/api/routers/v1/__init__.py`.
+  - `app/api/deps.py` already wires `get_support_service`, `get_announcement_service`, and `get_service_status_service`, preserving router-to-service dependencies.
+  - `app/services/support_service.py`, `app/services/announcement_service.py`, `app/services/service_status_service.py`, and `app/services/dashboard_service.py` already contain the support slice and dashboard reuse seams.
+  - `app/db/repositories/support_repository.py`, `app/db/repositories/announcement_repository.py`, and `app/db/repositories/service_status_repository.py` already provide the repository layer for the slice.
+  - `app/schemas/support.py`, `app/schemas/announcements.py`, and `app/schemas/service_status.py` already provide the safe DTO contracts and are exported from `app/schemas/__init__.py`.
+  - Existing focused tests already cover the target area in `tests/unit/test_support_announcements_status_schemas.py`, `tests/unit/test_support_service.py`, `tests/unit/test_announcement_service.py`, `tests/unit/test_service_status_service.py`, `tests/unit/test_support_api.py`, `tests/unit/test_announcement_api.py`, `tests/unit/test_service_status_api.py`, `tests/unit/test_router_registration.py`, `tests/unit/test_application_layer_foundation.py`, and `tests/unit/test_dashboard_service.py`.
+  - The remaining gap for this item was authoritative verification only.
+- Files changed:
+  - `specs/support_announcements_service_status_api.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` - passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` - passed (`314 passed`)
+- Blockers:
+  - None
+- Next recommended item:
+  - Activate or author the next roadmap workstream: `specs/rewards_objectives_badges_application_api.json`

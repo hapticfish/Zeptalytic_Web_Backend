@@ -3,10 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from app.schemas.announcements import AnnouncementListItem, AnnouncementListResponse
 from app.schemas.billing import BillingAddressBookSummary, BillingSnapshotResponse
+from app.schemas.common import CursorPageInfo
 from app.schemas.dashboard import DashboardSummaryResponse
 from app.schemas.launcher import LauncherProductsResponse
 from app.schemas.reward_summary import RewardSummaryNextMilestone, RewardSummaryResponse
+from app.schemas.service_status import ServiceStatusListItem, ServiceStatusListResponse
 from app.services.dashboard_service import DashboardService
 from app.services.reward_summary_service import RewardSummaryNotFoundError
 
@@ -40,31 +43,39 @@ class StubRewardSummaryService:
         return self._response
 
 
-class StubAnnouncementRecord:
-    def __init__(self) -> None:
-        self.title = "Planned maintenance"
-        self.body = "Maintenance begins tonight."
-        self.severity = "announcement"
-        self.published_at = datetime(2026, 4, 18, 18, 0, tzinfo=timezone.utc)
-
-
-class StubAnnouncementRepository:
-    def list_active_announcements(self, *, limit: int = 10):  # noqa: ANN001
+class StubAnnouncementService:
+    def list_announcements(self, *, limit: int = 10):  # noqa: ANN001
         assert limit == 10
-        return [StubAnnouncementRecord()]
+        return AnnouncementListResponse(
+            items=[
+                AnnouncementListItem(
+                    announcement_id=uuid4(),
+                    scope="global",
+                    product_code=None,
+                    title="Planned maintenance",
+                    body="Maintenance begins tonight.",
+                    severity="warning",
+                    published_at=datetime(2026, 4, 18, 18, 0, tzinfo=timezone.utc),
+                    expires_at=None,
+                )
+            ],
+            page=CursorPageInfo(limit=10, cursor=None, next_cursor=None),
+        )
 
 
-class StubServiceStatusRecord:
-    def __init__(self) -> None:
-        self.product_code = "zardbot"
-        self.status = "online"
-        self.message = "All systems nominal."
-        self.updated_at = datetime(2026, 4, 18, 18, 5, tzinfo=timezone.utc)
-
-
-class StubServiceStatusRepository:
+class StubServiceStatusService:
     def list_current_statuses(self):
-        return [StubServiceStatusRecord()]
+        return ServiceStatusListResponse(
+            items=[
+                ServiceStatusListItem(
+                    status_id=uuid4(),
+                    product_code="zardbot",
+                    status="online",
+                    message="All systems nominal.",
+                    updated_at=datetime(2026, 4, 18, 18, 5, tzinfo=timezone.utc),
+                )
+            ]
+        )
 
 
 class StubContext:
@@ -101,8 +112,8 @@ def test_dashboard_service_composes_launcher_billing_rewards_status_and_notifica
                 earned_badges=[],
             )
         ),
-        announcement_repository=StubAnnouncementRepository(),
-        service_status_repository=StubServiceStatusRepository(),
+        announcement_service=StubAnnouncementService(),
+        service_status_service=StubServiceStatusService(),
     )
 
     response = service.get_summary(StubContext(account_id))
@@ -128,8 +139,8 @@ def test_dashboard_service_omits_rewards_progress_when_no_rewards_summary_exists
             )
         ),
         reward_summary_service=StubRewardSummaryService(None),
-        announcement_repository=StubAnnouncementRepository(),
-        service_status_repository=StubServiceStatusRepository(),
+        announcement_service=StubAnnouncementService(),
+        service_status_service=StubServiceStatusService(),
     )
 
     response = service.get_summary(StubContext(account_id))
