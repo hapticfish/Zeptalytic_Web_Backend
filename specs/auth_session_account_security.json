@@ -104,9 +104,9 @@
         "The item does not yet need to implement every auth mutation, but it must establish the code paths and test scaffolding future auth items will reuse.",
         "Tests prove router registration and the basic dependency/contract surface for the new auth slice."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T20:01:05.1838701-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "asa-020",
@@ -119,9 +119,9 @@
         "Auth events are recorded for the implemented security-sensitive actions with safe metadata.",
         "Tests cover successful signup/login/logout plus at least duplicate-account, invalid-credential, and suspended-or-closed-account failure paths."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T20:14:50.1009330-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "asa-030",
@@ -134,9 +134,9 @@
         "The implementation preserves the documented exception that support-ticket creation may remain available to unverified users.",
         "Tests cover valid verification, expired-or-used token failures, resend behavior, and at least one verification-gated authenticated path."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T20:23:34.5448554-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "asa-040",
@@ -149,9 +149,9 @@
         "Implemented flows use the standard error contract for invalid, expired, or unauthorized requests.",
         "Tests cover enumeration-safe forgot-password behavior, successful reset/change flows, invalid-or-used token failures, and session invalidation expectations."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T20:32:24.6868363-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "asa-050",
@@ -164,9 +164,9 @@
         "Suspended-user and closed-user behavior aligns with the documented auth/security rules for billing/support access versus normal product/account actions.",
         "Tests cover 2FA happy paths and failures, session list/revocation behavior, and account-closure/login-block regressions."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T20:43:42.1070970-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "asa-999",
@@ -178,9 +178,9 @@
         "Auth-focused tests cover router registration, DTO contracts, core auth flows, verification gating, password lifecycle behavior, and session/account-security operations.",
         "Only fully completed items are marked complete, and progress is appended at EOF."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T20:47:37.1031120-05:00",
+      "completed_by": "codex"
     }
   ],
   "completion_definition": [

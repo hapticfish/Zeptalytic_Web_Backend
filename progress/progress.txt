@@ -1663,3 +1663,160 @@
   - Current config has no auth/session/CSRF settings yet, so the eventual build may need small `app/core/config.py` additions without adding dependencies.
   - The worktree was already dirty before this spec-authoring iteration; I limited changes to the new spec and the append-only progress entry.
 - Next command to run: `./scripts/ralph-loop.sh build 1`
+2026-04-18T19:54:47.3800191-05:00 plan: verified repo reality against the completed application-layer foundation and active auth/session/account security spec; corrected IMPLEMENTATION_PLAN.md drift so the active spec path, current workstream text, and next queued profile/settings/addresses/preferences target now match the roadmap and repo state.
+2026-04-18T20:01:05.1838701-05:00 build: active spec `specs/auth_session_account_security.json`; completed item `asa-010` (Establish Auth Router, DTOs, and Session Guard Foundations).
+- Repo search summary:
+  - `app/api/routers/v1/__init__.py`, `app/main.py`, and `tests/unit/test_router_registration.py` showed `/api/v1` routing was rewards-only, with no auth router registered.
+  - `app/api/deps.py` only exposed `get_settings()` and `get_db()`, and searches across `app/services`, `app/db/repositories`, and `app/schemas` confirmed there was no auth service/repository/DTO slice yet.
+  - `app/api/routers/rewards_summary.py`, `app/services/reward_summary_service.py`, and `app/db/repositories/reward_summary_repository.py` established the current router -> service -> repository construction pattern to mirror.
+  - Existing coverage in `tests/unit/test_router_registration.py`, `tests/unit/test_application_layer_foundation.py`, `tests/unit/test_config.py`, and the rewards API tests showed where to extend router registration, service export, and contract assertions.
+- Files changed:
+  - `app/core/config.py`
+  - `app/api/deps.py`
+  - `app/api/exception_handlers.py`
+  - `app/api/routers/v1/__init__.py`
+  - `app/api/routers/v1/auth.py`
+  - `app/db/repositories/__init__.py`
+  - `app/db/repositories/auth_repository.py`
+  - `app/schemas/__init__.py`
+  - `app/schemas/auth.py`
+  - `app/services/__init__.py`
+  - `app/services/auth_service.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_auth_api.py`
+  - `tests/unit/test_auth_service.py`
+  - `tests/unit/test_config.py`
+  - `tests/unit/test_router_registration.py`
+  - `specs/auth_session_account_security.json`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`159 passed`).
+  - Host-side `python -m pytest ...` could not run because `pytest` is not installed in the local Python environment; Docker remained the authoritative passing suite.
+- Blockers: none.
+- Next recommended item: `asa-020` Implement Signup, Login, Logout, and Auth Event Recording on top of the new auth router, DTO, and session-context foundation.
+2026-04-18T20:14:50.1009330-05:00 build: active spec `specs/auth_session_account_security.json`; completed item `asa-020` (Implement Signup, Login, Logout, and Auth Event Recording).
+- Repo search summary:
+  - `git ls-files`, `rg`, and `git grep` showed the auth slice already had `/api/v1/auth` registration via `app/api/routers/v1/__init__.py`, auth dependencies in `app/api/deps.py`, and only a session-read endpoint in `app/api/routers/v1/auth.py`.
+  - `app/services/auth_service.py` and `app/db/repositories/auth_repository.py` only supported hashed session lookup and account-status guards before this iteration; there were no signup/login/logout mutation flows, no auth write methods, and no auth-event write path.
+  - Existing auth/security persistence was already present in `app/db/models/accounts.py`, `app/db/models/auth_sessions.py`, `app/db/models/auth_events.py`, `app/db/models/account_security_settings.py`, `app/db/models/email_verification_tokens.py`, `app/db/models/profiles.py`, `app/db/models/profile_preferences.py`, and `app/db/models/communication_preferences.py`.
+  - Existing coverage in `tests/unit/test_auth_api.py`, `tests/unit/test_auth_service.py`, `tests/unit/test_router_registration.py`, and `tests/unit/test_config.py` covered the prior foundation only, leaving signup/login/logout behavior, duplicate-account handling, invalid credentials, closed-account login failure, cookie mutation behavior, and auth-event persistence as the main gaps.
+- Files changed:
+  - `app/core/config.py`
+  - `app/api/exception_handlers.py`
+  - `app/api/routers/v1/auth.py`
+  - `app/db/repositories/auth_repository.py`
+  - `app/schemas/__init__.py`
+  - `app/schemas/auth.py`
+  - `app/services/__init__.py`
+  - `app/services/auth_service.py`
+  - `tests/unit/test_auth_api.py`
+  - `tests/unit/test_auth_service.py`
+  - `tests/unit/test_config.py`
+  - `tests/unit/test_router_registration.py`
+  - `specs/auth_session_account_security.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`171 passed`).
+- Blockers: none.
+- Next recommended item: `asa-030` Implement Email Verification and Verification Gating on top of the new signup/login/session foundation and the persisted verification-token state.
+2026-04-18T20:23:34.5448554-05:00 build: active spec `specs/auth_session_account_security.json`; completed item `asa-030` (Implement Email Verification and Verification Gating).
+- Repo search summary:
+  - `git ls-files`, `rg`, and `git grep` showed the auth slice already had `/api/v1/auth` registration in `app/api/routers/v1/__init__.py`, account/session guard dependencies in `app/api/deps.py`, and only signup/login/logout/session endpoints in `app/api/routers/v1/auth.py`.
+  - `app/services/auth_service.py` already enforced `ensure_email_verified` and `ensure_account_status_allows_normal_authenticated_actions`, but it had no verification-token lifecycle methods and no resend/consume behavior.
+  - `app/db/repositories/auth_repository.py` already created hashed verification tokens but lacked token lookup, token-use, and account-verification update helpers.
+  - Existing coverage in `tests/unit/test_auth_api.py`, `tests/unit/test_auth_service.py`, `tests/unit/test_router_registration.py`, and `tests/unit/test_config.py` covered the prior auth foundation only; verification endpoints, invalid-or-expired token handling, resend behavior, and a verification-gated path were the gaps.
+- Files changed:
+  - `IMPLEMENTATION_PLAN.md`
+  - `app/core/config.py`
+  - `app/api/exception_handlers.py`
+  - `app/api/routers/v1/auth.py`
+  - `app/db/repositories/auth_repository.py`
+  - `app/schemas/__init__.py`
+  - `app/schemas/auth.py`
+  - `app/services/__init__.py`
+  - `app/services/auth_service.py`
+  - `tests/unit/test_auth_api.py`
+  - `tests/unit/test_auth_service.py`
+  - `tests/unit/test_config.py`
+  - `tests/unit/test_router_registration.py`
+  - `specs/auth_session_account_security.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`178 passed`).
+- Blockers: none.
+- Next recommended item: `asa-040` Implement Password Reset, Password Change, and Session Revocation.
+## 2026-04-18T20:32:24.6868363-05:00
+- Active spec: `specs/auth_session_account_security.json`
+- Selected item: `asa-040` Implement Password Reset, Password Change, and Session Revocation.
+- Repo search summary:
+  - Confirmed the existing auth slice was already wired through `app/api/routers/v1/auth.py`, `app/api/deps.py`, `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/schemas/auth.py`.
+  - Confirmed `app/db/models/password_reset_tokens.py` and `app/db/models/auth_sessions.py` already provided the persistence substrate, but there were no password-reset repository methods, service flows, DTOs, or router endpoints.
+  - Confirmed auth coverage already existed in `tests/unit/test_auth_api.py`, `tests/unit/test_auth_service.py`, and `tests/unit/test_router_registration.py`, with no tests yet covering forgot/reset/change password flows.
+- Files changed:
+  - `app/core/config.py`
+  - `app/db/repositories/auth_repository.py`
+  - `app/services/auth_service.py`
+  - `app/services/__init__.py`
+  - `app/api/exception_handlers.py`
+  - `app/schemas/auth.py`
+  - `app/schemas/__init__.py`
+  - `app/api/routers/v1/auth.py`
+  - `tests/unit/test_config.py`
+  - `tests/unit/test_router_registration.py`
+  - `tests/unit/test_auth_api.py`
+  - `tests/unit/test_auth_service.py`
+  - `specs/auth_session_account_security.json`
+  - `IMPLEMENTATION_PLAN.md`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`189 passed`).
+- Blockers: none.
+- Next recommended item: `asa-050` Implement 2FA, session/device management, and account closure.
+
+2026-04-18T20:43:42.1070970-05:00
+- Active spec: `specs/auth_session_account_security.json`
+- Selected item: `asa-050` Implement 2FA, session/device management, and account closure.
+- Repo search summary:
+  - Searched `app/` and `tests/` with `git ls-files` and `rg` for auth router, repository, service, session, MFA, recovery-code, and account-status patterns before editing.
+  - Confirmed existing auth slice wiring in `app/api/routers/v1/auth.py`, `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, `app/api/deps.py`, and `app/api/exception_handlers.py`.
+  - Confirmed persistence substrate already existed in `app/db/models/account_security_settings.py`, `app/db/models/mfa_recovery_codes.py`, `app/db/models/auth_sessions.py`, and `app/db/models/accounts.py`.
+  - Confirmed existing coverage in `tests/unit/test_auth_api.py`, `tests/unit/test_auth_service.py`, `tests/unit/test_router_registration.py`, and `tests/unit/test_config.py`, but no 2FA/session-device/account-closure tests or endpoints were present.
+- Files changed:
+  - `app/core/config.py`
+  - `app/db/repositories/auth_repository.py`
+  - `app/services/auth_service.py`
+  - `app/services/__init__.py`
+  - `app/api/exception_handlers.py`
+  - `app/schemas/auth.py`
+  - `app/schemas/__init__.py`
+  - `app/api/routers/v1/auth.py`
+  - `tests/unit/test_config.py`
+  - `tests/unit/test_router_registration.py`
+  - `tests/unit/test_auth_api.py`
+  - `tests/unit/test_auth_service.py`
+  - `specs/auth_session_account_security.json`
+  - `IMPLEMENTATION_PLAN.md`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `python -m pytest tests/unit/test_auth_service.py tests/unit/test_auth_api.py tests/unit/test_router_registration.py tests/unit/test_config.py` -> blocked locally because `pytest` is not installed in the host Python environment.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`201 passed`).
+- Blockers: none.
+- Next recommended item: `asa-999` Verify auth/security foundation completion and close out the active spec.
+2026-04-18T20:47:37.1031120-05:00
+- Active spec: `specs/auth_session_account_security.json`
+- Selected item: `asa-999` Verify Auth and Security Foundation Completion
+- Repo search summary:
+  - Confirmed auth runtime wiring already exists in `app/api/routers/v1/auth.py`, `app/api/routers/v1/__init__.py`, `app/main.py`, `app/api/deps.py`, `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/schemas/auth.py`.
+  - Confirmed auth coverage already exists in `tests/unit/test_auth_api.py`, `tests/unit/test_auth_service.py`, `tests/unit/test_router_registration.py`, `tests/unit/test_application_layer_foundation.py`, and `tests/unit/test_auth_models.py`.
+  - Determined the remaining gap for `asa-999` was authoritative verification and durable closeout artifacts, not missing auth implementation code.
+- Files changed:
+  - `specs/auth_session_account_security.json`
+  - `IMPLEMENTATION_PLAN.md`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`201 passed`).
+- Blockers: none.
+- Next recommended item: author or activate `specs/profile_settings_addresses_preferences_api.json` in roadmap order.

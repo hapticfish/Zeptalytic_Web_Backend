@@ -13,9 +13,11 @@ from app.schemas import (
     MutationSuccessResponse,
 )
 from app.services import (
+    AuthService,
     RewardNotificationService,
     RewardObjectiveService,
     RewardSummaryService,
+    build_auth_service,
     build_reward_notification_service,
     build_reward_objective_service,
     build_reward_summary_service,
@@ -84,9 +86,11 @@ def test_api_error_response_serializes_standard_contract() -> None:
 
 
 def test_service_package_exports_reward_service_builders() -> None:
+    assert build_auth_service is not None
     assert build_reward_summary_service is not None
     assert build_reward_objective_service is not None
     assert build_reward_notification_service is not None
+    assert AuthService is not None
     assert RewardSummaryService is not None
     assert RewardObjectiveService is not None
     assert RewardNotificationService is not None

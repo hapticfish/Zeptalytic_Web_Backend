@@ -1,6 +1,6 @@
 # Zeptalytic Web Backend Implementation Plan
 
-Active spec: specs/auth-session-account-security.json
+Active spec: specs/auth_session_account_security.json
 
 ## Current phase
 
@@ -8,13 +8,15 @@ The parent DB foundation, model file separation refactor, parent DB verification
 
 The next phase is the broader parent backend application buildout.
 
-The current active workstream is the application-layer foundation spec:
+The application-layer foundation spec is complete.
+
+The auth/session/account security spec is now complete:
 
 ```text
-specs/application_layer_foundation.json
+specs/auth_session_account_security.json
 ```
 
-The next action is a build run that implements the first incomplete application-foundation item from that spec.
+The next recommended action is to author or activate the profile/settings/addresses/preferences workstream in roadmap order.
 
 ## Next-phase roadmap
 
@@ -177,13 +179,13 @@ The following workstreams are treated as complete and should not be re-opened un
 
 ## Next workstream to author
 
-Keep the next queued spec ready, but do not switch to it until the active application-layer foundation spec is fully complete. The next spec to author after that remains:
+The next spec to author or activate should be the profile/settings/addresses/preferences workstream from the roadmap:
 
 ```text
-specs/auth_session_account_security.json
+specs/profile_settings_addresses_preferences_api.json
 ```
 
-That follow-on spec should stay focused on auth/session/account security and preserve the roadmap order from `specs/next_phase_spec_sequence.json`.
+That follow-on spec should stay focused on profile/settings/addresses/preferences behavior and preserve the roadmap order from `specs/next_phase_spec_sequence.json`.
 
 ## Progress rule
 
