@@ -24,6 +24,74 @@ This inventory is intentionally limited to the implemented parent account surfac
   - `app/api/routers/v1/rewards.py`
 - `tests/unit/test_router_registration.py` is the canonical regression for route registration across the authenticated browser surface.
 
+### Implemented `/api/v1` route inventory from runtime registration
+- Auth and account security:
+  - `POST /api/v1/auth/signup`
+  - `POST /api/v1/auth/login`
+  - `POST /api/v1/auth/verify-email`
+  - `POST /api/v1/auth/resend-verification`
+  - `POST /api/v1/auth/forgot-password`
+  - `POST /api/v1/auth/reset-password`
+  - `POST /api/v1/auth/change-password`
+  - `POST /api/v1/auth/logout`
+  - `GET /api/v1/auth/session`
+  - `POST /api/v1/auth/2fa/enroll`
+  - `POST /api/v1/auth/2fa/verify`
+  - `POST /api/v1/auth/2fa/challenge`
+  - `POST /api/v1/auth/2fa/recovery-codes/regenerate`
+  - `POST /api/v1/auth/2fa/disable`
+  - `GET /api/v1/auth/sessions`
+  - `POST /api/v1/auth/sessions/{session_id}/revoke`
+  - `POST /api/v1/auth/sessions/revoke-others`
+  - `POST /api/v1/auth/account-closure`
+- Settings and profile management:
+  - `GET /api/v1/profiles/_contract`
+  - `GET /api/v1/profiles/me`
+  - `PATCH /api/v1/profiles/me`
+  - `GET /api/v1/addresses/_contract`
+  - `GET /api/v1/addresses/me`
+  - `POST /api/v1/addresses/me`
+  - `PATCH /api/v1/addresses/me/{address_id}`
+  - `DELETE /api/v1/addresses/me/{address_id}`
+  - `POST /api/v1/addresses/me/{address_id}/primary`
+  - `GET /api/v1/communication-preferences/_contract`
+  - `GET /api/v1/communication-preferences/me`
+  - `PATCH /api/v1/communication-preferences/me`
+- Dashboard, launcher, and billing:
+  - `GET /api/v1/dashboard/summary`
+  - `GET /api/v1/launcher/products`
+  - `GET /api/v1/billing/snapshot`
+  - `GET /api/v1/billing/subscriptions`
+  - `GET /api/v1/billing/payment-methods`
+  - `GET /api/v1/billing/transactions`
+  - `POST /api/v1/billing/checkout`
+  - `POST /api/v1/billing/subscription-change`
+  - `POST /api/v1/billing/subscription-cancel`
+  - `POST /api/v1/billing/subscription-restart`
+  - `POST /api/v1/billing/promo-code/validate`
+  - `POST /api/v1/billing/promo-code/apply`
+- Support, announcements, and service status:
+  - `GET /api/v1/support/_contract`
+  - `GET /api/v1/support/tickets`
+  - `POST /api/v1/support/tickets`
+  - `GET /api/v1/support/tickets/{ticket_id}`
+  - `GET /api/v1/announcements`
+  - `GET /api/v1/service-status`
+- Rewards and progress presentation:
+  - `GET /api/v1/rewards/me/summary`
+  - `GET /api/v1/rewards/me/objectives`
+  - `GET /api/v1/rewards/me/notifications`
+  - `POST /api/v1/rewards/me/notifications/{notification_id}/seen`
+  - `POST /api/v1/rewards/me/notifications/skip-all`
+  - `GET /api/v1/rewards/me/badges`
+- Discord integrations:
+  - `GET /api/v1/integrations/discord`
+  - `POST /api/v1/integrations/discord/connect`
+  - `GET /api/v1/integrations/discord/callback`
+  - `POST /api/v1/integrations/discord/disconnect`
+- Explicit repo-reality boundary:
+  - No public pricing, product catalog, testimonials, or marketing-page APIs are registered under `/api/v1` in this repo as of this inventory date.
+
 ### Shared DTO and contract conventions already implemented
 - `app/schemas/common.py` defines:
   - `MutationSuccessResponse`
@@ -180,6 +248,16 @@ This inventory is intentionally limited to the implemented parent account surfac
   - `app/api/routers/v1/auth.py`
   - `app/schemas/auth.py`
   - `tests/unit/test_auth_api.py`
+
+##### Browser cookie-session runtime contract
+- Frontend requests to all authenticated auth endpoints must use `credentials: "include"`.
+- The backend session cookie remains `zeptalytic_session`.
+- The cookie is HTTP-only and backend-managed; the frontend must not read or persist the raw session token in `localStorage`, `sessionStorage`, or normal browser-visible state.
+- `POST /api/v1/auth/signup` and `POST /api/v1/auth/login` set the cookie and return only the safe `AuthSessionResponse`.
+- `GET /api/v1/auth/session` reads the current cookie-backed session and returns only the safe `AuthSessionResponse`.
+- `POST /api/v1/auth/change-password` rotates the cookie after a successful password change.
+- `POST /api/v1/auth/logout` clears the current cookie.
+- `POST /api/v1/auth/sessions/{session_id}/revoke` clears the cookie only when the revoked session is the caller's current browser session.
 
 ### Settings, profile, address, and communication preference surfaces
 

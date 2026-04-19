@@ -384,6 +384,21 @@ def _build_context(
 client = TestClient(app)
 
 
+def _assert_cookie_contract(set_cookie_header: str, cookie_value: str) -> None:
+    assert f"zeptalytic_session={cookie_value}" in set_cookie_header
+    assert "HttpOnly" in set_cookie_header
+    assert "Max-Age=2592000" in set_cookie_header
+    assert "Path=/" in set_cookie_header
+    assert "SameSite=lax" in set_cookie_header
+
+
+def _assert_no_raw_session_token(payload: dict[str, object]) -> None:
+    assert "session_token" not in payload
+    assert "token" not in payload
+    assert "access_token" not in payload
+    assert "refresh_token" not in payload
+
+
 def test_auth_routes_are_registered_on_api_prefix() -> None:
     routes = {route.path for route in app.routes}
     assert "/api/v1/auth/signup" in routes
@@ -421,6 +436,7 @@ def test_auth_session_endpoint_returns_safe_session_contract() -> None:
     payload = response.json()
     assert stub_service.received_tokens == ["token-123"]
     assert payload["authenticated"] is True
+    _assert_no_raw_session_token(payload)
     assert payload["account"] == {
         "account_id": str(stub_service._context.account_id),
         "username": "auth-user",
@@ -507,11 +523,12 @@ def test_signup_endpoint_sets_session_cookie_and_returns_auth_session_payload() 
         app.dependency_overrides.clear()
 
     assert response.status_code == 201
-    assert "zeptalytic_session=signup-token" in response.headers["set-cookie"]
+    _assert_cookie_contract(response.headers["set-cookie"], "signup-token")
     assert stub_service.signup_calls[0]["client_info"] == AuthClientInfo(
         ip_address="testclient",
         user_agent="signup-client",
     )
+    _assert_no_raw_session_token(response.json())
     assert response.json()["account"]["status"] == "pending_verification"
 
 
@@ -557,11 +574,12 @@ def test_login_endpoint_sets_session_cookie_for_valid_credentials() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert "zeptalytic_session=login-token" in response.headers["set-cookie"]
+    _assert_cookie_contract(response.headers["set-cookie"], "login-token")
     assert stub_service.login_calls[0]["client_info"] == AuthClientInfo(
         ip_address="testclient",
         user_agent="login-client",
     )
+    _assert_no_raw_session_token(response.json())
 
 
 def test_verify_email_endpoint_returns_success_for_valid_token() -> None:
@@ -716,7 +734,7 @@ def test_change_password_endpoint_rotates_cookie_for_authenticated_user() -> Non
 
     assert response.status_code == 200
     assert response.json() == {"success": True, "message": "Password changed successfully."}
-    assert "zeptalytic_session=changed-password-token" in response.headers["set-cookie"]
+    _assert_cookie_contract(response.headers["set-cookie"], "changed-password-token")
     assert stub_service.received_tokens == ["change-token"]
     assert stub_service.change_password_calls[0]["client_info"] == AuthClientInfo(
         ip_address="testclient",
@@ -952,6 +970,24 @@ def test_revoke_session_endpoint_clears_cookie_for_current_session() -> None:
     assert response.status_code == 200
     assert response.json() == {"success": True, "message": "Session revoked successfully."}
     assert "zeptalytic_session=\"\";" in response.headers["set-cookie"]
+
+
+def test_revoke_session_endpoint_preserves_cookie_when_revoking_another_session() -> None:
+    context = _build_context()
+    stub_service = StubAuthService(context)
+    app.dependency_overrides[get_auth_service] = lambda: stub_service
+    other_session_id = uuid4()
+
+    try:
+        client.cookies.set("zeptalytic_session", "session-token")
+        response = client.post(f"/api/v1/auth/sessions/{other_session_id}/revoke")
+    finally:
+        client.cookies.clear()
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"success": True, "message": "Session revoked successfully."}
+    assert "set-cookie" not in response.headers
 
 
 def test_revoke_other_sessions_endpoint_uses_authenticated_context() -> None:

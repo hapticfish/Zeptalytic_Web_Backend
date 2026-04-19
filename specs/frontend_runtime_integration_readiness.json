@@ -1,131 +1,182 @@
 {
-  "id": "frontend-runtime-integration-readiness",
+  "id": "frontend_runtime_integration_readiness",
   "title": "Frontend Runtime Integration Readiness",
   "status": "active",
   "owner": "Zeptalytic Web Backend",
-  "purpose": "Prepare the Zeptalytic Web Backend to be safely called by the React/Vite frontend during local development and future browser-based integration work.",
+  "purpose": "Prepare the FastAPI parent backend for safe browser-based local integration with the separate React/Vite frontend by adding explicit credentialed CORS support, preserving and documenting the HTTP-only cookie auth contract, grounding frontend-facing route inventory in current repo reality, adding runtime OpenAPI surface regression coverage, and requiring compile plus Docker verification before completion. This spec is backend-only and must not implement frontend clients, React/Vite changes, or any new commercial/payment truth inside the parent backend.",
   "context": {
-    "summary": "The backend now runs locally with uvicorn and exposes /docs and /openapi.json. The frontend is still static and will be integrated in a separate repo. This backend spec should add only the runtime and contract support needed for browser-based frontend integration.",
-    "repo_boundary": "This spec is backend-only and should be run from Dev/Zeptalytic_Web_Backend.",
-    "frontend_dev_origin": "http://localhost:5173",
-    "backend_dev_origin": "http://localhost:8000"
+    "summary": "The prior frontend/backend contract-alignment workstream is complete and the backend already exposes a broad authenticated /api/v1 surface for auth, settings, dashboard, launcher, billing, support, announcements, service status, rewards, and Discord integrations. The remaining gap before frontend runtime integration is not broad API implementation; it is browser runtime readiness, especially explicit non-wildcard credentialed CORS, durable documentation of the cookie-session browser contract, OpenAPI/runtime regression coverage, and backend verification discipline.",
+    "source_docs": [
+      "docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md",
+      "docs/architecture/Frontend_Backend_Contract_Map.md",
+      "docs/architecture/Auth_Session_and_Security_Flows.md",
+      "docs/architecture/Parent_Backend_Application_Architecture.md",
+      "docs/architecture/Parent_Backend_API_Contract_Standards.md",
+      "docs/architecture/Security_Operational_Control_Guide.md",
+      "docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md",
+      "docs/architecture/Spec_Authoring_and_Harness_Workflow.md"
+    ],
+    "previous_specs_or_dependencies": [
+      "specs/frontend_backend_contract_alignment.json"
+    ],
+    "repo_reality_summary": [
+      "app/main.py currently creates the FastAPI app, registers request-id middleware and exception handlers, and mounts the versioned router at settings.api_v1_prefix, but it does not yet register FastAPI CORSMiddleware.",
+      "app/core/config.py already centralizes runtime settings for api_v1_prefix and auth cookie behavior, including auth_session_cookie_name=zeptalytic_session, auth_session_cookie_path=/, auth_session_cookie_samesite=lax, and auth_session_cookie_secure=False, but it does not yet expose dedicated CORS settings.",
+      "app/api/routers/v1/__init__.py includes the implemented auth, profiles, addresses, communication-preferences, support, announcements, service-status, rewards, dashboard, launcher, billing, and integrations routers, confirming the browser-facing route inventory already exists in runtime code.",
+      "app/api/routers/v1/auth.py sets and clears the zeptalytic_session cookie with httponly=True and configured secure/samesite/path values, which matches the documented HTTP-only browser session model.",
+      "tests/unit/test_auth_api.py already verifies safe auth/session payloads, cookie-setting behavior on signup/login/password rotation, cookie clearing on logout and session revocation, and that the browser-facing contract uses the zeptalytic_session cookie rather than raw token responses.",
+      "tests/unit/test_router_registration.py already locks the implemented /api/v1 route surface across auth, settings, support, rewards, dashboard, launcher, billing, and integrations, so this workstream should build on that inventory instead of inventing new endpoints.",
+      "docs/architecture/Frontend_Backend_Contract_Inventory.md already documents the implemented authenticated/account-facing route surface, making it the likely backend-owned route inventory artifact to refine rather than introducing an unrelated second inventory document unless repo reality requires one.",
+      "The runtime integration guide already documents the required local Vite origins http://localhost:5173 and http://127.0.0.1:5173 plus the requirement for frontend requests to use credentials: include, but repo searches found no existing runtime CORS middleware wiring or dedicated OpenAPI regression test file yet.",
+      "Repo searches found include_in_schema=False only on hidden _contract helper endpoints for profiles, addresses, communication-preferences, and support; frontend-critical runtime routes remain visible in the normal router surface and should remain represented in OpenAPI unless a documented security reason requires otherwise."
+    ]
   },
   "global_guardrails": [
-    "Do not redesign backend domain APIs.",
-    "Do not implement new frontend behavior in the backend repo.",
-    "Do not duplicate Pay commercial rules.",
-    "Do not expose sensitive auth/session/payment data.",
-    "Keep cookie-based auth as the current model.",
-    "Allow browser credentialed requests only for explicitly configured local/dev origins.",
-    "Generate as many focused spec items as the workstream context requires; do not cap specs at an arbitrary 3–4 implementation items.",
+    "Search before editing.",
+    "Do not expand scope beyond this spec.",
+    "Do not add dependencies unless John explicitly approves them.",
+    "Do not edit the frontend repo.",
+    "Do not create frontend API clients.",
+    "Do not modify React/Vite files.",
+    "Do not redesign stable frontend pages.",
+    "Do not duplicate Pay commercial business rules in parent.",
+    "Do not store sensitive payment details in parent.",
+    "Do not build admin dashboards unless explicitly scoped.",
+    "Do not make Discord linkage affect rewards or product access unless the spec explicitly says so.",
+    "Do not allow frontend APIs to directly award points/rewards/badges.",
+    "Do not return raw ORM objects from routers.",
+    "Use explicit safe DTOs for API responses.",
+    "Use explicit allowed origins for credentialed CORS; do not use wildcard credentialed CORS.",
+    "Preserve HTTP-only cookie auth.",
+    "Do not store raw session tokens in browser-visible responses.",
+    "Do not mark incomplete items complete.",
+    "Append progress entries to the absolute end of progress/progress.txt.",
     "Run python -m compileall app tests alembic before marking implementation items complete.",
     "Run docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test before marking implementation items complete."
   ],
   "expected_paths": {
     "may_create_or_update": [
-      "app/main.py",
       "app/core/config.py",
-      "tests/unit/test_cors_runtime_integration.py",
-      "tests/unit/test_openapi_frontend_contract_surface.py",
+      "app/main.py",
+      "app/api/routers/v1/*",
+      "app/schemas/*",
+      "tests/*",
       "docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md",
-      "docs/architecture/Frontend_Backend_API_Route_Inventory.md",
+      "docs/architecture/Frontend_Backend_Contract_Inventory.md",
+      "docs/architecture/Frontend_Backend_Contract_Map.md",
+      "docs/openapi/*",
+      "specs/frontend_runtime_integration_readiness.json",
       "progress/progress.txt"
     ],
     "must_not_modify_without_strong_reason": [
-      "app/db/models/",
+      "../zeptalytic_web/*",
+      "frontend repo files",
+      "React/Vite source files",
+      "node_modules/",
+      "venv/",
+      ".venv/",
       "alembic/",
-      "app/services/",
-      "app/db/repositories/",
+      "app/db/models/*",
+      "app/db/repositories/*",
       "app/integrations/pay_client.py",
-      "app/integrations/discord_oauth_client.py"
+      "payment provider secret handling",
+      "unrelated routers/services/repositories"
     ]
   },
   "items": [
     {
       "id": "fri-010",
       "title": "Add CORS Runtime Settings",
-      "description": "Add settings for local/dev frontend origins and credentialed browser requests.",
+      "description": "Extend the backend settings/config layer with explicit CORS origin and credential flags so the browser runtime contract is configured centrally rather than hard-coded only in app startup.",
       "acceptance_criteria": [
-        "Settings include configurable CORS allowed origins.",
-        "Settings include whether credentialed CORS requests are allowed.",
-        "Defaults support local Vite dev at http://localhost:5173 and http://127.0.0.1:5173.",
-        "No production wildcard credentialed CORS behavior is introduced."
+        "The backend settings layer exposes explicit allowed origins for credentialed browser requests.",
+        "Defaults include both http://localhost:5173 and http://127.0.0.1:5173.",
+        "The settings surface includes allow_credentials=true behavior for the frontend runtime contract.",
+        "No wildcard credentialed CORS behavior is introduced."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-19T17:29:19-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "fri-020",
-      "title": "Wire FastAPI CORS Middleware",
-      "description": "Register FastAPI CORSMiddleware so the React/Vite frontend can call the backend with cookie credentials during local development.",
+      "title": "Wire FastAPI CORSMiddleware",
+      "description": "Register FastAPI CORSMiddleware using configured settings so local React/Vite browser requests can call the backend with credentials while preserving the existing router and middleware wiring.",
       "acceptance_criteria": [
-        "CORSMiddleware is registered in app/main.py before routers are included.",
-        "The configured origins are used rather than hard-coded only in middleware.",
-        "Credentialed requests are supported for configured origins.",
-        "Tests verify CORS preflight behavior for http://localhost:5173."
+        "app/main.py wires CORSMiddleware from settings rather than an unscoped hard-coded origin list.",
+        "Allowed origins are restricted to the configured explicit local frontend origins for this workstream.",
+        "allow_credentials is enabled for allowed origins and preflight behavior is covered by tests.",
+        "Existing router mounting, request-id middleware, and exception-handler behavior remain intact."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-19T17:32:35.4443309-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "fri-030",
-      "title": "Verify Cookie-Based Auth Browser Contract",
-      "description": "Add focused tests or documentation proving that auth endpoints support browser cookie-based session behavior for frontend integration.",
+      "title": "Verify And Document Browser Cookie Auth Contract",
+      "description": "Verify and document the browser-facing auth/session contract so the frontend integration can rely on HTTP-only cookie sessions, credentials: include, and safe session summary reads without introducing browser-visible token storage.",
       "acceptance_criteria": [
-        "Login/signup behavior remains cookie-based.",
-        "Session cookie name matches settings.auth_session_cookie_name.",
-        "Documentation states that frontend requests must use credentials: include.",
-        "No localStorage/sessionStorage token model is introduced."
+        "Repo documentation explicitly states that browser requests must use credentials: include.",
+        "The cookie contract remains zeptalytic_session with HTTP-only behavior and configured path/samesite/secure attributes.",
+        "Tests or docs confirm login, signup, session, password rotation, logout, and session revocation preserve cookie-session behavior.",
+        "No frontend-readable raw session token response contract, localStorage token model, or sessionStorage token model is introduced."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-19T17:35:40.9077963-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "fri-040",
-      "title": "Document Frontend API Route Inventory",
-      "description": "Generate or document the current route surface needed for the first frontend integration phases.",
+      "title": "Document Frontend-Facing Backend Route Inventory",
+      "description": "Refine the backend-owned route inventory from actual repo reality so frontend integration work can reference the current runtime-available /api/v1 surface without inventing unimplemented endpoints.",
       "acceptance_criteria": [
-        "A backend route inventory document exists under docs/architecture or equivalent.",
-        "The route inventory includes auth, dashboard, launcher, billing, profile/settings/address, rewards, support/status/announcements, and integrations routes where present.",
-        "The route inventory references /api/v1 as the current API prefix.",
-        "The document is safe to copy into or reference from the frontend repo."
+        "The inventory documents implemented frontend-facing routes for auth, dashboard, launcher, billing, settings/profile/preferences/addresses, rewards/objectives/badges, support/status/announcements, and Discord integrations where present.",
+        "The inventory distinguishes repo-reality implemented routes from future or blocked surfaces rather than inventing missing public-page APIs.",
+        "The inventory remains aligned with the canonical router registration surface under app/api/routers/v1 and app/main.py.",
+        "The resulting artifact is backend-owned and suitable for frontend integration reference."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-19T17:38:37.9345674-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "fri-050",
-      "title": "Add OpenAPI Surface Regression Test",
-      "description": "Add a regression test that verifies the core frontend-needed API paths are present in app.openapi().",
+      "title": "Add OpenAPI Runtime Surface Regression Coverage",
+      "description": "Add regression coverage against app.openapi() so the frontend-critical runtime route surface stays visible and consistent with the documented browser contract.",
       "acceptance_criteria": [
-        "Test verifies /api/v1/auth/login is present.",
-        "Test verifies /api/v1/auth/session is present.",
-        "Test verifies /api/v1/dashboard/summary is present.",
-        "Test verifies /api/v1/launcher/products is present.",
-        "Test verifies core billing paths are present.",
-        "The test does not require live Pay or Discord services."
+        "Tests inspect app.openapi() and verify the core frontend route surface includes auth, dashboard, launcher, billing, settings, rewards, support, announcements, service-status, and integrations paths as implemented.",
+        "Frontend-critical runtime paths remain present in OpenAPI unless a documented security reason requires otherwise.",
+        "Regression coverage does not depend on live Pay or Discord services.",
+        "The documented browser contract and runtime OpenAPI surface remain aligned."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-19T17:41:18.2859292-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "fri-999",
-      "title": "Verify Backend Frontend-Readiness Baseline",
-      "description": "Run required backend verification commands after CORS and route contract readiness are complete.",
+      "title": "Run Full Backend Verification",
+      "description": "Run the required backend verification commands after the runtime-readiness items above are implemented and do not mark the workstream complete unless both authoritative checks pass.",
       "acceptance_criteria": [
         "python -m compileall app tests alembic passes.",
         "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test passes.",
-        "progress/progress.txt is updated at EOF.",
-        "No unrelated frontend files are touched from the backend repo."
+        "The active spec is updated honestly based on the verification outcome.",
+        "progress/progress.txt is appended at EOF and no frontend repo files are modified."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-19T17:43:22.8389683-05:00",
+      "completed_by": "codex"
     }
+  ],
+  "completion_definition": [
+    "All spec items have passes=true.",
+    "Relevant tests are added or updated.",
+    "python -m compileall app tests alembic passes.",
+    "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test passes.",
+    "progress/progress.txt is updated at EOF.",
+    "No unrelated dirty files are introduced.",
+    "No frontend repo files are modified.",
+    "No incomplete item is marked complete."
   ]
 }

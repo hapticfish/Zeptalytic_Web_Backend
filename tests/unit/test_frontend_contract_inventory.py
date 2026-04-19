@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from app.main import app
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 INVENTORY_DOC = REPO_ROOT / "docs" / "architecture" / "Frontend_Backend_Contract_Inventory.md"
@@ -11,6 +13,7 @@ def test_frontend_contract_inventory_doc_exists_with_required_sections() -> None
     required_phrases = (
         "Current repo reality on 2026-04-19",
         "Canonical route registration",
+        "Implemented `/api/v1` route inventory from runtime registration",
         "Shared DTO and contract conventions already implemented",
         "Auth and session surfaces",
         "Settings, profile, address, and communication preference surfaces",
@@ -85,6 +88,38 @@ def test_frontend_contract_inventory_doc_references_existing_runtime_and_test_fi
     for relative_path in required_paths:
         assert relative_path in contents
         assert (REPO_ROOT / relative_path).exists()
+
+
+def test_frontend_contract_inventory_doc_lists_runtime_registered_frontend_routes() -> None:
+    contents = INVENTORY_DOC.read_text(encoding="utf-8")
+    runtime_routes = {route.path for route in app.routes}
+
+    required_routes = (
+        "/api/v1/auth/signup",
+        "/api/v1/auth/login",
+        "/api/v1/auth/session",
+        "/api/v1/auth/sessions",
+        "/api/v1/profiles/me",
+        "/api/v1/addresses/me",
+        "/api/v1/communication-preferences/me",
+        "/api/v1/dashboard/summary",
+        "/api/v1/launcher/products",
+        "/api/v1/billing/snapshot",
+        "/api/v1/billing/payment-methods",
+        "/api/v1/billing/transactions",
+        "/api/v1/support/tickets",
+        "/api/v1/announcements",
+        "/api/v1/service-status",
+        "/api/v1/rewards/me/summary",
+        "/api/v1/rewards/me/objectives",
+        "/api/v1/rewards/me/notifications",
+        "/api/v1/rewards/me/badges",
+        "/api/v1/integrations/discord",
+    )
+
+    for route_path in required_routes:
+        assert route_path in contents
+        assert route_path in runtime_routes
 
 
 def test_frontend_contract_inventory_doc_calls_out_unimplemented_public_contracts() -> None:

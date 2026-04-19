@@ -5,6 +5,8 @@ def test_settings_accept_environment_values() -> None:
     settings = Settings(
         app_env="test",
         app_name="Container Smoke",
+        cors_allowed_origins=("http://localhost:5173", "http://127.0.0.1:5173"),
+        cors_allow_credentials=True,
         auth_session_cookie_name="test_session",
         auth_session_ttl_hours=12,
         auth_email_verification_ttl_hours=48,
@@ -35,6 +37,11 @@ def test_settings_accept_environment_values() -> None:
 
     assert settings.app_env == "test"
     assert settings.app_name == "Container Smoke"
+    assert settings.cors_allowed_origins == (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    )
+    assert settings.cors_allow_credentials is True
     assert settings.auth_session_cookie_name == "test_session"
     assert settings.auth_session_ttl_hours == 12
     assert settings.auth_email_verification_ttl_hours == 48
@@ -64,3 +71,13 @@ def test_settings_accept_environment_values() -> None:
     assert settings.security_rate_limit_billing_action_max_attempts == 8
     assert settings.security_rate_limit_support_ticket_window_seconds == 3600
     assert settings.security_rate_limit_support_ticket_max_attempts == 3
+
+
+def test_settings_default_frontend_runtime_cors_contract() -> None:
+    settings = Settings()
+
+    assert settings.cors_allowed_origins == (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    )
+    assert settings.cors_allow_credentials is True

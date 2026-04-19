@@ -3449,8 +3449,8 @@
   - Confirmed the contract-alignment artifacts already existed in `docs/architecture/Frontend_Backend_Contract_Inventory.md`, `tests/unit/test_frontend_contract_inventory.py`, `tests/unit/test_frontend_contract_regression.py`, `tests/unit/test_router_registration.py`, `tests/unit/test_support_api.py`, `app/api/routers/v1/support.py`, and `app/services/support_service.py`.
   - Verified shared DTO and contract conventions remain centralized in `app/schemas/common.py` and route-specific safe DTO modules under `app/schemas/`, with existing tests already locking mutation-success envelopes, standard error shape, cursor pagination reuse, ownership nesting, and sensitive-field exclusions across the implemented account surfaces.
 - Files changed:
-  - `specs/frontend_backend_contract_alignment.json`
-  - `progress/progress.txt`
+ - `specs/frontend_backend_contract_alignment.json`
+ - `progress/progress.txt`
 - Tests run and results:
   - `python -m compileall app tests alembic` -> passed
   - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed, `376 passed in 7.49s`
@@ -3458,3 +3458,202 @@
   - none
 - Next recommended item:
   - The active frontend/backend contract-alignment spec is now fully complete; the next step is a spec-authoring or planning pass only if repo reality justifies a follow-up contract, public-page, or regression-hardening slice.
+
+- Date/time: 2026-04-19T17:14:12.9643443-05:00
+- Mode: spec_author
+- Selected workstream: frontend runtime integration readiness
+- Spec file created or refined:
+  - `specs/frontend_runtime_integration_readiness.json`
+- Architecture docs used:
+  - `docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md`
+  - `docs/architecture/Frontend_Backend_Contract_Map.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+- Repo search summary:
+  - `app/main.py` mounts `/api/v1` and registers request-id middleware plus exception handlers, but no `CORSMiddleware` wiring exists yet.
+  - `app/core/config.py` already centralizes `api_v1_prefix` and auth cookie settings, including `auth_session_cookie_name = zeptalytic_session`, but has no dedicated CORS settings yet.
+  - `app/api/routers/v1/__init__.py` confirms the implemented browser-facing route surface already includes auth, profiles, addresses, communication preferences, support, announcements, service status, rewards, dashboard, launcher, billing, and integrations routers.
+  - `app/api/routers/v1/auth.py` uses `set_cookie`/`delete_cookie` with `httponly=True`, configured `samesite`, and configured `secure`, confirming the browser contract is cookie-session based.
+  - `tests/unit/test_auth_api.py` already verifies cookie set/clear behavior and safe session payloads; `tests/unit/test_router_registration.py` already verifies the `/api/v1` runtime route surface.
+  - `docs/architecture/Frontend_Backend_Contract_Inventory.md` already exists as the implemented backend-owned route inventory artifact, so the new spec should refine that reality rather than invent a second disconnected inventory.
+  - Repo searches found runtime integration docs referencing `http://localhost:5173`, `http://127.0.0.1:5173`, and `credentials: "include"`, but no dedicated OpenAPI runtime-surface regression test file yet.
+- Files changed:
+  - `specs/frontend_runtime_integration_readiness.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - No runtime application code implementation in this spec-authoring run
+  - No frontend repo edits
+  - No frontend API client creation
+  - No React/Vite file changes
+  - No database model, migration, repository, service, router, schema, worker, or integration implementation changes
+- Risks/assumptions:
+  - The active route inventory artifact is assumed to remain `docs/architecture/Frontend_Backend_Contract_Inventory.md`; build mode should only introduce a separate inventory file if repo reality proves that artifact cannot be safely extended.
+  - Existing auth/session tests are assumed to be the baseline evidence for the browser cookie contract, with build mode adding only the missing runtime-readiness coverage rather than reworking auth architecture.
+  - The current worktree already includes prior planning and build artifacts; this run intentionally left those untouched and only refined the active spec plus appended progress.
+- Next command to run:
+  - `./scripts/ralph-loop.sh plan 1`
+
+- Date/time: 2026-04-19T17:28:00-05:00
+- Mode: plan
+- Active spec:
+  - `specs/frontend_runtime_integration_readiness.json`
+- Planning summary:
+  - Rehydrated `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, `PROMPT.md`, the active spec, `specs/next_phase_spec_sequence.json`, the required frontend-runtime architecture docs, recent progress, `git status`, and `git log -5 --oneline`.
+  - Verified repo reality matches the active frontend runtime readiness spec: `app/main.py` mounts the versioned API router without `CORSMiddleware`, `app/core/config.py` centralizes auth cookie settings but has no dedicated CORS settings, and `app/api/routers/v1/__init__.py` already exposes the implemented frontend-facing `/api/v1` router surface.
+  - Confirmed the browser auth contract is already cookie-session based in `app/api/routers/v1/auth.py` with `httponly=True`, configured `samesite`, configured `secure`, and the locked cookie name `zeptalytic_session`.
+  - Confirmed existing tests already cover cookie/session behavior and route inventory through `tests/unit/test_auth_api.py`, `tests/unit/test_router_registration.py`, `tests/unit/test_frontend_contract_inventory.py`, and `tests/unit/test_frontend_contract_regression.py`.
+  - Confirmed `docs/architecture/Frontend_Backend_Contract_Inventory.md` already exists as the backend-owned inventory artifact, so planning did not introduce a second route inventory document.
+  - Determined the active spec sequence remains valid as written: CORS settings, CORSMiddleware wiring, cookie-auth contract verification/documentation, route inventory refinement, OpenAPI regression coverage, then full backend verification.
+- Files changed:
+  - `progress/progress.txt`
+- Planning changes made:
+  - No spec or architecture-doc edits were required because the current active spec already matches repo topology and existing contract docs/tests.
+  - This planning pass appended the required progress entry only.
+- Non-goals preserved:
+  - No runtime application code changes
+  - No frontend repo edits
+  - No frontend API clients
+  - No React/Vite file changes
+  - No database schema, migration, repository, service, router, schema, worker, or integration implementation
+  - No wildcard credentialed CORS design
+  - No browser-readable raw session-token contract
+- Blockers/assumptions:
+  - No planning blocker was found; build mode can proceed against `fri-010`.
+  - The existing route inventory artifact remains `docs/architecture/Frontend_Backend_Contract_Inventory.md` unless a future build run finds a concrete reason it cannot be extended safely.
+  - OpenAPI runtime regression coverage is still missing in repo reality and remains a valid later build item.
+- Next command to run:
+  - `./scripts/ralph-loop.sh build 1`
+2026-04-19T17:29:19-05:00
+- Active spec: `specs/frontend_runtime_integration_readiness.json`
+- Selected item: `fri-010` - Add CORS Runtime Settings
+- Repo search summary:
+  - Config/settings structure is centralized in `app/core/config.py`; prior runtime settings already covered `api_v1_prefix` and auth cookie behavior but had no dedicated CORS fields.
+  - Middleware/app startup structure in `app/main.py` currently creates the FastAPI app, registers request-id middleware and exception handlers, and mounts the versioned router under `settings.api_v1_prefix`; no `CORSMiddleware` wiring exists yet.
+  - Router registration remains centralized in `app/api/routers/v1/__init__.py` and mounted from `app/main.py`, preserving the canonical `/api/v1` surface.
+  - Session cookie behavior remains in `app/api/routers/v1/auth.py` with `set_cookie(..., httponly=True, secure=settings.auth_session_cookie_secure, samesite=settings.auth_session_cookie_samesite, path=settings.auth_session_cookie_path)` and `delete_cookie(...)`; no browser-readable raw session token contract was introduced.
+  - OpenAPI behavior remains default FastAPI generation with only `_contract` helper endpoints hidden via `include_in_schema=False`; there was no existing runtime OpenAPI regression file for this workstream.
+  - Existing tests already covered config (`tests/unit/test_config.py`), router registration (`tests/unit/test_router_registration.py`), request-id middleware (`tests/unit/test_request_id_middleware.py`), auth cookie/session behavior (`tests/unit/test_auth_api.py`), and frontend contract inventory/regression (`tests/unit/test_frontend_contract_inventory.py`, `tests/unit/test_frontend_contract_regression.py`).
+  - Gap addressed by this item: explicit frontend runtime CORS settings were missing from the settings layer even though the architecture docs already required explicit local Vite origins and credentialed browser requests.
+- Files changed:
+  - `app/core/config.py`
+  - `tests/unit/test_config.py`
+  - `specs/frontend_runtime_integration_readiness.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_config.py` -> blocked in the host environment because `pytest` is not installed as a local Python module.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`377 passed` in the test container).
+- Blockers:
+  - None for the selected spec item. The host environment lacks a local `pytest` module, but the authoritative Docker test command passed.
+- Next recommended item:
+  - `fri-020` - Wire FastAPI `CORSMiddleware` from the new settings surface and add preflight/request regression coverage.
+2026-04-19T17:32:35.4443309-05:00
+- Active spec: `specs/frontend_runtime_integration_readiness.json`
+- Selected item: `fri-020` - Wire FastAPI `CORSMiddleware`
+- Repo search summary:
+  - Runtime settings remain centralized in `app/core/config.py`, which now exposes `cors_allowed_origins` and `cors_allow_credentials` for explicit local Vite origins.
+  - App startup and middleware wiring live in `app/main.py`, which previously created the FastAPI app, registered request-id middleware plus exception handlers, and mounted the versioned router without any `CORSMiddleware`.
+  - Router registration remains centralized in `app/api/routers/v1/__init__.py` and mounted from `app/main.py` under `settings.api_v1_prefix`, preserving the canonical `/api/v1` surface.
+  - Session cookie behavior remains unchanged in `app/api/routers/v1/auth.py`, where the backend sets and clears `zeptalytic_session` with `httponly=True` plus configured `secure`, `samesite`, and `path` values.
+  - OpenAPI behavior is still the default FastAPI surface, with only `_contract` helper endpoints hidden via `include_in_schema=False`; this item did not alter the documented route set.
+  - Existing tests already covered request-id middleware in `tests/unit/test_request_id_middleware.py`, route registration in `tests/unit/test_router_registration.py`, and the auth cookie/session contract in `tests/unit/test_auth_api.py`.
+  - Gap addressed by this item: runtime browser requests had explicit CORS settings in config but no FastAPI `CORSMiddleware` wiring or preflight/request regression coverage.
+- Files changed:
+  - `app/main.py`
+  - `tests/unit/test_cors_runtime_integration.py`
+  - `specs/frontend_runtime_integration_readiness.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`380 passed in 7.27s` in the test container).
+- Blockers:
+  - No completion blocker for this item. A host-side import smoke check was not usable because the local Python environment is missing app dependencies such as `sqlalchemy`, but the authoritative Docker suite passed.
+- Next recommended item:
+  - `fri-030` - Verify and document the browser cookie auth contract using the existing auth/session tests and runtime integration docs.
+2026-04-19T17:35:40.9077963-05:00
+- Active spec: `specs/frontend_runtime_integration_readiness.json`
+- Selected item: `fri-030` - Verify And Document Browser Cookie Auth Contract
+- Repo search summary:
+  - `git ls-files`, targeted `git grep`, and `rg` confirmed the auth browser contract is centered in `app/api/routers/v1/auth.py`, with cookie settings in `app/core/config.py`, auth/session guards in `app/api/deps.py`, versioned router mounting in `app/main.py`, and route registration in `app/api/routers/v1/__init__.py`.
+  - Existing coverage already lived in `tests/unit/test_auth_api.py`, `tests/unit/test_router_registration.py`, and `tests/unit/test_frontend_contract_regression.py`, while the runtime docs already required `credentials: "include"` in `docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md` and the route inventory existed in `docs/architecture/Frontend_Backend_Contract_Inventory.md`.
+  - The remaining gap for `fri-030` was explicit end-to-end documentation and regression coverage that ties signup/login/session/password rotation/logout/session revocation to the `zeptalytic_session` HTTP-only cookie contract without introducing any browser-readable raw token model.
+- Files changed:
+  - `tests/unit/test_auth_api.py`
+  - `docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md`
+  - `docs/architecture/Frontend_Backend_Contract_Inventory.md`
+  - `specs/frontend_runtime_integration_readiness.json`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_auth_api.py -q` -> could not run in the host shell because `pytest` is not installed in the local Python environment.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`381 passed in 7.20s` in the test container).
+- Blockers:
+  - None for completion. Host-local `pytest` is unavailable, but the required authoritative Docker suite passed.
+- Next recommended item:
+  - `fri-040` - Document the frontend-facing backend route inventory from actual router registration and existing backend-owned contract inventory artifacts.
+2026-04-19T17:38:37.9345674-05:00
+- Active spec: `specs/frontend_runtime_integration_readiness.json`
+- Selected item: `fri-040` - Document Frontend-Facing Backend Route Inventory
+- Repo search summary:
+  - `app/main.py` remains the canonical versioned app entrypoint and mounts `app/api/routers/v1/__init__.py` under `settings.api_v1_prefix`, which keeps `/api/v1` as the runtime route surface.
+  - `app/api/routers/v1/__init__.py` continues to register the frontend-facing routers for auth, profiles, addresses, communication preferences, dashboard, launcher, billing, support, announcements, service status, rewards, and integrations.
+  - `app/api/routers/v1/auth.py` still owns the `zeptalytic_session` HTTP-only cookie contract, while `app/core/config.py` remains the settings layer for runtime config and was not expanded further for this item.
+  - OpenAPI visibility stays unchanged for this item: only `_contract` helper endpoints are hidden via `include_in_schema=False`, and the documented inventory remains based on real registered routes rather than invented future endpoints.
+  - Existing regression coverage already lived in `tests/unit/test_router_registration.py`, `tests/unit/test_frontend_contract_inventory.py`, and `tests/unit/test_frontend_contract_regression.py`; the gap was an explicit backend-owned `/api/v1` route inventory section tied directly to runtime registration.
+- Files changed:
+  - `docs/architecture/Frontend_Backend_Contract_Inventory.md`
+  - `tests/unit/test_frontend_contract_inventory.py`
+  - `specs/frontend_runtime_integration_readiness.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `pytest tests/unit/test_frontend_contract_inventory.py` -> could not run in the host shell because `pytest` is not installed locally.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`382 passed in 7.43s` in the test container).
+- Blockers:
+  - No completion blocker for this item. Host-local `pytest` is unavailable, but the required Docker suite passed and governed completion.
+- Next recommended item:
+  - `fri-050` - Add OpenAPI runtime surface regression coverage against `app.openapi()` for the frontend-critical `/api/v1` routes.
+2026-04-19T17:41:18.2859292-05:00
+- Active spec: `specs/frontend_runtime_integration_readiness.json`
+- Selected item: `fri-050` - Add OpenAPI Runtime Surface Regression Coverage
+- Repo search summary:
+  - `app/main.py` remains the FastAPI startup entrypoint, already wiring CORS, request-id middleware, exception handlers, and mounting the versioned router under `settings.api_v1_prefix`.
+  - `app/api/routers/v1/__init__.py` remains the canonical `/api/v1` registration surface for auth, profiles, addresses, communication preferences, support, announcements, service status, rewards, dashboard, launcher, billing, and integrations.
+  - `app/api/routers/v1/auth.py` still owns the `zeptalytic_session` HTTP-only cookie contract, while hidden helper endpoints in `profiles.py`, `addresses.py`, `communication_preferences.py`, and `support.py` continue to use `include_in_schema=False`.
+  - Existing regressions in `tests/unit/test_router_registration.py`, `tests/unit/test_frontend_contract_regression.py`, and `tests/unit/test_cors_runtime_integration.py` covered runtime route registration, response DTOs, and browser middleware behavior, but there was no direct `app.openapi()` regression proving the frontend-critical browser surface stayed published.
+  - A direct shell inspection of `app.openapi()` from the host was blocked by missing local Python dependencies (`sqlalchemy`), so the authoritative validation path remained the Docker test environment.
+- Files changed:
+  - `tests/unit/test_openapi_runtime_surface.py`
+  - `specs/frontend_runtime_integration_readiness.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_openapi_runtime_surface.py` -> could not run in the host shell because `pytest` is not installed locally.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`384 passed in 7.35s` in the test container).
+- Blockers:
+  - No completion blocker for this item. Host-local `pytest` and direct host OpenAPI import were unavailable because the active interpreter is missing test/runtime dependencies, but the required Docker suite passed and governed completion.
+- Next recommended item:
+  - `fri-999` - Run Full Backend Verification and, if no additional code changes are needed, update the spec/progress artifacts honestly from the already-required verification results.
+2026-04-19T17:43:22.8389683-05:00
+- Active spec: `specs/frontend_runtime_integration_readiness.json`
+- Selected item: `fri-999` - Run Full Backend Verification
+- Repo search summary:
+  - Runtime config stays centralized in `app/core/config.py`, including explicit `cors_allowed_origins`, `cors_allow_credentials`, and the `zeptalytic_session` cookie settings used by auth routes.
+  - App startup remains in `app/main.py`, where the FastAPI app wires `CORSMiddleware`, request-id middleware, exception handlers, and mounts the versioned router under `settings.api_v1_prefix`.
+  - Canonical router registration remains in `app/api/routers/v1/__init__.py`, which includes auth, profiles, addresses, communication preferences, support, announcements, service status, rewards, dashboard, launcher, billing, and integrations routers.
+  - Session cookie behavior remains in `app/api/routers/v1/auth.py`, with `set_cookie(..., httponly=True, secure=settings.auth_session_cookie_secure, samesite=settings.auth_session_cookie_samesite, path=settings.auth_session_cookie_path)` and `delete_cookie(...)`, preserving the browser contract without exposing raw session tokens in response payloads.
+  - OpenAPI/runtime visibility is covered by `tests/unit/test_openapi_runtime_surface.py`, while adjacent regressions remain in `tests/unit/test_router_registration.py`, `tests/unit/test_frontend_contract_inventory.py`, `tests/unit/test_cors_runtime_integration.py`, `tests/unit/test_config.py`, and `tests/unit/test_auth_api.py`.
+  - The remaining gap for the active spec was verification only; no additional runtime code change was required to satisfy `fri-999`.
+- Files changed:
+  - `specs/frontend_runtime_integration_readiness.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`384 passed in 7.45s` in the test container).
+- Blockers:
+  - none
+- Next recommended item:
+  - No next spec item remains in `specs/frontend_runtime_integration_readiness.json`; the active frontend runtime integration readiness spec is fully complete.

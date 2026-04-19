@@ -127,6 +127,29 @@ Frontend API calls must use:
 credentials: "include"
 ```
 
+For this backend, the browser cookie-session contract is:
+
+```text
+- POST /api/v1/auth/signup sets zeptalytic_session and returns only the safe auth/session summary JSON.
+- POST /api/v1/auth/login sets zeptalytic_session and returns only the safe auth/session summary JSON.
+- GET /api/v1/auth/session reads the current authenticated browser session from the HTTP-only cookie and does not return a raw session token.
+- POST /api/v1/auth/change-password rotates the zeptalytic_session cookie after a successful password change.
+- POST /api/v1/auth/logout clears the zeptalytic_session cookie.
+- POST /api/v1/auth/sessions/{session_id}/revoke clears the cookie only when the currently authenticated browser session is the session being revoked.
+```
+
+The cookie contract remains configuration-backed in the backend settings layer:
+
+```text
+name     = zeptalytic_session
+HttpOnly = true
+Path     = /
+SameSite = lax
+Secure   = false in current local-dev repo reality
+```
+
+The frontend must treat the cookie as transport-only browser state. It should persist only the safe account/session/security summary returned by the backend, never the underlying raw session token.
+
 The expected browser auth flow is:
 
 ```text

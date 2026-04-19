@@ -5,6 +5,11 @@ class Settings(BaseSettings):
     app_env: str = "dev"
     app_name: str = "Zeptalytic Web Backend"
     api_v1_prefix: str = "/api/v1"
+    cors_allowed_origins: tuple[str, ...] = (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    )
+    cors_allow_credentials: bool = True
     auth_session_cookie_name: str = "zeptalytic_session"
     auth_session_ttl_hours: int = 24 * 30
     auth_email_verification_ttl_hours: int = 24
