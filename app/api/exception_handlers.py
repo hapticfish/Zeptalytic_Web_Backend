@@ -23,6 +23,7 @@ from app.services.reward_notification_service import (
     RewardNotificationNotFoundError,
     RewardNotificationQueueNotFoundError,
 )
+from app.services.profile_settings_service import ProfileSettingsNotFoundError
 from app.services.reward_objective_service import RewardObjectivesNotFoundError
 from app.services.reward_summary_service import RewardSummaryNotFoundError
 
@@ -58,6 +59,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     )
     app.add_exception_handler(TwoFactorCodeInvalidError, two_factor_code_invalid_handler)
     app.add_exception_handler(SessionNotFoundError, session_not_found_handler)
+    app.add_exception_handler(ProfileSettingsNotFoundError, profile_settings_not_found_handler)
     app.add_exception_handler(RewardSummaryNotFoundError, reward_summary_not_found_handler)
     app.add_exception_handler(RewardObjectivesNotFoundError, reward_objectives_not_found_handler)
     app.add_exception_handler(
@@ -84,6 +86,19 @@ async def reward_summary_not_found_handler(
         status_code=status.HTTP_404_NOT_FOUND,
         code="reward_summary_not_found",
         message="Reward summary not found.",
+        request_id=_request_id(request),
+    )
+
+
+async def profile_settings_not_found_handler(
+    request: Request,
+    exc: ProfileSettingsNotFoundError,
+) -> JSONResponse:
+    del exc
+    return build_error_response(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="profile_settings_not_found",
+        message="Profile settings not found.",
         request_id=_request_id(request),
     )
 

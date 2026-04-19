@@ -7,17 +7,29 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from app.schemas import (
+    AddressRouteContractResponse,
+    AddressSummary,
     ApiErrorResponse,
+    CommunicationPreferenceRouteContractResponse,
+    CommunicationPreferenceSummary,
     CursorPageInfo,
     CursorPageResponse,
     MutationSuccessResponse,
+    ProfileRouteContractResponse,
+    ProfileSettingsSummary,
 )
 from app.services import (
+    AddressService,
     AuthService,
+    CommunicationPreferenceService,
+    ProfileSettingsService,
     RewardNotificationService,
     RewardObjectiveService,
     RewardSummaryService,
+    build_address_service,
     build_auth_service,
+    build_communication_preference_service,
+    build_profile_settings_service,
     build_reward_notification_service,
     build_reward_objective_service,
     build_reward_summary_service,
@@ -86,11 +98,17 @@ def test_api_error_response_serializes_standard_contract() -> None:
 
 
 def test_service_package_exports_reward_service_builders() -> None:
+    assert build_address_service is not None
     assert build_auth_service is not None
+    assert build_communication_preference_service is not None
+    assert build_profile_settings_service is not None
     assert build_reward_summary_service is not None
     assert build_reward_objective_service is not None
     assert build_reward_notification_service is not None
+    assert AddressService is not None
     assert AuthService is not None
+    assert CommunicationPreferenceService is not None
+    assert ProfileSettingsService is not None
     assert RewardSummaryService is not None
     assert RewardObjectiveService is not None
     assert RewardNotificationService is not None
@@ -113,6 +131,32 @@ def test_reward_router_modules_do_not_import_repositories_directly() -> None:
             and node.module.startswith("app.db.repositories")
         ]
         assert direct_repository_imports == [], module_path.as_posix()
+
+
+def test_settings_router_modules_do_not_import_repositories_directly() -> None:
+    router_modules = [
+        Path("app/api/routers/v1/profiles.py"),
+        Path("app/api/routers/v1/addresses.py"),
+        Path("app/api/routers/v1/communication_preferences.py"),
+    ]
+
+    for module_path in router_modules:
+        parsed = ast.parse(module_path.read_text(encoding="utf-8"))
+        direct_repository_imports = [
+            node.module
+            for node in ast.walk(parsed)
+            if isinstance(node, ast.ImportFrom)
+            and node.module is not None
+            and node.module.startswith("app.db.repositories")
+        ]
+        dependency_references = [
+            node.id
+            for node in ast.walk(parsed)
+            if isinstance(node, ast.Name)
+            and node.id == "require_normal_authenticated_session_context"
+        ]
+        assert direct_repository_imports == [], module_path.as_posix()
+        assert dependency_references, module_path.as_posix()
 
 
 def test_reward_service_modules_define_repository_construction_boundary() -> None:
@@ -139,3 +183,38 @@ def test_reward_service_modules_define_repository_construction_boundary() -> Non
 
         assert repository_imports != [], module_path.as_posix()
         assert builder_functions != [], module_path.as_posix()
+
+
+def test_settings_service_modules_define_repository_construction_boundary() -> None:
+    service_modules = [
+        Path("app/services/profile_settings_service.py"),
+        Path("app/services/address_service.py"),
+        Path("app/services/communication_preference_service.py"),
+    ]
+
+    for module_path in service_modules:
+        parsed = ast.parse(module_path.read_text(encoding="utf-8"))
+        repository_imports = [
+            node.module
+            for node in ast.walk(parsed)
+            if isinstance(node, ast.ImportFrom)
+            and node.module is not None
+            and node.module.startswith("app.db.repositories")
+        ]
+        builder_functions = [
+            node.name
+            for node in parsed.body
+            if isinstance(node, ast.FunctionDef) and node.name.startswith("build_")
+        ]
+
+        assert repository_imports != [], module_path.as_posix()
+        assert builder_functions != [], module_path.as_posix()
+
+
+def test_settings_schema_package_exports_contract_safe_dtos() -> None:
+    assert ProfileSettingsSummary is not None
+    assert AddressSummary is not None
+    assert CommunicationPreferenceSummary is not None
+    assert ProfileRouteContractResponse is not None
+    assert AddressRouteContractResponse is not None
+    assert CommunicationPreferenceRouteContractResponse is not None

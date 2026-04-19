@@ -1876,3 +1876,73 @@
   - No runtime code changed.
   - No tests run in this planning-only pass.
 - Next recommended command: `./scripts/ralph-loop.sh build 1`
+## 2026-04-18T21:14:19.2703402-05:00
+- Mode: `build`
+- Active spec: `specs/profile_settings_addresses_preferences_api.json`
+- Selected item: `psap-010` - `Establish Settings Slice Repositories, DTOs, and Router Wiring`
+- Repo search summary:
+  - Confirmed existing `/api/v1` registration and auth guard patterns in `app/main.py`, `app/api/deps.py`, `app/api/routers/v1/__init__.py`, and `app/api/routers/v1/auth.py`; only auth and rewards were wired before this iteration.
+  - Confirmed repository/service/schema conventions in `app/db/repositories/auth_repository.py`, `app/services/auth_service.py`, `app/services/reward_summary_service.py`, `app/schemas/common.py`, and `tests/unit/test_application_layer_foundation.py`.
+  - Confirmed the parent-owned settings persistence substrate already exists in `app/db/models/accounts.py`, `app/db/models/profiles.py`, `app/db/models/profile_preferences.py`, `app/db/models/communication_preferences.py`, and `app/db/models/addresses.py`.
+  - Confirmed there were no dedicated settings repositories, services, schemas, or versioned routers yet for profiles, addresses, or communication preferences, and no unit tests covering those router surfaces.
+- Files changed:
+  - `app/api/deps.py`
+  - `app/api/routers/v1/__init__.py`
+  - `app/api/routers/v1/profiles.py`
+  - `app/api/routers/v1/addresses.py`
+  - `app/api/routers/v1/communication_preferences.py`
+  - `app/db/repositories/__init__.py`
+  - `app/db/repositories/profile_settings_repository.py`
+  - `app/db/repositories/address_repository.py`
+  - `app/db/repositories/communication_preference_repository.py`
+  - `app/schemas/__init__.py`
+  - `app/schemas/profiles.py`
+  - `app/schemas/addresses.py`
+  - `app/schemas/communication_preferences.py`
+  - `app/services/__init__.py`
+  - `app/services/profile_settings_service.py`
+  - `app/services/address_service.py`
+  - `app/services/communication_preference_service.py`
+  - `specs/profile_settings_addresses_preferences_api.json`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_router_registration.py`
+  - `tests/unit/test_profiles_api.py`
+  - `tests/unit/test_addresses_api.py`
+  - `tests/unit/test_communication_preferences_api.py`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_application_layer_foundation.py tests/unit/test_router_registration.py tests/unit/test_profiles_api.py tests/unit/test_addresses_api.py tests/unit/test_communication_preferences_api.py` -> blocked in local host environment because `pytest` is not installed.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `211 passed in 6.04s` for the `test` service.
+- Blockers:
+  - None for required spec verification.
+- Next recommended item:
+  - `psap-020` - `Implement Profile and Account Settings Read API`
+## 2026-04-18T21:19:26.3619830-05:00
+- Mode: `build`
+- Active spec: `specs/profile_settings_addresses_preferences_api.json`
+- Selected item: `psap-020` - `Implement Profile and Account Settings Read API`
+- Repo search summary:
+  - Confirmed the settings slice added in the prior iteration only exposed contract routes in `app/api/routers/v1/profiles.py`, `app/services/profile_settings_service.py`, `app/db/repositories/profile_settings_repository.py`, `app/schemas/profiles.py`, and `tests/unit/test_profiles_api.py`; no authenticated profile read endpoint existed yet.
+  - Confirmed the repository already had the required account/profile/preference composition query in `app/db/repositories/profile_settings_repository.py`, joining `accounts`, `profiles`, and `profile_preferences` for one account.
+  - Confirmed shared guard and error-handling conventions in `app/api/deps.py`, `app/api/routers/v1/auth.py`, `app/api/exception_handlers.py`, `app/api/errors.py`, `app/schemas/common.py`, and the reward-summary slice tests/service files.
+  - Confirmed router registration expectations in `tests/unit/test_router_registration.py` and no existing `tests/unit/test_profile_settings_service.py`, leaving a gap for service-level DTO composition coverage.
+- Files changed:
+  - `app/api/exception_handlers.py`
+  - `app/api/routers/v1/profiles.py`
+  - `app/schemas/__init__.py`
+  - `app/schemas/profiles.py`
+  - `app/services/__init__.py`
+  - `app/services/profile_settings_service.py`
+  - `specs/profile_settings_addresses_preferences_api.json`
+  - `tests/unit/test_profile_settings_service.py`
+  - `tests/unit/test_profiles_api.py`
+  - `tests/unit/test_router_registration.py`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_profiles_api.py tests/unit/test_profile_settings_service.py tests/unit/test_router_registration.py` -> blocked in local host environment because `pytest` is not installed.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; Docker reported `215 passed in 5.94s` for the `test` service.
+- Blockers:
+  - Host-local `pytest` remains unavailable, but required authoritative Docker verification passed, so this did not block completion.
+- Next recommended item:
+  - `psap-025` - `Implement Profile and Account Settings Update API`

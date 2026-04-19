@@ -1,6 +1,11 @@
 from app.api.routers import api_router
 from app.api.routers.v1 import api_router as versioned_api_router
+from app.api.routers.v1.addresses import router as addresses_router
 from app.api.routers.v1.auth import router as auth_router
+from app.api.routers.v1.communication_preferences import (
+    router as communication_preferences_router,
+)
+from app.api.routers.v1.profiles import router as profiles_router
 from app.api.routers.v1.rewards import router as rewards_router
 from app.main import app
 
@@ -40,6 +45,19 @@ def test_versioned_auth_router_is_canonical_registration_surface() -> None:
     assert "/auth/account-closure" in auth_paths
 
 
+def test_versioned_settings_routers_are_canonical_registration_surfaces() -> None:
+    profile_paths = {route.path for route in profiles_router.routes}
+    address_paths = {route.path for route in addresses_router.routes}
+    communication_preference_paths = {
+        route.path for route in communication_preferences_router.routes
+    }
+
+    assert "/profiles/_contract" in profile_paths
+    assert "/profiles/me" in profile_paths
+    assert "/addresses/_contract" in address_paths
+    assert "/communication-preferences/_contract" in communication_preference_paths
+
+
 def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
     routes = {route.path for route in app.routes}
     assert "/api/v1/auth/signup" in routes
@@ -60,6 +78,10 @@ def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
     assert "/api/v1/auth/sessions/{session_id}/revoke" in routes
     assert "/api/v1/auth/sessions/revoke-others" in routes
     assert "/api/v1/auth/account-closure" in routes
+    assert "/api/v1/profiles/_contract" in routes
+    assert "/api/v1/profiles/me" in routes
+    assert "/api/v1/addresses/_contract" in routes
+    assert "/api/v1/communication-preferences/_contract" in routes
     assert "/api/v1/rewards/{account_id}/summary" in routes
     assert "/api/v1/rewards/{account_id}/objectives" in routes
     assert "/api/v1/rewards/{account_id}/notifications" in routes

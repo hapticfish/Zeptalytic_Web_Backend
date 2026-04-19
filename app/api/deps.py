@@ -6,10 +6,16 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.services import (
+    AddressService,
     AuthService,
     AuthenticationRequiredError,
     AuthenticatedSessionContext,
+    CommunicationPreferenceService,
+    ProfileSettingsService,
+    build_address_service,
     build_auth_service,
+    build_communication_preference_service,
+    build_profile_settings_service,
 )
 
 
@@ -27,6 +33,22 @@ def get_db() -> Generator[Session, None, None]:
 
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     return build_auth_service(db)
+
+
+def get_profile_settings_service(
+    db: Session = Depends(get_db),
+) -> ProfileSettingsService:
+    return build_profile_settings_service(db)
+
+
+def get_address_service(db: Session = Depends(get_db)) -> AddressService:
+    return build_address_service(db)
+
+
+def get_communication_preference_service(
+    db: Session = Depends(get_db),
+) -> CommunicationPreferenceService:
+    return build_communication_preference_service(db)
 
 
 def get_optional_authenticated_session_context(

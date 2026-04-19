@@ -109,9 +109,9 @@
         "The new routing and DTO foundation does not implement Pay billing flows, Discord OAuth flows, or unrelated rewards/support behavior.",
         "Tests prove the new routes are mounted through `app.main` and that the settings slice uses the existing auth dependency pattern."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T21:14:19.2703402-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "psap-020",
@@ -123,9 +123,9 @@
         "The response does not expose Discord user IDs, auth/session internals, or raw ORM rows.",
         "Tests cover a happy-path read plus at least one guarded or not-found-style failure path."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T21:19:26.3619830-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "psap-025",

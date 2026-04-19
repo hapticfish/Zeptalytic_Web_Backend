@@ -1,5 +1,6 @@
 """Pydantic request/response schemas."""
 
+from app.schemas.addresses import AddressRouteContractResponse, AddressSummary
 from app.schemas.auth import (
     AccountClosureRequest,
     AccountClosureResponse,
@@ -31,6 +32,10 @@ from app.schemas.auth import (
     VerifyEmailRequest,
     VerifyEmailResponse,
 )
+from app.schemas.communication_preferences import (
+    CommunicationPreferenceRouteContractResponse,
+    CommunicationPreferenceSummary,
+)
 from app.schemas.common import (
     ApiErrorDetail,
     ApiErrorResponse,
@@ -38,8 +43,16 @@ from app.schemas.common import (
     CursorPageResponse,
     MutationSuccessResponse,
 )
+from app.schemas.profiles import (
+    DiscordProfileDisplaySummary,
+    ProfileRouteContractResponse,
+    ProfileSettingsReadResponse,
+    ProfileSettingsSummary,
+)
 
 __all__ = [
+    "AddressRouteContractResponse",
+    "AddressSummary",
     "AuthAccountSummary",
     "AccountClosureRequest",
     "AccountClosureResponse",
@@ -50,14 +63,20 @@ __all__ = [
     "ApiErrorResponse",
     "ChangePasswordRequest",
     "ChangePasswordResponse",
+    "CommunicationPreferenceRouteContractResponse",
+    "CommunicationPreferenceSummary",
     "CursorPageInfo",
     "CursorPageResponse",
+    "DiscordProfileDisplaySummary",
     "ForgotPasswordRequest",
     "ForgotPasswordResponse",
     "LoginRequest",
     "MutationSuccessResponse",
     "LogoutResponse",
     "LogoutRequest",
+    "ProfileRouteContractResponse",
+    "ProfileSettingsReadResponse",
+    "ProfileSettingsSummary",
     "ResendEmailVerificationResponse",
     "RevokeOtherSessionsResponse",
     "RevokeSessionResponse",

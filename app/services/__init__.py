@@ -1,5 +1,6 @@
 """Service-layer business orchestration."""
 
+from app.services.address_service import AddressService, build_address_service
 from app.services.auth_service import (
     AccountAccessRestrictedError,
     AuthClientInfo,
@@ -21,6 +22,15 @@ from app.services.auth_service import (
     TwoFactorNotEnabledError,
     build_auth_service,
 )
+from app.services.communication_preference_service import (
+    CommunicationPreferenceService,
+    build_communication_preference_service,
+)
+from app.services.profile_settings_service import (
+    ProfileSettingsNotFoundError,
+    ProfileSettingsService,
+    build_profile_settings_service,
+)
 from app.services.reward_notification_service import (
     RewardNotificationService,
     build_reward_notification_service,
@@ -36,7 +46,9 @@ from app.services.reward_summary_service import (
 )
 
 __all__ = [
+    "AddressService",
     "AccountAccessRestrictedError",
+    "build_address_service",
     "AuthClientInfo",
     "AuthMutationResult",
     "AuthenticationRequiredError",
@@ -48,6 +60,11 @@ __all__ = [
     "EmailVerificationTokenInvalidError",
     "InvalidCredentialsError",
     "PasswordResetTokenInvalidError",
+    "CommunicationPreferenceService",
+    "build_communication_preference_service",
+    "ProfileSettingsService",
+    "ProfileSettingsNotFoundError",
+    "build_profile_settings_service",
     "SessionDevice",
     "SessionNotFoundError",
     "TwoFactorAlreadyEnabledError",
