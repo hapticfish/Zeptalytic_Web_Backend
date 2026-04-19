@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from sqlalchemy.orm import Session
+
 from app.db.repositories.reward_summary_repository import RewardSummaryRepository
 from app.schemas.reward_summary import (
     RewardSummaryBadge,
@@ -63,3 +65,7 @@ class RewardSummaryService:
                 for badge in summary.earned_badges
             ],
         )
+
+
+def build_reward_summary_service(db: Session) -> RewardSummaryService:
+    return RewardSummaryService(RewardSummaryRepository(db))

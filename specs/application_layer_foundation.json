@@ -82,8 +82,7 @@
       "app/db/session.py",
       "app/integrations/",
       "app/workers/",
-      "specs/rewards_api_application_layer.json",
-      "IMPLEMENTATION_PLAN.md"
+      "specs/rewards_api_application_layer.json"
     ]
   },
   "items": [
@@ -95,11 +94,12 @@
         "A versioned router package exists under `app/api/routers/v1/` and is the canonical registration point for browser-facing routers.",
         "Existing rewards routes remain reachable at `/api/v1/rewards/...` with no path regression.",
         "The build does not introduce auth, billing, support, or other new domain routers beyond minimal placeholders required to prove the router foundation pattern.",
-        "Tests verify the route registration path through `app.main` and the versioned router package."
+        "Tests verify the route registration path through `app.main` and the versioned router package.",
+        "The first build iteration may complete this item without changing the shared error contract or common response schemas."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T00:53:30.5038938-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "alf-020",
@@ -111,9 +111,9 @@
         "Shared schemas do not return ORM objects and can be imported by future domain routers without additional dependencies.",
         "Tests cover serialization and the intended JSON contract for the new common response schemas."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T00:57:27.1261127-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "alf-030",
@@ -125,9 +125,9 @@
         "At least the current rewards routes use the shared error contract for not-found behavior instead of plain `detail` responses.",
         "Tests cover not-found and validation-path error responses using the standard error JSON structure."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T01:06:00.4423939-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "alf-040",
@@ -139,9 +139,9 @@
         "Tests or targeted assertions document the intended package boundaries so future build iterations have a locked baseline.",
         "No Pay client logic, auth flows, or dashboard aggregation logic is introduced while establishing these conventions."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T01:12:09.7557055-05:00",
+      "completed_by": "codex"
     },
     {
       "id": "alf-999",
@@ -153,9 +153,9 @@
         "Foundation-focused tests prove router registration, common schema contracts, and standard error handling behavior.",
         "Only fully completed items are marked complete, and progress is appended at EOF."
       ],
-      "passes": false,
-      "completed_at": null,
-      "completed_by": null
+      "passes": true,
+      "completed_at": "2026-04-18T01:15:24.4308574-05:00",
+      "completed_by": "codex"
     }
   ],
   "completion_definition": [

@@ -12,7 +12,10 @@ from app.schemas.reward_notifications import (
     RewardNotificationSkipAllResponse,
     RewardNotificationStateChangeResponse,
 )
-from app.services.reward_notification_service import RewardNotificationNotFoundError
+from app.services.reward_notification_service import (
+    RewardNotificationNotFoundError,
+    RewardNotificationQueueNotFoundError,
+)
 
 
 class StubRewardNotificationService:
@@ -28,7 +31,7 @@ class StubRewardNotificationService:
 
     def get_notification_queue(self, account_id):  # noqa: ANN001
         if self._queue_response is None:
-            raise RewardNotificationNotFoundError(f"missing {account_id}")
+            raise RewardNotificationQueueNotFoundError(f"missing {account_id}")
         return self._queue_response
 
     def mark_notification_seen(self, account_id, notification_id):  # noqa: ANN001
@@ -38,7 +41,7 @@ class StubRewardNotificationService:
 
     def skip_all_notifications(self, account_id):  # noqa: ANN001
         if self._skip_all_response is None:
-            raise RewardNotificationNotFoundError(f"missing {account_id}")
+            raise RewardNotificationQueueNotFoundError(f"missing {account_id}")
         return self._skip_all_response
 
 
@@ -142,7 +145,13 @@ def test_reward_notifications_endpoint_returns_not_found_for_missing_account() -
         app.dependency_overrides.clear()
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Reward notification queue not found."}
+    assert response.json() == {
+        "error": {
+            "code": "reward_notification_queue_not_found",
+            "message": "Reward notification queue not found.",
+            "details": {},
+        }
+    }
 
 
 def test_mark_reward_notification_seen_returns_transition_payload() -> None:
@@ -194,7 +203,13 @@ def test_mark_reward_notification_seen_returns_not_found_for_missing_notificatio
         app.dependency_overrides.clear()
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Reward notification not found."}
+    assert response.json() == {
+        "error": {
+            "code": "reward_notification_not_found",
+            "message": "Reward notification not found.",
+            "details": {},
+        }
+    }
 
 
 def test_skip_all_reward_notifications_returns_skip_summary() -> None:
@@ -243,4 +258,10 @@ def test_skip_all_reward_notifications_returns_not_found_for_missing_account() -
         app.dependency_overrides.clear()
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Reward notification queue not found."}
+    assert response.json() == {
+        "error": {
+            "code": "reward_notification_queue_not_found",
+            "message": "Reward notification queue not found.",
+            "details": {},
+        }
+    }

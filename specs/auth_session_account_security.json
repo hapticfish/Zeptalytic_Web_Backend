@@ -1,0 +1,195 @@
+{
+  "id": "auth-session-account-security",
+  "title": "Auth, Session, and Account Security",
+  "status": "active",
+  "owner": "Zeptalytic Web Backend",
+  "purpose": "Implement the parent-owned browser authentication and account-security application layer on top of the already-migrated auth/security tables: signup, login/logout, email verification gating, password reset/change, 2FA flows, session/device management, and account closure. This spec intentionally does not implement the broader Pay client/projection foundation, dashboard or billing aggregation, support APIs, rewards writes, Discord OAuth application flows, admin/internal dashboards, or new database schema work.",
+  "context": {
+    "summary": "The application-layer foundation spec is complete and the roadmap points next to auth/session/account security. Repo reality shows the database already contains the core parent auth and security tables plus broad constraint coverage, but there is still no auth repository/service/router/schema slice for browser APIs. The next build workstream should therefore turn the existing auth persistence foundation into versioned `/api/v1` application behavior without reopening schema or Pay-ownership boundaries.",
+    "source_docs": [
+      "docs/architecture/Spec_Authoring_and_Harness_Workflow.md",
+      "docs/architecture/Parent_Backend_Application_Architecture.md",
+      "docs/architecture/Parent_Backend_API_Contract_Standards.md",
+      "docs/architecture/Parent_Backend_Repository_Layer_Design.md",
+      "docs/architecture/Parent_Backend_Service_Layer_Design.md",
+      "docs/architecture/Auth_Session_and_Security_Flows.md",
+      "docs/architecture/Security_Operational_Control_Guide.md",
+      "docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md",
+      "docs/architecture/Frontend_Backend_Contract_Map.md",
+      "docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md"
+    ],
+    "previous_specs_or_dependencies": [
+      "specs/application_layer_foundation.json",
+      "specs/next_phase_spec_sequence.json"
+    ],
+    "repo_reality_summary": [
+      "`app/main.py`, `app/api/errors.py`, `app/api/exception_handlers.py`, `app/api/routers/__init__.py`, and `app/api/routers/v1/` now provide the shared `/api/v1` registration and standard API error contract that the auth slice should reuse rather than re-invent.",
+      "Auth/security persistence already exists in `app/db/models/accounts.py` (`Account`), `app/db/models/auth_sessions.py` (`AuthSession`), `app/db/models/email_verification_tokens.py` (`EmailVerificationToken`), `app/db/models/password_reset_tokens.py` (`PasswordResetToken`), `app/db/models/account_security_settings.py` (`AccountSecuritySettings`), `app/db/models/mfa_recovery_codes.py` (`MfaRecoveryCode`), `app/db/models/auth_events.py` (`AuthEvent`), and `app/db/models/oauth_connections.py` (`OAuthConnection`).",
+      "`tests/unit/test_auth_models.py` already exercises metadata registration, uniqueness/foreign-key constraints, defaults, and round-trip persistence for the auth/security tables, so the DB baseline is real and should be treated as the implementation substrate rather than recreated.",
+      "Searches across `app/` and `tests/` found no `auth` router module under `app/api/routers/v1/`, no auth schemas such as `app/schemas/auth.py`, no auth repositories under `app/db/repositories/`, and no auth services under `app/services/`; the only current browser API slice is rewards.",
+      "`app/core/config.py` currently exposes only generic app settings plus Pay base URL/token fields. No session-cookie settings, auth token TTL settings, request-signing settings, or CSRF-related configuration knobs exist yet.",
+      "`app/api/deps.py` currently provides only `get_settings()` and `get_db()`. There is no authenticated principal dependency, no session lookup dependency, and no email-verification or account-status guard helper yet.",
+      "Searches for `cookie`, `csrf`, `rate limit`, and request-ID middleware showed request IDs are only optional fields in the shared error contract, while browser-session, CSRF, and rate-limit behavior are not yet implemented in runtime code.",
+      "The main auth-related tests today are schema/model tests in `tests/unit/test_auth_models.py`; there are no API tests or service tests for signup, login, logout, verification, password reset, session management, 2FA, or account closure yet.",
+      "Because the roadmap places broad Pay integration after auth, signup work in this spec should use only the narrowest safe seam needed to preserve the `account_id` linkage expectation and must not expand into general Pay client or projection infrastructure."
+    ]
+  },
+  "global_guardrails": [
+    "Search before editing.",
+    "Do not expand scope beyond this spec.",
+    "Do not add dependencies unless John explicitly approves them.",
+    "Do not duplicate Pay commercial business rules in parent.",
+    "Do not store sensitive payment details in parent.",
+    "Do not build admin dashboards unless explicitly scoped.",
+    "Do not redesign stable frontend pages.",
+    "Do not make Discord linkage affect rewards or product access unless the spec explicitly says so.",
+    "Do not allow frontend APIs to directly award points/rewards/badges.",
+    "Do not return raw ORM objects from routers.",
+    "Do not mark incomplete items complete.",
+    "Append progress entries to the absolute end of `progress/progress.txt`.",
+    "Run `python -m compileall app tests alembic` before marking implementation items complete.",
+    "Run `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` before marking implementation items complete.",
+    "Prefer secure server-managed browser sessions with HTTP-only cookies unless John explicitly redirects the auth transport choice.",
+    "Hash persisted session, verification, reset, and recovery secrets; do not store raw credential or token material in normal tables.",
+    "If signup needs a Pay-account-provisioning seam, keep it narrowly scoped to parent account creation and do not build the broader Pay integration/projection foundation in this spec.",
+    "Keep admin/internal authorization surfaces physically separate from user-facing auth routes; this spec is for browser-facing parent-account auth only.",
+    "Do not modify database models or Alembic migrations unless repo reality proves a tiny support fix is absolutely required, and avoid that if at all possible for this spec."
+  ],
+  "expected_paths": {
+    "may_create_or_update": [
+      "app/main.py",
+      "app/core/config.py",
+      "app/api/deps.py",
+      "app/api/errors.py",
+      "app/api/exception_handlers.py",
+      "app/api/routers/__init__.py",
+      "app/api/routers/v1/__init__.py",
+      "app/api/routers/v1/auth.py",
+      "app/db/repositories/__init__.py",
+      "app/db/repositories/auth_repository.py",
+      "app/db/repositories/account_security_repository.py",
+      "app/schemas/__init__.py",
+      "app/schemas/common.py",
+      "app/schemas/auth.py",
+      "app/services/__init__.py",
+      "app/services/auth_service.py",
+      "app/services/account_security_service.py",
+      "tests/unit/test_router_registration.py",
+      "tests/unit/test_auth_api.py",
+      "tests/unit/test_auth_service.py",
+      "tests/unit/test_account_security_api.py",
+      "tests/unit/test_account_security_service.py",
+      "tests/unit/test_auth_models.py"
+    ],
+    "must_not_modify_without_strong_reason": [
+      "alembic/",
+      "app/db/models/",
+      "app/integrations/",
+      "app/workers/",
+      "app/api/routers/v1/rewards.py",
+      "app/services/reward_*.py",
+      "app/db/repositories/reward_*.py",
+      "specs/application_layer_foundation.json"
+    ]
+  },
+  "items": [
+    {
+      "id": "asa-010",
+      "title": "Establish Auth Router, DTOs, and Session Guard Foundations",
+      "description": "Create the browser-facing auth application foundation under `/api/v1/auth` using the shared API conventions already in the repo. This includes safe request/response DTOs, principal/session dependency helpers, and the narrow runtime wiring needed so later auth items can build on stable router and guard patterns instead of ad hoc endpoint code.",
+      "acceptance_criteria": [
+        "A canonical auth router exists under `app/api/routers/v1/auth.py` and is registered through the existing `/api/v1` router foundation without changing unrelated domain routes.",
+        "Safe auth DTOs exist in `app/schemas/auth.py` for signup/login/logout/session and security-oriented responses; routers do not return raw ORM objects.",
+        "Dependency helpers exist for loading the authenticated account/session context and for enforcing account-status or verification requirements in a reusable way.",
+        "The item does not yet need to implement every auth mutation, but it must establish the code paths and test scaffolding future auth items will reuse.",
+        "Tests prove router registration and the basic dependency/contract surface for the new auth slice."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "asa-020",
+      "title": "Implement Signup, Login, Logout, and Auth Event Recording",
+      "description": "Build the parent-owned core browser auth flows: signup, login, logout, and current-session establishment using the existing account and auth-session tables. Signup should create the parent account, baseline security/settings rows required for auth, and the minimal downstream seam needed to preserve the expected Pay `account_id` linkage contract without expanding into the general Pay integration workstream.",
+      "acceptance_criteria": [
+        "Signup creates the parent account and the minimum related auth/security state required by the documented flow, using service-owned transactions and repository methods.",
+        "Login creates or rotates a persisted auth session, updates relevant account/auth event state, and returns the documented success/session response shape without leaking raw token secrets.",
+        "Logout revokes the current session using the standard mutation-success response convention.",
+        "Auth events are recorded for the implemented security-sensitive actions with safe metadata.",
+        "Tests cover successful signup/login/logout plus at least duplicate-account, invalid-credential, and suspended-or-closed-account failure paths."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "asa-030",
+      "title": "Implement Email Verification and Verification Gating",
+      "description": "Add email verification lifecycle behavior on top of the existing verification-token table and account status fields. The implementation should cover verify, resend verification, and the reusable guard behavior that blocks normal authenticated actions for unverified accounts while still allowing the documented minimal access paths.",
+      "acceptance_criteria": [
+        "Verification and resend endpoints exist under the auth slice and use hashed, one-time-use token handling backed by the existing tables.",
+        "Successful verification updates account state consistently, including `email_verified_at` and any related lifecycle gating needed by the documented rules.",
+        "Reusable auth guard behavior exists for the documented unverified-account restrictions without embedding those checks ad hoc in every endpoint.",
+        "The implementation preserves the documented exception that support-ticket creation may remain available to unverified users.",
+        "Tests cover valid verification, expired-or-used token failures, resend behavior, and at least one verification-gated authenticated path."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "asa-040",
+      "title": "Implement Password Reset, Password Change, and Session Revocation",
+      "description": "Implement the parent-owned password lifecycle using the existing reset-token and auth-session tables. This includes forgot password, reset password, authenticated password change, and the required session invalidation/revocation behavior needed to keep account security coherent.",
+      "acceptance_criteria": [
+        "Forgot-password uses a generic success response that does not reveal whether an email exists.",
+        "Reset-password uses time-limited, one-time-use hashed tokens and updates stored password hashes through the service layer.",
+        "Authenticated password change validates the current credentials and rotates or revokes sessions according to the chosen secure session policy.",
+        "Implemented flows use the standard error contract for invalid, expired, or unauthorized requests.",
+        "Tests cover enumeration-safe forgot-password behavior, successful reset/change flows, invalid-or-used token failures, and session invalidation expectations."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "asa-050",
+      "title": "Implement 2FA, Session/Device Management, and Account Closure",
+      "description": "Complete the first-phase account-security flows using the existing security-settings and recovery-code tables: 2FA enrollment/challenge/recovery operations, active-session/device listing and revocation, and user-requested account closure. Keep the scope on browser-facing parent-account security behavior and avoid admin or worker expansions.",
+      "acceptance_criteria": [
+        "2FA enrollment, verification/challenge, recovery-code generation or consumption, and disable/reset behavior are implemented with safe DTOs and without exposing secret material after enrollment.",
+        "Authenticated users can inspect active sessions/devices, revoke a session, and revoke all other sessions through dedicated auth/security endpoints.",
+        "Account closure marks the account closed via lifecycle state rather than deleting core history, and closed accounts are blocked from normal login afterward.",
+        "Suspended-user and closed-user behavior aligns with the documented auth/security rules for billing/support access versus normal product/account actions.",
+        "Tests cover 2FA happy paths and failures, session list/revocation behavior, and account-closure/login-block regressions."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "asa-999",
+      "title": "Verify Auth and Security Foundation Completion",
+      "description": "Run the required verification suite once the auth/session/account security slice is fully implemented and only mark this spec complete when the new auth APIs, services, and supporting regressions pass without pulling in unrelated roadmap work.",
+      "acceptance_criteria": [
+        "`python -m compileall app tests alembic` passes.",
+        "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+        "Auth-focused tests cover router registration, DTO contracts, core auth flows, verification gating, password lifecycle behavior, and session/account-security operations.",
+        "Only fully completed items are marked complete, and progress is appended at EOF."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ],
+  "completion_definition": [
+    "All spec items have `passes=true`.",
+    "Relevant tests are added or updated for auth routers, services, DTO contracts, verification gating, password lifecycle behavior, session management, 2FA, and account closure.",
+    "`python -m compileall app tests alembic` passes.",
+    "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+    "`progress/progress.txt` is updated at EOF.",
+    "No unrelated dirty files are introduced.",
+    "No incomplete item is marked complete."
+  ]
+}

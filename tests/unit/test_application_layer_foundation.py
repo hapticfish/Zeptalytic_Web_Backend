@@ -1,0 +1,137 @@
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+import pytest
+from pydantic import BaseModel, ValidationError
+
+from app.schemas import (
+    ApiErrorResponse,
+    CursorPageInfo,
+    CursorPageResponse,
+    MutationSuccessResponse,
+)
+from app.services import (
+    RewardNotificationService,
+    RewardObjectiveService,
+    RewardSummaryService,
+    build_reward_notification_service,
+    build_reward_objective_service,
+    build_reward_summary_service,
+)
+
+
+class ExampleCursorItem(BaseModel):
+    item_id: str
+    label: str
+
+
+def test_mutation_success_response_uses_standard_success_contract() -> None:
+    response = MutationSuccessResponse(message="Profile updated.")
+
+    assert response.model_dump(mode="json") == {
+        "success": True,
+        "message": "Profile updated.",
+    }
+
+
+def test_cursor_page_response_serializes_items_and_cursor_metadata() -> None:
+    response = CursorPageResponse[ExampleCursorItem](
+        items=[
+            ExampleCursorItem(item_id="reward-1", label="Silver Reward"),
+            ExampleCursorItem(item_id="reward-2", label="Gold Reward"),
+        ],
+        page=CursorPageInfo(limit=25, cursor="cursor_001", next_cursor="cursor_002"),
+    )
+
+    assert response.model_dump(mode="json") == {
+        "items": [
+            {"item_id": "reward-1", "label": "Silver Reward"},
+            {"item_id": "reward-2", "label": "Gold Reward"},
+        ],
+        "page": {
+            "limit": 25,
+            "cursor": "cursor_001",
+            "next_cursor": "cursor_002",
+        },
+    }
+
+
+def test_cursor_page_info_requires_positive_limit() -> None:
+    with pytest.raises(ValidationError):
+        CursorPageInfo(limit=0)
+
+
+def test_api_error_response_serializes_standard_contract() -> None:
+    response = ApiErrorResponse.model_validate(
+        {
+            "error": {
+                "code": "reward_summary_not_found",
+                "message": "Reward summary not found.",
+                "details": {"account_scope": "rewards"},
+            }
+        }
+    )
+
+    assert response.model_dump(exclude_none=True) == {
+        "error": {
+            "code": "reward_summary_not_found",
+            "message": "Reward summary not found.",
+            "details": {"account_scope": "rewards"},
+        }
+    }
+
+
+def test_service_package_exports_reward_service_builders() -> None:
+    assert build_reward_summary_service is not None
+    assert build_reward_objective_service is not None
+    assert build_reward_notification_service is not None
+    assert RewardSummaryService is not None
+    assert RewardObjectiveService is not None
+    assert RewardNotificationService is not None
+
+
+def test_reward_router_modules_do_not_import_repositories_directly() -> None:
+    router_modules = [
+        Path("app/api/routers/rewards_summary.py"),
+        Path("app/api/routers/reward_objectives.py"),
+        Path("app/api/routers/reward_notifications.py"),
+    ]
+
+    for module_path in router_modules:
+        parsed = ast.parse(module_path.read_text(encoding="utf-8"))
+        direct_repository_imports = [
+            node.module
+            for node in ast.walk(parsed)
+            if isinstance(node, ast.ImportFrom)
+            and node.module is not None
+            and node.module.startswith("app.db.repositories")
+        ]
+        assert direct_repository_imports == [], module_path.as_posix()
+
+
+def test_reward_service_modules_define_repository_construction_boundary() -> None:
+    service_modules = [
+        Path("app/services/reward_summary_service.py"),
+        Path("app/services/reward_objective_service.py"),
+        Path("app/services/reward_notification_service.py"),
+    ]
+
+    for module_path in service_modules:
+        parsed = ast.parse(module_path.read_text(encoding="utf-8"))
+        repository_imports = [
+            node.module
+            for node in ast.walk(parsed)
+            if isinstance(node, ast.ImportFrom)
+            and node.module is not None
+            and node.module.startswith("app.db.repositories")
+        ]
+        builder_functions = [
+            node.name
+            for node in parsed.body
+            if isinstance(node, ast.FunctionDef) and node.name.startswith("build_")
+        ]
+
+        assert repository_imports != [], module_path.as_posix()
+        assert builder_functions != [], module_path.as_posix()

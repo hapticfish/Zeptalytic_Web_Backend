@@ -1,6 +1,6 @@
 # Zeptalytic Web Backend Implementation Plan
 
-Active spec: specs/application_layer_foundation.json
+Active spec: specs/auth-session-account-security.json
 
 ## Current phase
 
@@ -8,19 +8,13 @@ The parent DB foundation, model file separation refactor, parent DB verification
 
 The next phase is the broader parent backend application buildout.
 
-The next action is not a build run. The next action is a spec-authoring run that reads the architecture/control docs, inspects repo reality, and creates the next focused runnable spec:
+The current active workstream is the application-layer foundation spec:
 
 ```text
 specs/application_layer_foundation.json
 ```
 
-After that spec exists and is reviewed, update the `Active spec:` line to:
-
-```text
-Active spec: specs/application_layer_foundation.json
-```
-
-Then run the normal planning/build sequence.
+The next action is a build run that implements the first incomplete application-foundation item from that spec.
 
 ## Next-phase roadmap
 
@@ -65,13 +59,7 @@ The spec-authoring agent must:
 
 ## Planning
 
-After the generated spec is reviewed and committed, set:
-
-```text
-Active spec: specs/application_layer_foundation.json
-```
-
-Then run:
+Run:
 
 ```bash
 ./scripts/ralph-loop.sh plan 1
@@ -149,6 +137,8 @@ Legacy/foundation references remain valid where relevant:
 - `docs/architecture/Rewards_Objectives_Badges_UI_Interaction_Reference.md`
 - `docs/architecture/Discord_Rewards_Workstream_Sequence.md`
 
+`docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md` remains the canonical source for parent-site vocabulary, enum values, and status names.
+
 ## Locked next-phase decisions
 
 - Parent backend is a domain backend with its own state and business logic.
@@ -187,36 +177,13 @@ The following workstreams are treated as complete and should not be re-opened un
 
 ## Next workstream to author
 
-The next spec-authoring run should create:
+Keep the next queued spec ready, but do not switch to it until the active application-layer foundation spec is fully complete. The next spec to author after that remains:
 
 ```text
-specs/application_layer_foundation.json
+specs/auth_session_account_security.json
 ```
 
-This first next-phase spec should establish:
-
-- `/api/v1` router foundation
-- standard API error response shape
-- common response schemas
-- mutation success response convention
-- pagination/cursor response convention
-- service/repository package boundary conventions
-- exception handling pattern
-- tests proving the foundation exists
-
-It must not implement:
-
-- full auth/session flows
-- Pay integration
-- dashboard aggregation
-- launcher logic
-- billing logic
-- rewards APIs
-- support APIs
-- Discord OAuth
-- background workers
-- admin dashboards
-- database schema changes unless repo reality proves a tiny support change is absolutely required
+That follow-on spec should stay focused on auth/session/account security and preserve the roadmap order from `specs/next_phase_spec_sequence.json`.
 
 ## Progress rule
 

@@ -173,4 +173,10 @@ def test_reward_objectives_endpoint_returns_not_found_for_missing_account() -> N
         app.dependency_overrides.clear()
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Reward objectives not found."}
+    assert response.json() == {
+        "error": {
+            "code": "reward_objectives_not_found",
+            "message": "Reward objectives not found.",
+            "details": {},
+        }
+    }

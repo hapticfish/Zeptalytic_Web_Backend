@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID
 
+from sqlalchemy.orm import Session
+
 from app.db.repositories.reward_notification_repository import RewardNotificationRepository
 from app.schemas.reward_notifications import (
     RewardNotificationBadge,
@@ -17,7 +19,11 @@ from app.schemas.reward_notifications import (
 
 
 class RewardNotificationNotFoundError(Exception):
-    """Raised when the requested account or notification does not exist."""
+    """Raised when the requested notification does not exist."""
+
+
+class RewardNotificationQueueNotFoundError(RewardNotificationNotFoundError):
+    """Raised when the requested account notification queue does not exist."""
 
 
 class RewardNotificationService:
@@ -27,7 +33,7 @@ class RewardNotificationService:
     def get_notification_queue(self, account_id: UUID) -> RewardNotificationQueueResponse:
         queue = self._repository.get_notification_queue(account_id)
         if queue is None:
-            raise RewardNotificationNotFoundError(f"No account exists for {account_id}")
+            raise RewardNotificationQueueNotFoundError(f"No account exists for {account_id}")
 
         return RewardNotificationQueueResponse(
             account_id=queue.account_id,
@@ -61,7 +67,7 @@ class RewardNotificationService:
             skipped_at=datetime.now(timezone.utc),
         )
         if skip_result is None:
-            raise RewardNotificationNotFoundError(f"No account exists for {account_id}")
+            raise RewardNotificationQueueNotFoundError(f"No account exists for {account_id}")
 
         return RewardNotificationSkipAllResponse(
             account_id=skip_result.account_id,
@@ -128,3 +134,7 @@ class RewardNotificationService:
                 else None
             ),
         )
+
+
+def build_reward_notification_service(db: Session) -> RewardNotificationService:
+    return RewardNotificationService(RewardNotificationRepository(db))

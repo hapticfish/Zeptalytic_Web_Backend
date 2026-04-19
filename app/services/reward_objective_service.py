@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from sqlalchemy.orm import Session
+
 from app.db.repositories.reward_objective_repository import RewardObjectiveRepository
 from app.schemas.reward_objectives import (
     RewardObjectiveGroup,
@@ -85,3 +87,7 @@ class RewardObjectiveService:
                 for group in objective_groups.groups
             ],
         )
+
+
+def build_reward_objective_service(db: Session) -> RewardObjectiveService:
+    return RewardObjectiveService(RewardObjectiveRepository(db))

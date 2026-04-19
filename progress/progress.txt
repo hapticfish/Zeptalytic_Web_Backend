@@ -1503,3 +1503,163 @@
   - Existing rewards API tests currently assert legacy `detail`-only errors, so the build agent will need to update those tests when standard error handling is introduced.
   - No shared common schema or exception module exists today, so the build agent should keep the first implementation minimal and avoid inventing a heavyweight framework.
 - Next command to run: ./scripts/ralph-loop.sh plan 1
+## Iteration entry
+- Date/time: 2026-04-18T19:00:00-05:00
+- Mode: plan
+- Goal for this iteration: Rehydrate the active application-layer foundation workstream, verify current repo topology, and align planning artifacts with the now-active foundation spec.
+- What I found (repo search summary): `git status --short` showed no tracked-file drift before this planning pass. `IMPLEMENTATION_PLAN.md` already pointed `Active spec:` at `specs/application_layer_foundation.json`, but parts of the plan still described a future spec-authoring step even though the spec already exists and is active. `app/main.py` mounts `app.api.routers.api_router` at `settings.api_v1_prefix`, so `/api/v1` versioning already exists globally. `app/api/routers/__init__.py` still registers only `reward_notifications`, `reward_objectives`, and `rewards_summary`, with no `app/api/routers/v1/` package yet. The rewards routers in `app/api/routers/reward_notifications.py`, `app/api/routers/reward_objectives.py`, and `app/api/routers/rewards_summary.py` instantiate services over repositories directly in dependency helpers and translate not-found cases into per-endpoint `HTTPException(detail=...)` payloads. Shared API foundation modules such as `app/schemas/common.py`, `app/api/errors.py`, and `app/api/exception_handlers.py` do not exist yet. Current API tests in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, and `tests/unit/test_reward_notifications_api.py` still assert legacy `{"detail": ...}` 404 bodies. Metadata/bootstrap and migration discovery remain centralized through `app/db/bootstrap.py`, `app/db/models/__init__.py`, and `alembic/env.py`, so the active foundation spec does not need schema or Alembic work.
+- What I changed: Updated `IMPLEMENTATION_PLAN.md` to remove stale spec-authoring instructions, state that `specs/application_layer_foundation.json` is the current workstream, and point the next follow-on spec toward auth/session/account after the foundation is complete. Refined `specs/application_layer_foundation.json` so it no longer discourages planning-time updates to the implementation plan and so `alf-010` explicitly stays scoped to the router-package foundation without implying common-schema or error-contract work in the same first build slice.
+- Why I changed: The planning artifacts had minor workflow drift that could push the next run toward the wrong action. Tightening them keeps the current workstream accurate, preserves the roadmap order, and keeps the first build iteration small and reviewable.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - specs/application_layer_foundation.json
+  - progress/progress.txt
+- New Files:
+- Removed Files:
+- Tests run + results: No runtime tests were run in this planning-only iteration. Repo reality was verified with `git ls-files`, targeted `git grep` searches for routers/errors/schemas/services/repositories, file inventories for `app/` and `tests/`, and direct reads of `app/main.py`, router modules, API tests, `docker-compose.test.yml`, `app/db/bootstrap.py`, `app/db/models/__init__.py`, and `alembic/env.py`.
+- Notes / risks: The next build should start with `alf-010` and keep the change limited to router-package registration plus route-registration tests. The later `alf-030` error-contract item will require updating existing rewards API tests that currently lock `detail`-only 404 responses.
+- Next: Run `./scripts/ralph-loop.sh build 1` and target `alf-010` from `specs/application_layer_foundation.json`.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none (planning-only changes; no commit created)
+## Iteration entry
+- Date/time: 2026-04-18T00:53:30.5038938-05:00
+- Mode: build
+- Active spec: specs/application_layer_foundation.json
+- Selected item: alf-010 Create `/api/v1` Router Foundation Package
+- Repo search summary: `git ls-files`, `git grep`, `rg`, and recursive file inventories confirmed that `app/main.py` mounts a single `api_router` from `app/api/routers/__init__.py` at `settings.api_v1_prefix`, so `/api/v1` was already globally versioned. The only browser routers found were `app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, and `app/api/routers/reward_notifications.py`, each exposing `APIRouter(prefix="/rewards", tags=["rewards"])` and wiring router -> service -> repository via `get_reward_*_service` helpers. Existing services and repositories remained limited to the rewards slice, and current API tests in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, and `tests/unit/test_reward_notifications_api.py` already asserted the `/api/v1/rewards/...` paths through `app.main`. No `app/api/routers/v1/` package or router-registration regression test existed yet, which was the specific gap for `alf-010`.
+- What changed: Added `app/api/routers/v1/__init__.py` and `app/api/routers/v1/rewards.py` as the canonical versioned router package, keeping the existing rewards routers intact and composing them into the new versioned registration surface. Updated `app/api/routers/__init__.py` to re-export the versioned `api_router` so `app/main.py` and existing imports continue to work without path changes. Added `tests/unit/test_router_registration.py` to lock the canonical router package, the rewards sub-router surface, and the `/api/v1` mount path through `app.main`. Also restored the required canonical-source wording in `IMPLEMENTATION_PLAN.md` so the existing control-doc regression test passes.
+- Files changed:
+  - IMPLEMENTATION_PLAN.md
+  - app/api/routers/__init__.py
+  - app/api/routers/v1/__init__.py
+  - app/api/routers/v1/rewards.py
+  - specs/application_layer_foundation.json
+  - tests/unit/test_router_registration.py
+  - progress/progress.txt
+- Tests run + results:
+  - `python -m pytest tests/unit/test_router_registration.py tests/unit/test_rewards_summary_api.py tests/unit/test_reward_objectives_api.py tests/unit/test_reward_notifications_api.py` -> blocked locally because the host Python environment does not have `pytest` installed.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `142 passed in 3.00s`.
+- Blockers: none.
+- Notes / risks: The green Docker run still emitted the expected duplicate-key and FK-violation logs from negative-path regression tests, and `migrate` again exited `137` during teardown because `--abort-on-container-exit` stops the stack after the successful `test` exit; the compose command itself exited `0`. The worktree already contained tracked planning-artifact changes before this iteration, so I did not create a commit.
+- Next recommended item: alf-020 Add Common Response Schemas
+## Iteration entry
+- Date/time: 2026-04-18T00:57:27.1261127-05:00
+- Mode: build
+- Active spec: specs/application_layer_foundation.json
+- Selected item: alf-020 Add Common Response Schemas
+- Repo search summary: `git ls-files`, `git grep`, `rg`, and recursive file inventories confirmed the current browser API surface remains the rewards slice mounted through `app/main.py`, `app/api/routers/__init__.py`, and `app/api/routers/v1/`. Existing DTOs in `app/schemas/reward_summary.py`, `app/schemas/reward_objectives.py`, and `app/schemas/reward_notifications.py` are slice-specific `BaseModel` responses only, while `app/schemas/__init__.py` was still a package marker with no shared exports. Existing regression coverage in `tests/unit/test_router_registration.py`, `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, and `tests/unit/test_reward_notifications_api.py` covered router paths and rewards payloads, but no shared mutation-success or cursor/list response contract tests existed. That left `app/schemas/common.py` and focused serialization tests as the gap for `alf-020`.
+- Files changed:
+  - app/schemas/__init__.py
+  - app/schemas/common.py
+  - specs/application_layer_foundation.json
+  - tests/unit/test_application_layer_foundation.py
+  - progress/progress.txt
+- Tests run + results:
+  - `python -m pytest tests/unit/test_application_layer_foundation.py` -> blocked locally because the host Python environment does not have the `pytest` module installed.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `145 passed in 3.04s`.
+- Blockers: none.
+- Notes / risks: The Docker run again emitted the expected duplicate-key and FK-violation logs from negative-path regression tests, and `migrate` exited `137` during teardown because `--abort-on-container-exit` stopped the stack after the successful `test` exit; the compose command itself exited `0`. The worktree already contained tracked and untracked changes from the prior router-foundation iteration before this run, so I did not create a commit.
+- Next recommended item: alf-030 Implement Standard Error Response and Exception Translation
+## Iteration entry
+- Date/time: 2026-04-18T01:06:00.4423939-05:00
+- Mode: build
+- Active spec: specs/application_layer_foundation.json
+- Selected item: alf-030 Implement Standard Error Response and Exception Translation
+- Repo search summary: `git ls-files`, `rg`, and router/service scans confirmed the versioned registration path already flows through `app/main.py`, `app/api/routers/__init__.py`, and `app/api/routers/v1/`, while the active rewards endpoints in `app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, and `app/api/routers/reward_notifications.py` still translated service exceptions into ad hoc `HTTPException(detail=...)` responses. `app/schemas/common.py` only held mutation/cursor primitives, no shared error envelope existed, and there were no request validation or shared exception handlers anywhere under `app/api/`. Existing regression coverage in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/unit/test_reward_notifications_api.py`, and `tests/unit/test_application_layer_foundation.py` covered the rewards API surface and common schema serialization, but still asserted plain `{\"detail\": ...}` not-found responses and had no standard validation-error contract test. That made the spec gap a narrow app-layer error DTO/handler retrofit rather than a broader service or domain redesign.
+- Files changed:
+  - app/api/errors.py
+  - app/api/exception_handlers.py
+  - app/api/routers/reward_notifications.py
+  - app/api/routers/reward_objectives.py
+  - app/api/routers/rewards_summary.py
+  - app/main.py
+  - app/schemas/__init__.py
+  - app/schemas/common.py
+  - app/services/reward_notification_service.py
+  - specs/application_layer_foundation.json
+  - tests/unit/test_api_error_contract.py
+  - tests/unit/test_application_layer_foundation.py
+  - tests/unit/test_reward_notifications_api.py
+  - tests/unit/test_reward_objectives_api.py
+  - tests/unit/test_rewards_summary_api.py
+  - progress/progress.txt
+- Tests run + results:
+  - `python -m pytest tests/unit/test_application_layer_foundation.py tests/unit/test_api_error_contract.py tests/unit/test_rewards_summary_api.py tests/unit/test_reward_objectives_api.py tests/unit/test_reward_notifications_api.py` -> blocked locally because the host Python environment does not have the `pytest` module installed.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `147 passed in 2.90s`.
+- Blockers: none.
+- Notes / risks: Docker again emitted the expected duplicate-key and FK-violation logs from negative-path regression tests, and `migrate` exited `137` during teardown because `--abort-on-container-exit` stopped the stack after the successful `test` exit; the compose command itself exited `0`. The worktree was already dirty before this iteration, so I did not create a commit.
+- Next recommended item: alf-040 Lock Service and Repository Boundary Conventions in Code
+## Iteration entry
+- Date/time: 2026-04-18T01:12:09.7557055-05:00
+- Mode: build
+- Active spec: specs/application_layer_foundation.json
+- Selected item: alf-040 Lock Service and Repository Boundary Conventions in Code
+- Repo search summary: `git ls-files`, `rg`, and direct file reads showed the current browser API surface lives in `app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, and `app/api/routers/reward_notifications.py`, with canonical registration flowing through `app/api/routers/v1/rewards.py`, `app/api/routers/v1/__init__.py`, `app/api/routers/__init__.py`, and `app/main.py`. Those rewards routers still imported concrete repository modules and built `Reward*Service(Reward*Repository(db))` inline, while the service layer in `app/services/reward_summary_service.py`, `app/services/reward_objective_service.py`, and `app/services/reward_notification_service.py` already depended on repository classes and exposed the real business methods. `app/services/__init__.py` and `app/db/repositories/__init__.py` were only docstrings, so there was no package-level boundary signal yet. Existing coverage in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/unit/test_reward_notifications_api.py`, `tests/unit/test_router_registration.py`, and `tests/unit/test_application_layer_foundation.py` covered route behavior and foundation contracts, but nothing locked the router->service->repository import direction. The gap for `alf-040` was therefore a narrow dependency-boundary codification plus regression assertions, not a new abstraction framework.
+- Files changed:
+  - app/api/routers/reward_notifications.py
+  - app/api/routers/reward_objectives.py
+  - app/api/routers/rewards_summary.py
+  - app/db/repositories/__init__.py
+  - app/services/__init__.py
+  - app/services/reward_notification_service.py
+  - app/services/reward_objective_service.py
+  - app/services/reward_summary_service.py
+  - specs/application_layer_foundation.json
+  - tests/unit/test_application_layer_foundation.py
+  - progress/progress.txt
+- Tests run + results:
+  - `python -m pytest tests/unit/test_application_layer_foundation.py tests/unit/test_rewards_summary_api.py tests/unit/test_reward_objectives_api.py tests/unit/test_reward_notifications_api.py tests/unit/test_router_registration.py tests/unit/test_api_error_contract.py` -> blocked locally because the host Python environment does not have the `pytest` module installed.
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `150 passed in 3.02s`.
+- Blockers: none.
+- Notes / risks: Docker again emitted the expected duplicate-key and FK-violation logs from negative-path regression tests, and `migrate` exited `137` during teardown because `--abort-on-container-exit` stopped the stack after the successful `test` exit; the compose command itself exited `0`. The host environment still lacks a local `pytest` installation, so targeted unit tests could not be run outside Docker. The worktree was already dirty before this iteration, so I did not create a commit.
+- Next recommended item: alf-999 Verify the Application Foundation Baseline
+## Iteration entry
+- Date/time: 2026-04-18T01:15:24.4308574-05:00
+- Mode: build
+- Active spec: specs/application_layer_foundation.json
+- Selected item: alf-999 Verify the Application Foundation Baseline
+- Repo search summary: `git ls-files`, `rg`, and direct file reads confirmed the application-layer foundation is already present in the current worktree. Router registration flows from `app/api/routers/v1/__init__.py` and `app/api/routers/v1/rewards.py` through `app/api/routers/__init__.py` into `app/main.py`, preserving the `/api/v1` prefix. Shared API contract code exists in `app/api/errors.py`, `app/api/exception_handlers.py`, and `app/schemas/common.py`. Existing rewards routers still depend on reward services, while reward services depend on reward repositories via the builder helpers in `app/services/reward_*`. Foundation regression coverage already exists in `tests/unit/test_application_layer_foundation.py`, `tests/unit/test_api_error_contract.py`, `tests/unit/test_router_registration.py`, and the updated rewards API tests. The remaining gap for `alf-999` was verification and durable artifact updates only.
+- Files changed:
+  - specs/application_layer_foundation.json
+  - progress/progress.txt
+- Tests run + results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed with `150 passed in 3.19s`.
+- Blockers: none.
+- Notes / risks: Docker again emitted the expected duplicate-key and FK-violation logs from negative-path regression tests, and `migrate` exited `137` during teardown because `--abort-on-container-exit` stopped the stack after the successful `test` exit; the compose command itself exited `0`. The host environment still lacks a local `pytest` installation, so targeted unit tests could not be run outside Docker. The worktree was already dirty before this iteration, so I did not create a commit.
+- Next recommended item: author or activate `specs/auth_session_account_security.json` in the next planning/build cycle, since `specs/application_layer_foundation.json` is now fully complete.
+## Iteration entry
+- Date/time: 2026-04-18T19:43:02.5711155-05:00
+- Mode: spec_author
+- Selected roadmap item: auth-session-account
+- Spec file created: `specs/auth_session_account_security.json`
+- Architecture docs used:
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+  - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md`
+  - `docs/architecture/Frontend_Backend_Contract_Map.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+- Repo search summary: `git status --short`, `git log -5 --oneline`, `git ls-files`, recursive file listings for `app/`, `tests/`, and `specs/`, plus targeted `git grep`/`rg` searches for routers, exception handling, schemas, repositories, services, auth/session/password/verification/2FA terms, cookie/CSRF/request-ID/rate-limit config, and direct file reads established the current auth/security baseline. Existing runtime application wiring now includes the `/api/v1` router foundation in `app/main.py`, `app/api/routers/__init__.py`, `app/api/routers/v1/__init__.py`, and `app/api/routers/v1/rewards.py`, plus shared error/response primitives in `app/api/errors.py`, `app/api/exception_handlers.py`, and `app/schemas/common.py`. Auth persistence already exists in `app/db/models/accounts.py`, `app/db/models/auth_sessions.py`, `app/db/models/email_verification_tokens.py`, `app/db/models/password_reset_tokens.py`, `app/db/models/account_security_settings.py`, `app/db/models/mfa_recovery_codes.py`, `app/db/models/auth_events.py`, and `app/db/models/oauth_connections.py`, with broad table/constraint coverage in `tests/unit/test_auth_models.py`. No auth router, auth schemas, auth repositories, auth services, principal dependencies, cookie/session settings, CSRF controls, or auth API/service tests exist yet. The gap for the next Build Agent is therefore the full parent-owned auth/session/account-security application layer on top of existing tables, while keeping Pay linkage narrow and deferring broader Pay integration/projections.
+- Files changed:
+  - `specs/auth_session_account_security.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - Do not implement runtime application code in this run.
+  - Do not modify database models or Alembic migrations.
+  - Do not build the broader Pay integration/projection foundation.
+  - Do not add dashboard, billing, support, rewards, Discord OAuth application-flow, or admin dashboard work.
+- Risks / assumptions:
+  - `IMPLEMENTATION_PLAN.md` still points to `specs/application_layer_foundation.json` as the active spec and was left unchanged because activation was not requested.
+  - Signup needs to respect the documented Pay `account_id` linkage expectation even though the broader Pay integration workstream is sequenced later; the authored spec assumes a narrow seam or placeholder contract is acceptable here.
+  - Current config has no auth/session/CSRF settings yet, so the eventual build may need small `app/core/config.py` additions without adding dependencies.
+  - The worktree was already dirty before this spec-authoring iteration; I limited changes to the new spec and the append-only progress entry.
+- Next command to run: `./scripts/ralph-loop.sh build 1`
