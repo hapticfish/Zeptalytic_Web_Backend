@@ -1,4 +1,4 @@
-# Progress log (append-only)
+﻿# Progress log (append-only)
 
 ## Format for each iteration
 - Date/time (ISO 8601 with timezone):
@@ -591,7 +591,7 @@
 - Tests run + results:
   - `python -m compileall tests` -> passed
   - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed; `79 passed in 2.13s`
-- Notes / risks: The first Docker run failed because the initial test assumed Alembic revision IDs included the descriptive filename suffix; I corrected the regression to match the repo’s actual timestamp-based revision IDs and reran the full suite successfully. The compose output still includes expected duplicate-key/FK errors from negative-path tests, and `migrate` still exits `137` after the green `test` exit because of `--abort-on-container-exit`; the authoritative command itself exited `0`.
+- Notes / risks: The first Docker run failed because the initial test assumed Alembic revision IDs included the descriptive filename suffix; I corrected the regression to match the repo�s actual timestamp-based revision IDs and reran the full suite successfully. The compose output still includes expected duplicate-key/FK errors from negative-path tests, and `migrate` still exits `137` after the green `test` exit because of `--abort-on-container-exit`; the authoritative command itself exited `0`.
 - Next: `disc-999` remains open as the final spec gate item.
 - Sources used (only if needed; prefer official docs): none
 - Commit: pending
@@ -1329,7 +1329,7 @@
 - Date/time: 2026-04-16T10:23:47.7310062-05:00
 - Goal for this iteration: Complete `rapi-001` by inventorying the current rewards API/application repo reality and mapping the frontend rewards/objectives expectations to the parent backend surfaces that need to be built next.
 - What I found (repo search summary): `git ls-files`, `rg`, `git grep`, and targeted file reads showed the rewards domain is implemented only at the ORM/migration/test layer right now. The only live route remains `GET /health` in `app/main.py`; `app/api/routers/__init__.py`, `app/services/__init__.py`, `app/db/repositories/__init__.py`, and `app/schemas/__init__.py` are placeholder shells, with `app/api/deps.py` only exposing `get_settings()`. Rewards registration and wiring already flow through `app/db/models/rewards/__init__.py` -> `app/db/models/__init__.py` -> `app/db/bootstrap.py` -> `alembic/env.py`, with account relationships in `app/db/models/accounts.py`. Existing coverage for the target area already lived in `tests/unit/test_health.py`, `tests/unit/test_rewards_verification_inventory.py`, `tests/unit/test_db_bootstrap.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, `tests/integration/test_parent_db_bootstrap.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/integration/test_parent_db_round_trips.py`. Frontend expectations for the upcoming API layer came from `docs/architecture/Zeptalytic_Feature_Ownership_Register.md`, `docs/architecture/Rewards_Objectives_Badges_Domain_Decision_Record.md`, `docs/architecture/Rewards_Objectives_Badges_Data_Model_Reference.md`, and `docs/architecture/Rewards_Objectives_Badges_UI_Interaction_Reference.md`.
-- What I changed: Added `docs/architecture/Rewards_API_Application_Inventory.md` as the durable inventory artifact for the active rewards API workstream. The document records current repo reality, the current registration/wiring path, the existing test baseline, and the frontend-driven parent backend surface split for rewards summary, objectives detail, reward notification queue handling, and internal progression primitives. Added `tests/unit/test_rewards_api_inventory.py` to lock that artifact’s required sections and confirm it references the existing baseline files. Marked `rapi-001` complete in `specs/rewards_api_application_layer.json`.
+- What I changed: Added `docs/architecture/Rewards_API_Application_Inventory.md` as the durable inventory artifact for the active rewards API workstream. The document records current repo reality, the current registration/wiring path, the existing test baseline, and the frontend-driven parent backend surface split for rewards summary, objectives detail, reward notification queue handling, and internal progression primitives. Added `tests/unit/test_rewards_api_inventory.py` to lock that artifact�s required sections and confirm it references the existing baseline files. Marked `rapi-001` complete in `specs/rewards_api_application_layer.json`.
 - Why I changed: `rapi-001` is an inventory/specification step, not an endpoint implementation step. Capturing the baseline and next-surface map in a committed architecture artifact keeps later rewards API items grounded in the locked docs and current repo shape, while the unit test prevents that inventory from silently drifting or disappearing before the actual router/service/repository work starts.
 - Updated Files:
   - docs/architecture/Rewards_API_Application_Inventory.md
@@ -3296,3 +3296,165 @@
   - None.
 - Next recommended item:
   - Author or activate the frontend/backend contract alignment workstream after updating planning artifacts in a separate run.
+## 2026-04-19T10:39:00-05:00
+- Mode:
+  - `spec_author`
+- Selected roadmap item:
+  - `frontend-contract-regression`
+- Spec file created:
+  - `specs/frontend_backend_contract_alignment.json`
+- Architecture docs used:
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+  - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
+  - `docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md`
+  - `docs/architecture/Frontend_Backend_Contract_Map.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md`
+  - `docs/architecture/Support_Announcements_and_Status_Design.md`
+  - `docs/architecture/Rewards_Application_and_Notification_Flows.md`
+  - `docs/architecture/Discord_Integration_Application_Flow.md`
+  - `docs/architecture/Background_Jobs_Sync_and_Event_Processing.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+- Repo search summary:
+  - Rehydrated `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, `PROMPT.md`, the latest `progress/progress.txt` entries, `specs/next_phase_spec_sequence.json`, `specs/_template_next_phase_spec.json`, the active background-jobs spec, `git status`, `git log -5 --oneline`, `git ls-files`, and the current `app/`, `tests/`, and `specs/` file inventories.
+  - Confirmed the roadmap slot after the completed `specs/background_jobs_and_security_hardening.json` workstream is the frontend/backend contract alignment workstream; no `specs/frontend_backend_contract_alignment.json` file existed yet.
+  - Searched router, schema, service, error, and contract surfaces with `git grep` for `APIRouter`, `include_router`, `BaseModel`, `ConfigDict`, `Repository`, `Service`, route paths, and contract-related tests/docs.
+  - Verified the implemented browser-facing routes already exist under `/api/v1` in `app/api/routers/v1/__init__.py`, `app/main.py`, and the domain routers for auth, settings, dashboard, launcher, billing, support, announcements, service status, integrations, and rewards.
+  - Verified existing tests already lock route registration and several DTO contracts in `tests/unit/test_router_registration.py`, `test_application_layer_foundation.py`, `test_dashboard_launcher_billing_schemas.py`, `test_support_announcements_status_schemas.py`, the domain API tests, and the rewards-only inventory guard `tests/unit/test_rewards_api_inventory.py`.
+  - Identified current gaps for the future Build Agent: there is no cross-domain frontend contract inventory doc; hidden `/_contract` routes exist only for profiles, addresses, and communication preferences; public pricing/product/about contracts referenced by the architecture docs are not implemented in runtime code and must be documented as future rather than invented.
+- Files changed:
+  - `specs/frontend_backend_contract_alignment.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - Do not implement new public pricing, product, testimonial, or marketing APIs.
+  - Do not build admin dashboards.
+  - Do not add database models, Alembic migrations, repository rewrites, worker changes, or new dependencies.
+  - Do not duplicate Pay commercial logic or make Discord linkage affect rewards/product access.
+- Risks/assumptions:
+  - Assumes the just-verified background-jobs/security spec is treated as complete even though `IMPLEMENTATION_PLAN.md` still lists it as the active spec.
+  - Assumes this workstream should prioritize documentation and regression honesty over broad runtime changes because most authenticated frontend endpoints and DTOs already exist.
+  - Public page contract coverage may need a later spec if John wants runtime APIs for pricing/product/about/testimonials rather than inventory-only future markers.
+- Next command to run:
+  - `./scripts/ralph-loop.sh build 1`
+- Date/time: 2026-04-19T11:18:00-05:00
+- Goal for this iteration: Planning-only correction of the active next-phase workstream after repo rehydration exposed plan/spec drift.
+- What I found (repo search summary): IMPLEMENTATION_PLAN.md had become internally inconsistent: the Active spec: line pointed to a non-existent hyphenated frontend-contract filename, while later narrative still instructed build mode to target the already-complete background-jobs/security spec. Repo searches confirmed the current authenticated browser surface is already implemented under /api/v1 across auth, settings, dashboard, launcher, billing, support, announcements, service status, rewards, and Discord integrations; route coverage exists in 	ests/unit/test_router_registration.py; model metadata still flows through pp/db/models/__init__.py, pp/db/bootstrap.py, and lembic/env.py; and the authoritative test topology remains docker-compose.test.yml.
+- What I changed: Corrected the implementation plan so the active spec path matches the actual frontend contract alignment spec file, marked background-jobs/security as complete in the narrative, updated the next recommended build action to target the first incomplete frontend-contract item, and clarified that this is the final queued roadmap workstream until a later spec-authoring pass is justified.
+- Why I changed: The next build run should not target a completed workstream or a mismatched spec path. Keeping the active-plan artifact honest prevents build-mode drift and keeps the roadmap aligned with the repo's current topology.
+- Updated Files:
+  - IMPLEMENTATION_PLAN.md
+  - progress/progress.txt
+- New Files:
+- Removed Files:
+- Tests run + results: Not run. This was a planning-only docs/spec correction with no runtime or test-surface changes.
+- Notes / risks:
+  - specs/frontend_backend_contract_alignment.json remains an uncommitted planning artifact in the current worktree, so the next build run should continue from that file rather than the stale hyphenated path.
+  - docs/architecture/Rewards_API_Application_Inventory.md is now historical and no longer reflects current repo reality outside the rewards slice, but it was not changed in this planning pass because the active correction needed to stay narrow.
+- Next: Run ./scripts/ralph-loop.sh build 1 against the first incomplete item in specs/frontend_backend_contract_alignment.json.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none- Date/time: 2026-04-19T11:21:00-05:00
+- Goal for this iteration: Append a clean corrective planning note after a shell-formatting artifact affected the immediately prior progress entry.
+- What I found (repo search summary): The prior append preserved file order at EOF but Powershell consumed backticks in that entry body, which made several file-path references hard to read. The underlying planning result did not change: IMPLEMENTATION_PLAN.md now points to specs/frontend_backend_contract_alignment.json as the active workstream, and the repo topology still confirms the authenticated /api/v1 contract surface is already present across the targeted domains.
+- What I changed: Appended this corrective entry only, without rewriting earlier progress history, so the append-only log remains readable and durable.
+- Why I changed: The repo rule is append-only progress. A follow-up entry is the smallest safe way to correct readability drift without mutating prior history.
+- Updated Files:
+  - progress/progress.txt
+- New Files:
+- Removed Files:
+- Tests run + results: Not run. Planning-only progress correction.
+- Notes / risks:
+  - The immediately prior entry remains in the file with formatting artifacts, but this corrective entry supersedes it for readability.
+- Next: Run ./scripts/ralph-loop.sh build 1 against the first incomplete item in specs/frontend_backend_contract_alignment.json.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none
+
+- Date/time: 2026-04-19T11:23:00-05:00
+- Goal for this iteration: Finalize a clean EOF planning entry after verifying the implementation-plan correction and append-only progress state.
+- What I found (repo search summary): The implementation plan now consistently marks background-jobs/security as complete and points build mode at specs/frontend_backend_contract_alignment.json. The progress log needed one explicit newline-separated closing entry so the newest durable artifact is easy to read at EOF.
+- What I changed: Appended this final newline-separated planning note at the absolute end of progress/progress.txt.
+- Why I changed: This preserves the append-only rule while making the latest durable planning state unambiguous for the next run.
+- Updated Files:
+  - progress/progress.txt
+- New Files:
+- Removed Files:
+- Tests run + results: Not run. Planning-only artifact cleanup.
+- Notes / risks:
+  - Earlier appended entries remain in place exactly as written to preserve append-only history.
+- Next: Run ./scripts/ralph-loop.sh build 1 against the first incomplete item in specs/frontend_backend_contract_alignment.json.
+- Sources used (only if needed; prefer official docs): none
+- Commit: none
+
+- Date/time: 2026-04-19T11:04:45.5591424-05:00
+- Active spec: specs/frontend_backend_contract_alignment.json
+- Selected item: fbca-010 - Author a Durable Frontend Contract Inventory for Implemented Account Surfaces
+- Repo search summary: Verified the canonical authenticated surface in app/main.py and app/api/routers/v1/__init__.py, confirmed browser-facing routers across auth/settings/dashboard/launcher/billing/support/announcements/service-status/integrations/rewards, found the hidden contract helper pattern only in profiles/addresses/communication-preferences, found the closest inventory precedent in docs/architecture/Rewards_API_Application_Inventory.md plus tests/unit/test_rewards_api_inventory.py, and confirmed public pricing/product/about contracts are not implemented in the current router/schema surface.
+- Files changed:
+  - docs/architecture/Frontend_Backend_Contract_Inventory.md
+  - tests/unit/test_frontend_contract_inventory.py
+  - specs/frontend_backend_contract_alignment.json
+  - progress/progress.txt
+- Tests run and results:
+  - python -m pytest tests/unit/test_frontend_contract_inventory.py -> blocked locally because pytest is not installed in the host Python environment
+  - python -m compileall app tests alembic -> passed
+  - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test -> passed, 369 passed in 7.11s
+- Blockers:
+  - none
+- Next recommended item: fbca-020 - Add Cross-Domain Contract Regression Coverage for Stable Frontend Payloads
+- Date/time: 2026-04-19T11:10:20.4510690-05:00
+- Active spec: specs/frontend_backend_contract_alignment.json
+- Selected item: fbca-020 - Add Cross-Domain Contract Regression Coverage for Stable Frontend Payloads
+- Repo search summary: Used `git ls-files`, `rg`, and router/schema reads to confirm canonical `/api/v1` registration in `app/api/routers/v1/__init__.py` and `app/main.py`; identified existing route coverage in `tests/unit/test_router_registration.py`; verified shared contract primitives in `app/schemas/common.py`; inspected representative DTO modules across auth, settings, dashboard, launcher, billing, support, announcements, service status, integrations, and rewards; and confirmed the gap was cross-domain regression depth rather than missing runtime routers.
+- Files changed:
+  - tests/unit/test_frontend_contract_regression.py
+  - specs/frontend_backend_contract_alignment.json
+  - progress/progress.txt
+- Tests run and results:
+  - python -m pytest tests/unit/test_frontend_contract_regression.py -> blocked locally because `pytest` is not installed in the host Python environment
+  - python -m compileall app tests alembic -> passed
+  - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test -> passed, 374 passed in 7.29s
+- Blockers:
+  - none
+- Next recommended item: fbca-030 - Close Minimal Contract Gaps Revealed by the Inventory and Regression Harness
+## 2026-04-19T11:14:19.2265688-05:00
+- Active spec: specs/frontend_backend_contract_alignment.json
+- Selected item: fbca-030 - Close Minimal Contract Gaps Revealed by the Inventory and Regression Harness
+- Repo search summary:
+  - git ls-files, git grep, rg, and grep -R confirmed the canonical account routers live under app/api/routers/v1/ and the new cross-domain contract tests target those versioned routers plus DTO modules under app/schemas/.
+  - Existing hidden /_contract helpers were present for profiles, addresses, and communication preferences, with matching describe_contract() service methods and router-registration tests.
+  - app/schemas/support.py already exposed SupportRouteContractResponse, but app/api/routers/v1/support.py and app/services/support_service.py lacked a matching hidden support contract endpoint, leaving tests/unit/test_frontend_contract_regression.py with an uncovered contract gap.
+- Files changed:
+  - app/api/routers/v1/support.py
+  - app/services/support_service.py
+  - docs/architecture/Frontend_Backend_Contract_Inventory.md
+  - specs/frontend_backend_contract_alignment.json
+  - tests/unit/test_frontend_contract_regression.py
+  - tests/unit/test_router_registration.py
+  - tests/unit/test_support_api.py
+- Tests run and results:
+  - python -m compileall app tests alembic -> passed
+  - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test -> passed, 376 passed in 7.15s
+- Blockers:
+  - none
+- Next recommended item: fbca-999 - Verify Frontend and Backend Contract Alignment
+
+2026-04-19T11:16:58.8184681-05:00
+- Active spec: specs/frontend_backend_contract_alignment.json
+- Selected item: fbca-999 - Verify Frontend and Backend Contract Alignment
+- Repo search summary:
+  - Used `git ls-files`, `git grep`, `rg`, and recursive file inventory reads to confirm the canonical `/api/v1` router surface is mounted through `app/api/routers/v1/__init__.py` into `app/main.py`, with implemented browser-facing routers in `auth.py`, `profiles.py`, `addresses.py`, `communication_preferences.py`, `dashboard.py`, `launcher.py`, `billing.py`, `support.py`, `announcements.py`, `service_status.py`, `integrations.py`, and nested rewards routing in `app/api/routers/v1/rewards.py`.
+  - Confirmed the contract-alignment artifacts already existed in `docs/architecture/Frontend_Backend_Contract_Inventory.md`, `tests/unit/test_frontend_contract_inventory.py`, `tests/unit/test_frontend_contract_regression.py`, `tests/unit/test_router_registration.py`, `tests/unit/test_support_api.py`, `app/api/routers/v1/support.py`, and `app/services/support_service.py`.
+  - Verified shared DTO and contract conventions remain centralized in `app/schemas/common.py` and route-specific safe DTO modules under `app/schemas/`, with existing tests already locking mutation-success envelopes, standard error shape, cursor pagination reuse, ownership nesting, and sensitive-field exclusions across the implemented account surfaces.
+- Files changed:
+  - `specs/frontend_backend_contract_alignment.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed, `376 passed in 7.49s`
+- Blockers:
+  - none
+- Next recommended item:
+  - The active frontend/backend contract-alignment spec is now fully complete; the next step is a spec-authoring or planning pass only if repo reality justifies a follow-up contract, public-page, or regression-hardening slice.

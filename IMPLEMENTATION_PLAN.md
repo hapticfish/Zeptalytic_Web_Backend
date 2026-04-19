@@ -1,6 +1,6 @@
 # Zeptalytic Web Backend Implementation Plan
 
-Active spec: specs/background_jobs_and_security_hardening.json
+Active spec: specs/frontend_backend_contract_alignment.json
 
 ## Current phase
 
@@ -52,13 +52,19 @@ The Discord integration application-flow spec is now complete:
 specs/discord_integration_application_flow.json
 ```
 
-The active workstream is now the background jobs/security hardening foundation:
+The background jobs/security hardening foundation spec is now complete:
 
 ```text
 specs/background_jobs_and_security_hardening.json
 ```
 
-The next recommended action is to run build mode against the first incomplete background-jobs/security item in roadmap order.
+The active workstream is now the frontend/backend contract alignment slice:
+
+```text
+specs/frontend_backend_contract_alignment.json
+```
+
+The next recommended action is to run build mode against the first incomplete frontend/backend contract-alignment item in roadmap order.
 
 ## Next-phase roadmap
 
@@ -221,7 +227,7 @@ The following workstreams are treated as complete and should not be re-opened un
 
 ## Next workstream to author after the active spec
 
-After the active background jobs/security hardening workstream is complete, the next spec to author or activate should be the frontend/backend contract alignment workstream from the roadmap.
+The roadmap sequence is currently on its final queued next-phase workstream. After the active frontend/backend contract alignment spec is complete, the next step should be a new spec-authoring or planning pass only if repo reality justifies a follow-up contract, public-page, or regression-hardening slice.
 
 ## Progress rule
 

@@ -9,6 +9,7 @@ from app.api.deps import get_auth_service, get_support_service
 from app.main import app
 from app.schemas.common import CursorPageInfo
 from app.schemas.support import (
+    SupportRouteContractResponse,
     SupportTicketCreateResponse,
     SupportTicketDetailResponse,
     SupportTicketListResponse,
@@ -74,6 +75,12 @@ class StubSupportService:
             created_at=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
             updated_at=datetime(2026, 4, 18, 12, 5, tzinfo=timezone.utc),
             attachment_count=0,
+        )
+
+    def describe_contract(self) -> SupportRouteContractResponse:
+        return SupportRouteContractResponse(
+            message="Support routes registered.",
+            action="create_ticket",
         )
 
     def list_tickets(
@@ -144,6 +151,28 @@ def _build_context(
 
 
 client = TestClient(app)
+
+
+def test_support_contract_endpoint_allows_authenticated_pending_verification_users() -> None:
+    context = _build_context()
+    auth_service = StubAuthService(context)
+    app.dependency_overrides[get_auth_service] = lambda: auth_service
+    app.dependency_overrides[get_support_service] = lambda: StubSupportService()
+
+    try:
+        client.cookies.set("zeptalytic_session", "support-token")
+        response = client.get("/api/v1/support/_contract")
+    finally:
+        client.cookies.clear()
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert auth_service.received_tokens == ["support-token"]
+    assert response.json() == {
+        "success": True,
+        "message": "Support routes registered.",
+        "action": "create_ticket",
+    }
 
 
 def test_support_ticket_endpoints_allow_authenticated_pending_verification_users() -> None:
@@ -249,6 +278,25 @@ def test_support_ticket_endpoints_require_authentication() -> None:
 
     try:
         response = client.get("/api/v1/support/tickets")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert_standard_error_response(
+        response,
+        status_code=401,
+        code="authentication_required",
+        message="Authentication is required.",
+        details={},
+    )
+
+
+def test_support_contract_endpoint_requires_authentication() -> None:
+    auth_service = StubAuthService(None)
+    app.dependency_overrides[get_auth_service] = lambda: auth_service
+    app.dependency_overrides[get_support_service] = lambda: StubSupportService()
+
+    try:
+        response = client.get("/api/v1/support/_contract")
     finally:
         app.dependency_overrides.clear()
 

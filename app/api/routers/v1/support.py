@@ -12,6 +12,7 @@ from app.api.deps import (
 )
 from app.core.config import settings
 from app.schemas.support import (
+    SupportRouteContractResponse,
     SupportTicketCreateRequest,
     SupportTicketCreateResponse,
     SupportTicketDetailResponse,
@@ -26,6 +27,15 @@ from app.utils.rate_limits import (
 )
 
 router = APIRouter(prefix="/support", tags=["support"])
+
+
+@router.get("/_contract", response_model=SupportRouteContractResponse, include_in_schema=False)
+def get_support_contract(
+    context: AuthenticatedSessionContext = Depends(require_authenticated_session_context),
+    service: SupportService = Depends(get_support_service),
+) -> SupportRouteContractResponse:
+    del context
+    return service.describe_contract()
 
 
 @router.get("/tickets", response_model=SupportTicketListResponse)

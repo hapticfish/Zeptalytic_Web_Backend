@@ -24,6 +24,7 @@ from app.db.vocabularies import (
 )
 from app.schemas.common import CursorPageInfo
 from app.schemas.support import (
+    SupportRouteContractResponse,
     SupportAttachmentMetadataReference,
     SupportAttachmentSummary,
     SupportTicketCreateRequest,
@@ -120,6 +121,12 @@ class SupportService:
         self._repository = repository
         self._attachment_storage_planner = (
             attachment_storage_planner or DefaultSupportAttachmentStoragePlanner()
+        )
+
+    def describe_contract(self) -> SupportRouteContractResponse:
+        return SupportRouteContractResponse(
+            message="Support routes registered.",
+            action="create_ticket",
         )
 
     def create_ticket(

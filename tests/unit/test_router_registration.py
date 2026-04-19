@@ -109,6 +109,7 @@ def test_versioned_dashboard_launcher_billing_routers_are_canonical_registration
     assert ("/billing/subscription-restart", ("POST",)) in billing_routes
     assert ("/billing/promo-code/validate", ("POST",)) in billing_routes
     assert ("/billing/promo-code/apply", ("POST",)) in billing_routes
+    assert ("/support/_contract", ("GET",)) in support_routes
     assert ("/support/tickets", ("GET",)) in support_routes
     assert ("/support/tickets", ("POST",)) in support_routes
     assert ("/support/tickets/{ticket_id}", ("GET",)) in support_routes
@@ -155,6 +156,7 @@ def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
     assert "/api/v1/addresses/me/{address_id}/primary" in routes
     assert "/api/v1/communication-preferences/_contract" in routes
     assert "/api/v1/communication-preferences/me" in routes
+    assert "/api/v1/support/_contract" in routes
     assert "/api/v1/support/tickets" in routes
     assert "/api/v1/support/tickets/{ticket_id}" in routes
     assert "/api/v1/announcements" in routes

@@ -1,0 +1,724 @@
+# Frontend Backend Contract Inventory
+
+## Purpose
+Capture the implemented authenticated/account-facing frontend contract surface in repo reality and map each stable page or modal surface to the concrete parent-backend endpoints, request/response DTOs, ownership boundaries, fallback behavior, authentication rules, email-verification rules, and Pay dependency posture that currently exist.
+
+This inventory is intentionally limited to the implemented parent account surface. It does not invent public pricing, product-page, testimonial, or about-page runtime APIs that are still unimplemented in this repo.
+
+## Current repo reality on 2026-04-19
+
+### Canonical route registration
+- `app/main.py` mounts the versioned API router under `settings.api_v1_prefix`, producing the canonical `/api/v1/...` browser-facing surface.
+- `app/api/routers/v1/__init__.py` includes the implemented domain and aggregation routers:
+  - `app/api/routers/v1/auth.py`
+  - `app/api/routers/v1/profiles.py`
+  - `app/api/routers/v1/addresses.py`
+  - `app/api/routers/v1/communication_preferences.py`
+  - `app/api/routers/v1/dashboard.py`
+  - `app/api/routers/v1/launcher.py`
+  - `app/api/routers/v1/billing.py`
+  - `app/api/routers/v1/support.py`
+  - `app/api/routers/v1/announcements.py`
+  - `app/api/routers/v1/service_status.py`
+  - `app/api/routers/v1/integrations.py`
+  - `app/api/routers/v1/rewards.py`
+- `tests/unit/test_router_registration.py` is the canonical regression for route registration across the authenticated browser surface.
+
+### Shared DTO and contract conventions already implemented
+- `app/schemas/common.py` defines:
+  - `MutationSuccessResponse`
+  - `ApiErrorResponse`
+  - `CursorPageResponse`
+- `tests/unit/test_application_layer_foundation.py` locks the standard mutation-success and error-envelope contract.
+- `tests/unit/test_dashboard_launcher_billing_schemas.py` and `tests/unit/test_support_announcements_status_schemas.py` lock cursor pagination reuse and safe DTO shape for billing, support, announcements, and status payloads.
+
+### Existing hidden contract helper pattern
+- Hidden `/_contract` routes exist today only for settings-oriented surfaces:
+  - `GET /api/v1/profiles/_contract`
+  - `GET /api/v1/addresses/_contract`
+  - `GET /api/v1/communication-preferences/_contract`
+  - `GET /api/v1/support/_contract`
+- These are implemented in `app/api/routers/v1/profiles.py`, `app/api/routers/v1/addresses.py`, and `app/api/routers/v1/communication_preferences.py`, with DTO support in:
+  - `app/schemas/profiles.py`
+  - `app/schemas/addresses.py`
+  - `app/schemas/communication_preferences.py`
+  - `app/api/routers/v1/support.py`
+  - `app/schemas/support.py`
+
+## Ownership labels used in this inventory
+- Parent-owned
+- Pay-owned live
+- Pay-derived projection
+- Static/display metadata
+- Future/not implemented
+
+## Implemented authenticated/account surfaces
+
+### Auth and session surfaces
+
+#### Signup and login
+- Frontend surfaces:
+  - registration/signup page
+  - login page
+- Endpoints:
+  - `POST /api/v1/auth/signup`
+  - `POST /api/v1/auth/login`
+- Request DTOs:
+  - `SignupRequest`
+  - `LoginRequest`
+- Response DTO:
+  - `AuthSessionResponse`
+- Response shape summary:
+  - `authenticated`
+  - `account`
+  - `session`
+  - `security`
+- Ownership source:
+  - account/session/security fields: Parent-owned
+- Fallback behavior:
+  - standard error response from `ApiErrorResponse` on validation/auth failures
+- Auth requirement:
+  - none
+- Email verification requirement:
+  - not required to call signup or login
+  - `AuthSessionResponse.security.email_verification_required` communicates restricted state
+- Pay dependency:
+  - indirect only; architecture requires Pay profile/customer creation during account creation, but this contract does not expose Pay truth directly
+- Runtime/tests:
+  - `app/api/routers/v1/auth.py`
+  - `app/schemas/auth.py`
+  - `tests/unit/test_auth_api.py`
+
+#### Email verification and recovery
+- Frontend surfaces:
+  - email verification flow
+  - resend verification flow
+  - forgot/reset password flow
+- Endpoints:
+  - `POST /api/v1/auth/verify-email`
+  - `POST /api/v1/auth/resend-verification`
+  - `POST /api/v1/auth/forgot-password`
+  - `POST /api/v1/auth/reset-password`
+- Request DTOs:
+  - `VerifyEmailRequest`
+  - authenticated resend request with no body DTO
+  - `ForgotPasswordRequest`
+  - `ResetPasswordRequest`
+- Response DTOs:
+  - `VerifyEmailResponse`
+  - `ResendEmailVerificationResponse`
+  - `ForgotPasswordResponse`
+  - `ResetPasswordResponse`
+- Ownership source:
+  - Parent-owned
+- Fallback behavior:
+  - mutation endpoints use the standard mutation-success shape
+  - validation/auth failures use the standard error envelope
+- Auth requirement:
+  - resend verification requires authenticated session
+  - other endpoints are public
+- Email verification requirement:
+  - resend verification allowed for authenticated unverified users
+  - verify/reset flows are designed to remove or recover the verification/password blocker
+- Pay dependency:
+  - none
+- Runtime/tests:
+  - `app/api/routers/v1/auth.py`
+  - `app/schemas/auth.py`
+  - `tests/unit/test_auth_api.py`
+
+#### Session and account security
+- Frontend surfaces:
+  - current session display
+  - password change
+  - 2FA enrollment and verification
+  - session/device management
+  - account closure
+- Endpoints:
+  - `GET /api/v1/auth/session`
+  - `POST /api/v1/auth/change-password`
+  - `POST /api/v1/auth/logout`
+  - `POST /api/v1/auth/2fa/enroll`
+  - `POST /api/v1/auth/2fa/verify`
+  - `POST /api/v1/auth/2fa/challenge`
+  - `POST /api/v1/auth/2fa/recovery-codes/regenerate`
+  - `POST /api/v1/auth/2fa/disable`
+  - `GET /api/v1/auth/sessions`
+  - `POST /api/v1/auth/sessions/{session_id}/revoke`
+  - `POST /api/v1/auth/sessions/revoke-others`
+  - `POST /api/v1/auth/account-closure`
+- Request DTOs:
+  - `ChangePasswordRequest`
+  - `LogoutRequest`
+  - `TwoFactorVerifyRequest`
+  - `TwoFactorCodeChallengeRequest`
+  - `TwoFactorProtectedActionRequest`
+  - `AccountClosureRequest`
+- Response DTOs:
+  - `AuthSessionResponse`
+  - `ChangePasswordResponse`
+  - `LogoutResponse`
+  - `TwoFactorEnrollmentResponse`
+  - `TwoFactorRecoveryCodesResponse`
+  - `TwoFactorChallengeResponse`
+  - `SessionDeviceListResponse`
+  - `RevokeSessionResponse`
+  - `RevokeOtherSessionsResponse`
+  - `AccountClosureResponse`
+- Ownership source:
+  - Parent-owned
+- Fallback behavior:
+  - standard error envelope on auth and protected-action failures
+- Auth requirement:
+  - authenticated session required for all listed endpoints
+  - normal authenticated verified session required for password change, 2FA, and account closure endpoints
+- Email verification requirement:
+  - enforced through the normal-authenticated guard where used
+- Pay dependency:
+  - none
+- Runtime/tests:
+  - `app/api/routers/v1/auth.py`
+  - `app/schemas/auth.py`
+  - `tests/unit/test_auth_api.py`
+
+### Settings, profile, address, and communication preference surfaces
+
+#### Profile card
+- Frontend surfaces:
+  - settings page profile card
+- Endpoints:
+  - `GET /api/v1/profiles/_contract`
+  - `GET /api/v1/profiles/me`
+  - `PATCH /api/v1/profiles/me`
+- Request DTO:
+  - `ProfileSettingsUpdateRequest`
+- Response DTOs:
+  - `ProfileRouteContractResponse`
+  - `ProfileSettingsReadResponse`
+- Response shape summary:
+  - `profile.account_id`
+  - `profile.username`
+  - `profile.email`
+  - `profile.display_name`
+  - `profile.phone`
+  - `profile.timezone`
+  - `profile.profile_image_url`
+  - `profile.preferred_language`
+  - `profile.discord`
+- Ownership source:
+  - profile fields: Parent-owned
+  - embedded Discord display summary: Parent-owned integration display state
+- Fallback behavior:
+  - standard error envelope on auth or validation failure
+- Auth requirement:
+  - normal authenticated verified session
+- Email verification requirement:
+  - required
+- Pay dependency:
+  - none
+- Runtime/tests:
+  - `app/api/routers/v1/profiles.py`
+  - `app/schemas/profiles.py`
+  - `tests/unit/test_profiles_api.py`
+
+#### Billing and mailing addresses
+- Frontend surfaces:
+  - settings page address management
+  - billing page billing address mini cards
+  - manage billing address modal
+- Endpoints:
+  - `GET /api/v1/addresses/_contract`
+  - `GET /api/v1/addresses/me`
+  - `POST /api/v1/addresses/me`
+  - `PATCH /api/v1/addresses/me/{address_id}`
+  - `DELETE /api/v1/addresses/me/{address_id}`
+  - `POST /api/v1/addresses/me/{address_id}/primary`
+- Request DTOs:
+  - `AddressCreateRequest`
+  - `AddressUpdateRequest`
+- Response DTOs:
+  - `AddressRouteContractResponse`
+  - `AddressListResponse`
+  - `AddressReadResponse`
+  - `AddressDeleteResponse`
+- Response shape summary:
+  - address summary includes `address_type`, `formatted_address`, `country_code`, and `is_primary`
+- Ownership source:
+  - Parent-owned
+- Fallback behavior:
+  - standard error envelope on auth, validation, or not-found failures
+- Auth requirement:
+  - normal authenticated verified session
+- Email verification requirement:
+  - required
+- Pay dependency:
+  - none; addresses stay parent-owned even when shown on billing surfaces
+- Runtime/tests:
+  - `app/api/routers/v1/addresses.py`
+  - `app/schemas/addresses.py`
+  - `tests/unit/test_addresses_api.py`
+
+#### Notification and communication preferences
+- Frontend surfaces:
+  - settings page notification preferences card
+- Endpoints:
+  - `GET /api/v1/communication-preferences/_contract`
+  - `GET /api/v1/communication-preferences/me`
+  - `PATCH /api/v1/communication-preferences/me`
+- Request DTO:
+  - `CommunicationPreferenceUpdateRequest`
+- Response DTOs:
+  - `CommunicationPreferenceRouteContractResponse`
+  - `CommunicationPreferenceReadResponse`
+- Response shape summary:
+  - `preferences.marketing_emails_enabled`
+  - `preferences.product_updates_enabled`
+  - `preferences.announcement_emails_enabled`
+- Ownership source:
+  - Parent-owned
+- Fallback behavior:
+  - standard error envelope on auth or validation failure
+- Auth requirement:
+  - normal authenticated verified session
+- Email verification requirement:
+  - required
+- Pay dependency:
+  - none
+- Runtime/tests:
+  - `app/api/routers/v1/communication_preferences.py`
+  - `app/schemas/communication_preferences.py`
+  - `tests/unit/test_communication_preferences_api.py`
+
+### Dashboard and launcher surfaces
+
+#### Dashboard home summary
+- Frontend surfaces:
+  - dashboard home
+- Endpoint:
+  - `GET /api/v1/dashboard/summary`
+- Request DTO:
+  - none
+- Response DTO:
+  - `DashboardSummaryResponse`
+- Response shape summary:
+  - `launcher`
+  - `billing`
+  - `parent_rewards_progress`
+  - `parent_system_statuses`
+  - `parent_notifications`
+- Ownership source:
+  - launcher: Pay-derived projection plus display metadata
+  - billing snapshot: Pay-derived projection/live safe summaries plus Parent-owned addresses
+  - rewards progress: Parent-owned
+  - system statuses: Parent-owned
+  - notifications: Parent-owned
+- Fallback behavior:
+  - Pay-derived sections can be null/empty-safe through nested billing and launcher contracts
+- Auth requirement:
+  - normal authenticated verified session
+- Email verification requirement:
+  - required
+- Pay dependency:
+  - partial; billing and launcher subsections are Pay-dependent, rewards/status/notification subsections are not
+- Runtime/tests:
+  - `app/api/routers/v1/dashboard.py`
+  - `app/schemas/dashboard.py`
+  - `tests/unit/test_dashboard_api.py`
+  - `tests/unit/test_dashboard_launcher_billing_schemas.py`
+
+#### Launcher page
+- Frontend surfaces:
+  - launcher page
+  - dashboard launcher card
+- Endpoint:
+  - `GET /api/v1/launcher/products`
+- Request DTO:
+  - none
+- Response DTO:
+  - `LauncherProductsResponse`
+- Response shape summary:
+  - `pay_integration_status`
+  - `products[].pay_projection`
+  - `products[].access_state`
+  - `products[].can_launch`
+  - `products[].launch_url`
+  - `products[].blocked_reason`
+  - `products[].status_message`
+- Ownership source:
+  - product access state: Parent presentation derived from Pay-derived projection and product-access state
+  - launch status messaging: Parent-owned display logic
+- Fallback behavior:
+  - `pay_integration_status` can be `available`, `projection_only`, or `unavailable`
+  - blocked launch state is returned instead of inventing trusted entitlement
+- Auth requirement:
+  - normal authenticated verified session
+- Email verification requirement:
+  - required
+- Pay dependency:
+  - yes; launcher relies on entitlement/projection trust but does not own commercial truth
+- Runtime/tests:
+  - `app/api/routers/v1/launcher.py`
+  - `app/schemas/launcher.py`
+  - `tests/unit/test_launcher_api.py`
+  - `tests/unit/test_dashboard_launcher_billing_schemas.py`
+
+### Billing surfaces
+
+#### Billing snapshot and page reads
+- Frontend surfaces:
+  - billing page snapshot
+  - subscription cards
+  - payment methods list
+  - transaction history
+- Endpoints:
+  - `GET /api/v1/billing/snapshot`
+  - `GET /api/v1/billing/subscriptions`
+  - `GET /api/v1/billing/payment-methods`
+  - `GET /api/v1/billing/transactions`
+- Request DTOs:
+  - none for snapshot/subscriptions/payment-methods
+  - query params for transactions: `limit`, `cursor`
+- Response DTOs:
+  - `BillingSnapshotResponse`
+  - `BillingSubscriptionsResponse`
+  - `BillingPaymentMethodsResponse`
+  - `BillingTransactionsResponse`
+- Response shape summary:
+  - `pay_integration_status`
+  - `pay_projection_billing`
+  - `parent_billing_addresses`
+  - `pay_subscriptions`
+  - `pay_payment_methods`
+  - `pay_transactions.page`
+- Ownership source:
+  - subscription/payment method/transaction data: Pay-owned live or Pay-derived projection
+  - billing addresses: Parent-owned
+- Fallback behavior:
+  - Pay-unavailable state is represented as `pay_integration_status = "unavailable"` with empty/null-safe Pay sections
+  - transaction history uses cursor pagination via `CursorPageResponse`
+- Auth requirement:
+  - authenticated session
+  - suspended users remain allowed on this surface by design
+- Email verification requirement:
+  - not required by the current authenticated-session guard
+- Pay dependency:
+  - yes; this surface is explicitly Pay-dependent but remains safe-summary only
+- Runtime/tests:
+  - `app/api/routers/v1/billing.py`
+  - `app/schemas/billing.py`
+  - `tests/unit/test_billing_api.py`
+  - `tests/unit/test_dashboard_launcher_billing_schemas.py`
+
+#### Billing actions and manage-subscription initiation
+- Frontend surfaces:
+  - checkout CTA
+  - manage subscription flows
+  - promo code validation/apply
+- Endpoints:
+  - `POST /api/v1/billing/checkout`
+  - `POST /api/v1/billing/subscription-change`
+  - `POST /api/v1/billing/subscription-cancel`
+  - `POST /api/v1/billing/subscription-restart`
+  - `POST /api/v1/billing/promo-code/validate`
+  - `POST /api/v1/billing/promo-code/apply`
+- Request DTOs:
+  - `BillingCheckoutInitiationRequest`
+  - `BillingSubscriptionChangeRequest`
+  - `BillingSubscriptionLifecycleRequest`
+  - `BillingPromoCodeRequest`
+- Response DTO:
+  - `BillingActionInitiationResponse`
+- Response shape summary:
+  - `success`
+  - `message`
+  - `action`
+  - `pay_result.pay_redirect_url`
+  - `pay_result.pay_session_id`
+  - `pay_result.pay_client_secret`
+- Ownership source:
+  - Parent-owned initiation contract
+  - Pay executes commercial behavior and returns the actionable redirect/session/client-secret result
+- Fallback behavior:
+  - blocked action returns the standard error envelope instead of local commercial mutation
+- Auth requirement:
+  - authenticated session
+- Email verification requirement:
+  - not required by the current router guard
+- Pay dependency:
+  - yes; actions delegate to Pay and must not establish local commercial truth
+- Runtime/tests:
+  - `app/api/routers/v1/billing.py`
+  - `app/schemas/billing.py`
+  - `tests/unit/test_billing_api.py`
+
+### Support, announcements, and service status surfaces
+
+#### Support page and support modal
+- Frontend surfaces:
+  - support page ticket list/detail
+  - support modal submission
+- Endpoints:
+  - `GET /api/v1/support/_contract`
+  - `GET /api/v1/support/tickets`
+  - `GET /api/v1/support/tickets/{ticket_id}`
+  - `POST /api/v1/support/tickets`
+- Request DTO:
+  - `SupportTicketCreateRequest`
+- Response DTOs:
+  - `SupportRouteContractResponse`
+  - `SupportTicketListResponse`
+  - `SupportTicketDetailResponse`
+  - `SupportTicketCreateResponse`
+- Response shape summary:
+  - request body supports `request_type`, `related_product_code`, `priority`, `subject`, `description`, `attachments`
+  - list response uses cursor pagination
+  - create response extends the shared mutation-success pattern
+- Ownership source:
+  - Parent-owned
+- Fallback behavior:
+  - support remains available to pending-verification users
+  - standard error envelope used for restricted/not-found/auth failures
+- Auth requirement:
+  - authenticated session
+- Email verification requirement:
+  - not required for this authenticated surface
+- Pay dependency:
+  - none
+- Runtime/tests:
+  - `app/api/routers/v1/support.py`
+  - `app/schemas/support.py`
+  - `tests/unit/test_support_api.py`
+  - `tests/unit/test_support_announcements_status_schemas.py`
+
+#### Announcement feed
+- Frontend surfaces:
+  - dashboard notification feed
+  - support page announcement reads
+- Endpoint:
+  - `GET /api/v1/announcements`
+- Request DTO:
+  - none
+  - query params: `limit`, `cursor`, `product_code`
+- Response DTO:
+  - `AnnouncementListResponse`
+- Response shape summary:
+  - cursor-paginated `items`
+  - each item carries `scope`, `product_code`, `title`, `body`, `severity`, `published_at`, `expires_at`
+- Ownership source:
+  - Parent-owned
+- Fallback behavior:
+  - empty list is safe when no active announcements match filters
+- Auth requirement:
+  - authenticated session
+- Email verification requirement:
+  - not required by the current router guard
+- Pay dependency:
+  - none
+- Runtime/tests:
+  - `app/api/routers/v1/announcements.py`
+  - `app/schemas/announcements.py`
+  - `tests/unit/test_announcement_api.py`
+  - `tests/unit/test_support_announcements_status_schemas.py`
+
+#### Product service status
+- Frontend surfaces:
+  - dashboard system status card
+  - support page product status read
+- Endpoint:
+  - `GET /api/v1/service-status`
+- Request DTO:
+  - none
+  - query param: `product_code`
+- Response DTO:
+  - `ServiceStatusListResponse`
+- Response shape summary:
+  - `items[].product_code`
+  - `items[].status`
+  - `items[].message`
+  - `items[].updated_at`
+- Ownership source:
+  - Parent-owned
+- Fallback behavior:
+  - safe empty list if no status rows are available for the current filter
+- Auth requirement:
+  - authenticated session
+- Email verification requirement:
+  - not required by the current router guard
+- Pay dependency:
+  - none
+- Runtime/tests:
+  - `app/api/routers/v1/service_status.py`
+  - `app/schemas/service_status.py`
+  - `tests/unit/test_service_status_api.py`
+  - `tests/unit/test_support_announcements_status_schemas.py`
+
+### Rewards surfaces
+
+#### Rewards summary
+- Frontend surfaces:
+  - dashboard milestone/progress card
+  - rewards page summary
+- Endpoint:
+  - `GET /api/v1/rewards/me/summary`
+- Request DTO:
+  - none
+- Response DTO:
+  - `RewardSummaryResponse`
+- Response shape summary:
+  - `current_points`
+  - `current_tier`
+  - `current_tier_progress_points`
+  - `next_milestone`
+  - `active_perks`
+  - `earned_badges`
+- Ownership source:
+  - Parent-owned
+- Fallback behavior:
+  - rewards remain readable independently of Pay availability
+- Auth requirement:
+  - normal authenticated verified session
+- Email verification requirement:
+  - required
+- Pay dependency:
+  - no direct dependency
+- Runtime/tests:
+  - `app/api/routers/rewards_summary.py`
+  - `app/schemas/reward_summary.py`
+  - `tests/unit/test_rewards_summary_api.py`
+
+#### Objectives and completion queue
+- Frontend surfaces:
+  - rewards page objectives view
+  - objectives completion queue presentation
+- Endpoints:
+  - `GET /api/v1/rewards/me/objectives`
+  - `GET /api/v1/rewards/me/notifications`
+  - `POST /api/v1/rewards/me/notifications/{notification_id}/seen`
+  - `POST /api/v1/rewards/me/notifications/skip-all`
+- Request DTOs:
+  - none for reads
+  - no body DTO for seen/skip-all actions
+- Response DTOs:
+  - `RewardObjectivesResponse`
+  - `RewardNotificationQueueResponse`
+  - `RewardNotificationStateChangeResponse`
+  - `RewardNotificationSkipAllResponse`
+- Response shape summary:
+  - objective groups with nested objective progress and rewards
+  - ordered notification queue with objective/reward/badge/reward_event references
+- Ownership source:
+  - Parent-owned
+- Fallback behavior:
+  - queue reads can safely return empty notifications
+- Auth requirement:
+  - normal authenticated verified session
+- Email verification requirement:
+  - required
+- Pay dependency:
+  - no direct dependency for the browser contract
+- Runtime/tests:
+  - `app/api/routers/reward_objectives.py`
+  - `app/api/routers/reward_notifications.py`
+  - `app/schemas/reward_objectives.py`
+  - `app/schemas/reward_notifications.py`
+  - `tests/unit/test_reward_objectives_api.py`
+  - `tests/unit/test_reward_notifications_api.py`
+
+#### Badge gallery
+- Frontend surfaces:
+  - rewards page badge gallery
+- Endpoint:
+  - `GET /api/v1/rewards/me/badges`
+- Request DTO:
+  - none
+- Response DTO:
+  - `RewardBadgeGalleryResponse`
+- Response shape summary:
+  - `badges[].badge_code`
+  - `badges[].display_name`
+  - `badges[].description`
+  - `badges[].icon_ref`
+  - `badges[].earned`
+  - `badges[].earned_at`
+- Ownership source:
+  - Parent-owned
+- Fallback behavior:
+  - empty badge list is safe
+- Auth requirement:
+  - normal authenticated verified session
+- Email verification requirement:
+  - required
+- Pay dependency:
+  - none
+- Runtime/tests:
+  - `app/api/routers/reward_badges.py`
+  - `app/schemas/reward_badges.py`
+  - `tests/unit/test_reward_badges_api.py`
+
+### Discord integration surfaces
+
+#### Integrations card and Discord connect flow
+- Frontend surfaces:
+  - settings integrations card
+  - Discord connect callback/disconnect flow
+- Endpoints:
+  - `GET /api/v1/integrations/discord`
+  - `POST /api/v1/integrations/discord/connect`
+  - `GET /api/v1/integrations/discord/callback`
+  - `POST /api/v1/integrations/discord/disconnect`
+- Request DTOs:
+  - none for status/connect/disconnect
+  - query params for callback: `code`, `state`
+- Response DTOs:
+  - `DiscordIntegrationReadResponse`
+  - `DiscordConnectInitiationResponse`
+- Response shape summary:
+  - read response exposes `discord.account_id`, `discord.username`, `discord.integration_status`
+  - connect response exposes `authorization_url`
+- Ownership source:
+  - current linkage display state: Parent-owned
+  - OAuth execution depends on external Discord interaction but does not alter rewards/access rules
+- Fallback behavior:
+  - callback validation failures use the standard error envelope
+  - disconnected or pending linkage is represented in `integration_status`
+- Auth requirement:
+  - normal authenticated verified session
+- Email verification requirement:
+  - required
+- Pay dependency:
+  - none
+- Runtime/tests:
+  - `app/api/routers/v1/integrations.py`
+  - `app/schemas/integrations.py`
+  - `tests/unit/test_discord_integration_api.py`
+
+## Shared contract behaviors locked by existing tests
+- Standard mutation-success and error envelopes:
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_api_error_contract.py`
+- Cursor pagination reuse:
+  - `tests/unit/test_dashboard_launcher_billing_schemas.py`
+  - `tests/unit/test_support_announcements_status_schemas.py`
+- Route registration:
+  - `tests/unit/test_router_registration.py`
+- Safe-field constraints across auth, billing, support, rewards, and Discord:
+  - `tests/unit/test_auth_api.py`
+  - `tests/unit/test_billing_api.py`
+  - `tests/unit/test_support_api.py`
+  - `tests/unit/test_discord_integration_api.py`
+  - `tests/unit/test_rewards_summary_api.py`
+  - `tests/unit/test_reward_objectives_api.py`
+  - `tests/unit/test_reward_notifications_api.py`
+  - `tests/unit/test_reward_badges_api.py`
+
+## Explicitly unimplemented public or future surfaces
+- Public home page backend APIs: Future/not implemented
+- Product page catalog and feature APIs: Future/not implemented
+- Pricing page plan catalog APIs: Future/not implemented
+- About-page testimonial/review APIs: Future/not implemented
+
+Repo evidence for this boundary:
+- no public pricing or product catalog routers are registered in `app/api/routers/v1/__init__.py`
+- no public pricing or product catalog schemas exist under `app/schemas/`
+- the active spec `specs/frontend_backend_contract_alignment.json` explicitly scopes these public contracts as future rather than authorizing new runtime endpoints
+- `docs/architecture/Frontend_Backend_Contract_Map.md` mentions these surfaces as desired contracts, but current repo reality does not yet implement them
