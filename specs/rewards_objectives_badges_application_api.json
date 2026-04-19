@@ -1,0 +1,202 @@
+{
+  "id": "rewards-objectives-badges-application-api",
+  "title": "Rewards, Objectives, and Badges Application API",
+  "status": "active",
+  "owner": "Zeptalytic Web Backend",
+  "purpose": "Finish the roadmap-aligned rewards/objectives/badges application workstream by building on the earlier completed rewards API slice instead of duplicating it. This spec focuses on the remaining browser-facing and application-layer gaps: aligning the rewards API surface with the authenticated `/api/v1` conventions used elsewhere in the repo, adding an explicit badge-gallery read surface, and introducing a worker-ready reward-event ingestion skeleton that reuses the existing progression primitives. It intentionally does not reopen reward schema or migration work, duplicate Pay commercial rules, create admin reward tools, add raw frontend reward-award writes, or broaden into Discord-linked reward behavior.",
+  "context": {
+    "summary": "The implementation plan now treats support/announcements/service-status as complete and explicitly identifies `specs/rewards_objectives_badges_application_api.json` as the next rewards workstream to author or activate. Repo reality shows a substantial earlier rewards slice already exists under the older completed `specs/rewards_api_application_layer.json` spec, but that slice predates the current roadmap naming and leaves a few material gaps: the canonical rewards routes still expose arbitrary `{account_id}` path parameters instead of following the authenticated self-service pattern used by other `/api/v1` routers, there is no dedicated badge gallery repository or service module, and there is no internal reward-event ingestion application seam that future workers or trusted product events can call without reaching directly into repositories.",
+    "source_docs": [
+      "docs/architecture/Spec_Authoring_and_Harness_Workflow.md",
+      "docs/architecture/Parent_Backend_Application_Architecture.md",
+      "docs/architecture/Parent_Backend_API_Contract_Standards.md",
+      "docs/architecture/Parent_Backend_Repository_Layer_Design.md",
+      "docs/architecture/Parent_Backend_Service_Layer_Design.md",
+      "docs/architecture/Frontend_Backend_Contract_Map.md",
+      "docs/architecture/Rewards_Application_and_Notification_Flows.md",
+      "docs/architecture/Background_Jobs_Sync_and_Event_Processing.md",
+      "docs/architecture/Security_Operational_Control_Guide.md",
+      "docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md",
+      "docs/architecture/Rewards_Objectives_Badges_Domain_Decision_Record.md",
+      "docs/architecture/Rewards_Objectives_Badges_UI_Interaction_Reference.md",
+      "docs/architecture/Rewards_Objectives_Badges_Data_Model_Reference.md",
+      "docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md"
+    ],
+    "previous_specs_or_dependencies": [
+      "specs/application_layer_foundation.json",
+      "specs/auth_session_account_security.json",
+      "specs/rewards_api_application_layer.json",
+      "specs/dashboard_launcher_billing_aggregation_api.json",
+      "specs/support_announcements_service_status_api.json",
+      "specs/next_phase_spec_sequence.json"
+    ],
+    "repo_reality_summary": [
+      "`IMPLEMENTATION_PLAN.md` now says the support slice is complete and explicitly names `specs/rewards_objectives_badges_application_api.json` as the next rewards workstream after support, even though the older completed `specs/rewards_api_application_layer.json` already implemented an initial rewards summary/objectives/notifications slice.",
+      "Existing rewards application files already cover a large baseline: `app/db/repositories/reward_summary_repository.py`, `app/db/repositories/reward_objective_repository.py`, `app/db/repositories/reward_notification_repository.py`, `app/db/repositories/reward_progression_repository.py`, `app/services/reward_summary_service.py`, `app/services/reward_objective_service.py`, `app/services/reward_notification_service.py`, `app/services/reward_progression_service.py`, `app/schemas/reward_summary.py`, `app/schemas/reward_objectives.py`, and `app/schemas/reward_notifications.py`.",
+      "`app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, and `app/api/routers/reward_notifications.py` already define browser-facing reward routes, and `app/api/routers/v1/rewards.py` mounts them under `/api/v1/rewards`. However, those routers still use `/{account_id}/...` route shapes and build their own DB-backed dependencies through `get_db`, unlike the newer authenticated `me`-style v1 routers for profiles, addresses, dashboard, launcher, billing, support, announcements, and service status.",
+      "`app/api/deps.py` currently exposes reward-summary construction only indirectly through `get_dashboard_service`; there are no dedicated `get_reward_summary_service`, `get_reward_objective_service`, `get_reward_notification_service`, or progression/ingestion dependencies that match the rest of the application-layer wiring pattern.",
+      "`app/api/exception_handlers.py` already translates `RewardSummaryNotFoundError`, `RewardObjectivesNotFoundError`, `RewardNotificationQueueNotFoundError`, and `RewardNotificationNotFoundError` into the standard error envelope, so the next spec should reuse that contract instead of inventing a separate rewards error format.",
+      "`app/db/repositories/reward_summary_repository.py` already reads active reward grants and earned badges for the summary page, but there is no dedicated badge-gallery repository or service that can provide a richer badge surface such as earned vs locked-visible badges while remaining browser-safe and parent-owned.",
+      "`app/services/reward_progression_service.py` already exposes internal command objects for point awards, reversals, objective completion, and notification queueing. That gives the repo a persistence-ready progression primitive, but there is still no explicit application service for trusted reward-event ingestion from future workers or product-originated events, and no test that locks the no-frontend-direct-award boundary in that application seam.",
+      "Focused tests already exist for the current rewards slice in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/unit/test_reward_notifications_api.py`, `tests/unit/test_reward_notification_service.py`, `tests/unit/test_reward_progression_service.py`, `tests/unit/test_reward_progression_repository.py`, `tests/unit/test_router_registration.py`, and `tests/unit/test_application_layer_foundation.py`. Those tests currently lock the `{account_id}` route shape and the existing router-module layout, so a follow-on build iteration must update them carefully and honestly rather than treating the old shape as immutable."
+    ]
+  },
+  "global_guardrails": [
+    "Search before editing.",
+    "Do not expand scope beyond this spec.",
+    "Do not add dependencies unless John explicitly approves them.",
+    "Do not duplicate Pay commercial business rules in parent.",
+    "Do not store sensitive payment details in parent.",
+    "Do not build admin dashboards unless explicitly scoped.",
+    "Do not redesign stable frontend pages.",
+    "Do not make Discord linkage affect rewards or product access unless the spec explicitly says so.",
+    "Do not allow frontend APIs to directly award points/rewards/badges.",
+    "Do not return raw ORM objects from routers.",
+    "Do not mark incomplete items complete.",
+    "Append progress entries to the absolute end of `progress/progress.txt`.",
+    "Run `python -m compileall app tests alembic` before marking implementation items complete.",
+    "Run `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` before marking implementation items complete.",
+    "Treat the rewards models, migrations, and earlier rewards repositories or services as existing substrate; avoid database-model or Alembic changes unless a tiny support fix is clearly forced by repo reality.",
+    "Keep browser-facing rewards APIs read-oriented except for notification presentation actions such as mark viewed or skip queued items.",
+    "Do not expose arbitrary cross-account rewards reads in normal browser routes when an authenticated self-service pattern can be used instead.",
+    "Any reward-event ingestion seam created by this spec must be internal or trusted-caller oriented only; do not expose raw points/objective-award endpoints to the frontend.",
+    "Preserve the rule that milestone rewards auto-present through progress-bar flows while non-milestone completions remain objectives-page queue driven."
+  ],
+  "expected_paths": {
+    "may_create_or_update": [
+      "app/api/deps.py",
+      "app/api/routers/v1/rewards.py",
+      "app/api/routers/rewards_summary.py",
+      "app/api/routers/reward_objectives.py",
+      "app/api/routers/reward_notifications.py",
+      "app/api/routers/reward_badges.py",
+      "app/api/exception_handlers.py",
+      "app/schemas/__init__.py",
+      "app/schemas/reward_summary.py",
+      "app/schemas/reward_objectives.py",
+      "app/schemas/reward_notifications.py",
+      "app/schemas/reward_badges.py",
+      "app/schemas/common.py",
+      "app/services/__init__.py",
+      "app/services/reward_summary_service.py",
+      "app/services/reward_objective_service.py",
+      "app/services/reward_notification_service.py",
+      "app/services/reward_progression_service.py",
+      "app/services/reward_badge_service.py",
+      "app/services/reward_event_ingestion_service.py",
+      "app/db/repositories/__init__.py",
+      "app/db/repositories/reward_summary_repository.py",
+      "app/db/repositories/reward_objective_repository.py",
+      "app/db/repositories/reward_notification_repository.py",
+      "app/db/repositories/reward_progression_repository.py",
+      "app/db/repositories/reward_badge_repository.py",
+      "tests/unit/test_application_layer_foundation.py",
+      "tests/unit/test_router_registration.py",
+      "tests/unit/test_rewards_summary_api.py",
+      "tests/unit/test_reward_objectives_api.py",
+      "tests/unit/test_reward_notifications_api.py",
+      "tests/unit/test_reward_notification_service.py",
+      "tests/unit/test_reward_progression_service.py",
+      "tests/unit/test_reward_badges_api.py",
+      "tests/unit/test_reward_badge_service.py",
+      "tests/unit/test_reward_event_ingestion_service.py",
+      "tests/unit/test_dashboard_service.py",
+      "tests/unit/test_api_error_contract.py"
+    ],
+    "must_not_modify_without_strong_reason": [
+      "alembic/",
+      "app/db/models/",
+      "app/api/routers/v1/auth.py",
+      "app/api/routers/v1/profiles.py",
+      "app/api/routers/v1/addresses.py",
+      "app/api/routers/v1/communication_preferences.py",
+      "app/api/routers/v1/support.py",
+      "app/api/routers/v1/announcements.py",
+      "app/api/routers/v1/service_status.py",
+      "app/api/routers/v1/dashboard.py",
+      "app/api/routers/v1/launcher.py",
+      "app/api/routers/v1/billing.py",
+      "app/services/auth_service.py",
+      "app/services/dashboard_service.py",
+      "app/services/billing_summary_service.py",
+      "app/services/launcher_service.py",
+      "app/integrations/pay_client.py",
+      "tests/integration/",
+      "specs/application_layer_foundation.json",
+      "specs/auth_session_account_security.json",
+      "specs/rewards_api_application_layer.json",
+      "specs/dashboard_launcher_billing_aggregation_api.json",
+      "specs/support_announcements_service_status_api.json"
+    ]
+  },
+  "items": [
+    {
+      "id": "roba-010",
+      "title": "Align Rewards Routes With Authenticated `/api/v1` Self-Service Conventions",
+      "description": "Refactor the canonical rewards summary, objectives, and notification routes so they follow the same authenticated browser contract style used by the other `/api/v1` routers. The rewards browser surface should stop depending on arbitrary path-supplied account IDs for normal user access, should use shared dependency providers from `app/api/deps.py`, and should keep summary/objectives reads and notification presentation writes behind the appropriate session and verification guards.",
+      "acceptance_criteria": [
+        "The canonical rewards route registration under `app/api/routers/v1/rewards.py` uses explicit dependency helpers from `app/api/deps.py` for reward summary, objective, and notification services instead of constructing service dependencies ad hoc inside legacy router modules.",
+        "Normal browser-facing rewards endpoints use an authenticated self-service route pattern such as `/api/v1/rewards/me/...` or an equivalently scoped contract, and do not allow arbitrary account ID lookups through the user-facing router surface without a documented strong reason.",
+        "Rewards reads and notification presentation writes use the appropriate auth guard level for the rewards pages, consistent with the auth architecture and the rest of the repo's `me`-style router patterns.",
+        "Existing rewards tests and router-registration tests are updated to lock the new canonical route shape and to verify that the standard error envelope still applies after the route contract change.",
+        "Any backward-compatibility decision for the old `{account_id}` paths is explicit in code and tests rather than accidental."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-19T00:55:08.2163026-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "roba-020",
+      "title": "Add a Dedicated Badge Gallery Read Slice",
+      "description": "Implement a focused badge-gallery read surface for the rewards pages on top of the existing rewards data model. The new slice should provide safe DTOs, repository queries, a service seam, and a versioned route that expose earned badges and any safe visible badge metadata needed by the frontend without leaking internal IDs or reopening reward schema work.",
+      "acceptance_criteria": [
+        "A dedicated badge schema module and response contract exist for browser-safe badge gallery reads, and the DTOs distinguish earned vs not-yet-earned display state only to the extent supported by current repo reality and source docs.",
+        "A badge-focused repository and service seam exist or the existing reward summary repository is safely refactored to provide a dedicated badge read model without collapsing unrelated concerns into one generic file.",
+        "A versioned rewards route exposes the badge gallery under the canonical rewards router surface and returns only explicit safe DTOs.",
+        "The implementation preserves the rewards-page-as-summary and objectives-page-as-detail split, so the badge gallery does not become a backdoor for objective-completion writes or admin reward management.",
+        "Focused tests cover normal badge gallery reads, empty badge states, and route registration or error-shape behavior for the new badge surface."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-19T01:01:49.2251318-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "roba-030",
+      "title": "Introduce a Worker-Ready Reward Event Ingestion Skeleton",
+      "description": "Add an internal application-layer seam for trusted reward-event ingestion that future workers, Pay-derived projection flows, or authenticated product-originated events can call. This should build on the existing progression service commands rather than bypassing them, should remain idempotency-ready and testable, and should not expose raw reward-award mutation endpoints to the browser frontend.",
+      "acceptance_criteria": [
+        "A dedicated internal service or orchestration module exists for trusted reward-event ingestion and composes the existing progression primitives for objective progress updates, point awards or reversals, and notification queue creation where applicable.",
+        "The ingestion seam is explicitly non-browser-facing in this spec: no public frontend route directly awards points, completes objectives, or creates reward events.",
+        "The new application seam documents or encodes enough command metadata to remain worker-ready and future idempotency-friendly, such as source type, source reference, or event identifiers already supported by current progression commands.",
+        "The implementation keeps Pay-derived commercial criteria outside parent reward logic; if Pay-derived events are referenced, the parent layer only reacts after trusted qualifying events are supplied.",
+        "Focused tests cover normal orchestration behavior and at least one guardrail such as missing trusted subject data, duplicate event handling strategy, or refusal to expose a raw browser award flow."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-19T01:06:46.7448063-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "roba-999",
+      "title": "Verify Rewards, Objectives, and Badges Slice Completion",
+      "description": "Run the required verification suite once the rewards contract alignment, badge gallery read slice, and internal event-ingestion seam are in place. Only mark the spec complete when the rewards browser and application surfaces are implemented without reopening schema work or exposing forbidden frontend mutation behavior.",
+      "acceptance_criteria": [
+        "`python -m compileall app tests alembic` passes.",
+        "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+        "Focused tests cover the canonical rewards route registration, rewards API contract behavior, badge gallery reads, and the new internal reward-event ingestion seam.",
+        "Progress is appended at EOF, and only fully completed items are marked complete."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-19T01:08:50.8026825-05:00",
+      "completed_by": "codex"
+    }
+  ],
+  "completion_definition": [
+    "All spec items have `passes=true`.",
+    "Relevant tests are added or updated for the canonical rewards route shape, rewards API behavior, badge gallery reads, and internal reward-event ingestion orchestration.",
+    "`python -m compileall app tests alembic` passes.",
+    "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+    "`progress/progress.txt` is updated at EOF.",
+    "No unrelated dirty files are introduced.",
+    "No incomplete item is marked complete."
+  ]
+}

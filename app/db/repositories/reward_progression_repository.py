@@ -74,9 +74,46 @@ class RewardNotificationQueueRecord:
     metadata: dict[str, object]
 
 
+@dataclass(slots=True)
+class RewardEventSourceRecord:
+    event_id: UUID
+    account_id: UUID
+    source_type: str
+    source_reference: str | None
+    event_type: str
+    created_at: datetime
+
+
 class RewardProgressionRepository:
     def __init__(self, db: Session) -> None:
         self._db = db
+
+    def find_event_by_source(
+        self,
+        *,
+        account_id: UUID,
+        source_type: str,
+        source_reference: str,
+    ) -> RewardEventSourceRecord | None:
+        existing_event = self._db.scalar(
+            select(RewardEvent).where(
+                RewardEvent.account_id == account_id,
+                RewardEvent.source_type == source_type,
+                RewardEvent.source_reference == source_reference,
+                RewardEvent.is_reversal.is_(False),
+            )
+        )
+        if existing_event is None:
+            return None
+
+        return RewardEventSourceRecord(
+            event_id=existing_event.id,
+            account_id=existing_event.account_id,
+            source_type=existing_event.source_type,
+            source_reference=existing_event.source_reference,
+            event_type=existing_event.event_type,
+            created_at=existing_event.created_at,
+        )
 
     def award_points(
         self,

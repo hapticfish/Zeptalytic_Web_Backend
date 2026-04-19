@@ -77,6 +77,7 @@ from app.schemas.dashboard import (
     DashboardSummaryResponse,
     DashboardSystemStatusSummary,
 )
+from app.schemas.reward_badges import RewardBadgeGalleryItem, RewardBadgeGalleryResponse
 from app.schemas.launcher import (
     LauncherBlockingReason,
     LauncherPayProjectionSummary,
@@ -162,6 +163,8 @@ __all__ = [
     "ProfileSettingsReadResponse",
     "ProfileSettingsSummary",
     "ProfileSettingsUpdateRequest",
+    "RewardBadgeGalleryItem",
+    "RewardBadgeGalleryResponse",
     "ResendEmailVerificationResponse",
     "RevokeOtherSessionsResponse",
     "RevokeSessionResponse",

@@ -1,6 +1,6 @@
 # Zeptalytic Web Backend Implementation Plan
 
-Active spec: specs/support_announcements_service_status_api.json
+Active spec: specs/rewards_objectives_badges_application_api.json
 
 ## Current phase
 
@@ -22,13 +22,19 @@ The parent-to-Pay integration and projection foundation spec is complete:
 specs/parent_pay_integration_and_projection_foundation.json
 ```
 
-The current active workstream is support/announcements/service status:
+The support/announcements/service status spec is now complete:
 
 ```text
 specs/support_announcements_service_status_api.json
 ```
 
-The next recommended action is to run planning/build work against that active spec in roadmap order.
+The rewards/objectives/badges application spec is now complete:
+
+```text
+specs/rewards_objectives_badges_application_api.json
+```
+
+The next recommended action is to author and activate the Discord integration application-flow spec in roadmap order.
 
 ## Next-phase roadmap
 
@@ -191,13 +197,13 @@ The following workstreams are treated as complete and should not be re-opened un
 
 ## Next workstream to author after the active spec
 
-After the active support/announcements/service status workstream is complete, the next spec to author or activate should be the rewards/objectives/badges application workstream from the roadmap:
+After the active rewards/objectives/badges application workstream is complete, the next spec to author or activate should be the Discord integration application-flow workstream from the roadmap:
 
 ```text
-specs/rewards_objectives_badges_application_api.json
+specs/discord_integration_application_flow.json
 ```
 
-That follow-on spec should stay focused on rewards/objectives/badges application behavior and preserve the roadmap order from `specs/next_phase_spec_sequence.json`.
+That follow-on spec should stay focused on Discord application behavior and preserve the roadmap order from `specs/next_phase_spec_sequence.json`.
 
 ## Progress rule
 

@@ -18,6 +18,10 @@ from app.services import (
     LauncherService,
     PayProjectionService,
     ProfileSettingsService,
+    RewardBadgeService,
+    RewardNotificationService,
+    RewardObjectiveService,
+    RewardSummaryService,
     ServiceStatusService,
     SupportService,
     build_announcement_service,
@@ -29,6 +33,9 @@ from app.services import (
     build_launcher_service,
     build_pay_projection_service,
     build_profile_settings_service,
+    build_reward_badge_service,
+    build_reward_notification_service,
+    build_reward_objective_service,
     build_reward_summary_service,
     build_service_status_service,
     build_support_service,
@@ -81,6 +88,24 @@ def get_communication_preference_service(
     db: Session = Depends(get_db),
 ) -> CommunicationPreferenceService:
     return build_communication_preference_service(db)
+
+
+def get_reward_summary_service(db: Session = Depends(get_db)) -> RewardSummaryService:
+    return build_reward_summary_service(db)
+
+
+def get_reward_badge_service(db: Session = Depends(get_db)) -> RewardBadgeService:
+    return build_reward_badge_service(db)
+
+
+def get_reward_objective_service(db: Session = Depends(get_db)) -> RewardObjectiveService:
+    return build_reward_objective_service(db)
+
+
+def get_reward_notification_service(
+    db: Session = Depends(get_db),
+) -> RewardNotificationService:
+    return build_reward_notification_service(db)
 
 
 def get_pay_projection_service(

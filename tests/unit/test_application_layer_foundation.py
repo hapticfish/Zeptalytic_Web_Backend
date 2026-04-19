@@ -47,6 +47,8 @@ from app.services import (
     PayProjectionService,
     ProfileSettingsService,
     LauncherService,
+    RewardBadgeService,
+    RewardEventIngestionService,
     RewardNotificationService,
     RewardObjectiveService,
     RewardSummaryNotFoundError,
@@ -62,6 +64,8 @@ from app.services import (
     build_launcher_service,
     build_pay_projection_service,
     build_profile_settings_service,
+    build_reward_badge_service,
+    build_reward_event_ingestion_service,
     build_reward_notification_service,
     build_reward_objective_service,
     build_reward_summary_service,
@@ -141,6 +145,8 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert build_launcher_service is not None
     assert build_pay_projection_service is not None
     assert build_profile_settings_service is not None
+    assert build_reward_badge_service is not None
+    assert build_reward_event_ingestion_service is not None
     assert build_reward_summary_service is not None
     assert build_service_status_service is not None
     assert build_reward_objective_service is not None
@@ -160,6 +166,8 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert PayProjectionProductAccessState is not None
     assert PayProjectionService is not None
     assert ProfileSettingsService is not None
+    assert RewardBadgeService is not None
+    assert RewardEventIngestionService is not None
     assert RewardSummaryService is not None
     assert RewardSummaryNotFoundError is not None
     assert RewardObjectiveService is not None
@@ -182,6 +190,7 @@ def test_pay_integration_package_exports_client_boundary() -> None:
 
 def test_reward_router_modules_do_not_import_repositories_directly() -> None:
     router_modules = [
+        Path("app/api/routers/reward_badges.py"),
         Path("app/api/routers/rewards_summary.py"),
         Path("app/api/routers/reward_objectives.py"),
         Path("app/api/routers/reward_notifications.py"),
@@ -234,6 +243,8 @@ def test_settings_router_modules_do_not_import_repositories_directly() -> None:
 def test_reward_service_modules_define_repository_construction_boundary() -> None:
     service_modules = [
         Path("app/services/announcement_service.py"),
+        Path("app/services/reward_badge_service.py"),
+        Path("app/services/reward_event_ingestion_service.py"),
         Path("app/services/reward_summary_service.py"),
         Path("app/services/reward_objective_service.py"),
         Path("app/services/reward_notification_service.py"),

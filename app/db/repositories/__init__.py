@@ -8,6 +8,7 @@ from app.db.repositories.communication_preference_repository import (
 )
 from app.db.repositories.pay_projection_repository import PayProjectionRepository
 from app.db.repositories.profile_settings_repository import ProfileSettingsRepository
+from app.db.repositories.reward_badge_repository import RewardBadgeRepository
 from app.db.repositories.reward_notification_repository import RewardNotificationRepository
 from app.db.repositories.reward_objective_repository import RewardObjectiveRepository
 from app.db.repositories.reward_progression_repository import RewardProgressionRepository
@@ -22,6 +23,7 @@ __all__ = [
     "CommunicationPreferenceRepository",
     "PayProjectionRepository",
     "ProfileSettingsRepository",
+    "RewardBadgeRepository",
     "RewardNotificationRepository",
     "RewardObjectiveRepository",
     "RewardProgressionRepository",

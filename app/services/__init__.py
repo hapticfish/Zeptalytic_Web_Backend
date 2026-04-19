@@ -57,6 +57,14 @@ from app.services.pay_projection_service import (
     PayProjectionSyncMetadata,
     build_pay_projection_service,
 )
+from app.services.reward_badge_service import RewardBadgeService, build_reward_badge_service
+from app.services.reward_event_ingestion_service import (
+    RewardEventIngestionCommand,
+    RewardEventIngestionResult,
+    RewardEventIngestionService,
+    RewardEventIngestionValidationError,
+    build_reward_event_ingestion_service,
+)
 from app.services.reward_notification_service import (
     RewardNotificationService,
     build_reward_notification_service,
@@ -124,6 +132,11 @@ __all__ = [
     "ProfileSettingsService",
     "ProfileSettingsNotFoundError",
     "ProfileSettingsUpdateValidationError",
+    "RewardBadgeService",
+    "RewardEventIngestionCommand",
+    "RewardEventIngestionResult",
+    "RewardEventIngestionService",
+    "RewardEventIngestionValidationError",
     "RewardSummaryNotFoundError",
     "build_profile_settings_service",
     "SessionDevice",
@@ -142,6 +155,8 @@ __all__ = [
     "SupportTicketNotFoundError",
     "SupportTicketValidationError",
     "build_auth_service",
+    "build_reward_badge_service",
+    "build_reward_event_ingestion_service",
     "build_reward_notification_service",
     "build_reward_objective_service",
     "build_reward_summary_service",

@@ -2142,6 +2142,7 @@
   - Projection-table vocabularies include TODO markers in model files; this spec assumes the Build Agent can use current modeled fields without reopening schema or vocabulary decisions unless explicitly required later.
 - Next command to run:
   - `./scripts/ralph-loop.sh plan 1`
+
 2026-04-18  planning run
 - Rehydrated the required planning context: `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, `PROMPT.md`, `progress/progress.txt`, `specs/next_phase_spec_sequence.json`, the parent-to-Pay foundation spec, the listed next-phase architecture docs, ownership/vocabulary references, `git status`, and `git log -5 --oneline`.
 - Verified repo reality before editing: current runtime wiring includes versioned auth, profile, address, communication-preference, and rewards slices under `app/api/routers/v1/`; Pay-derived projection tables already exist in `app/db/models/`, are registered through `app/db/models/__init__.py` and Alembic bootstrap paths, and are covered by existing DB topology/constraint tests.
@@ -2689,3 +2690,187 @@
   - None
 - Next recommended item:
   - Activate or author the next roadmap workstream: `specs/rewards_objectives_badges_application_api.json`
+2026-04-19T00:39:04.5934197-05:00
+- Mode:
+  - `spec_author`
+- Selected roadmap item:
+  - `rewards-application` from `specs/next_phase_spec_sequence.json`
+- Spec file created:
+  - `specs/rewards_objectives_badges_application_api.json`
+- Architecture docs used:
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+  - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
+  - `docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md`
+  - `docs/architecture/Frontend_Backend_Contract_Map.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md`
+  - `docs/architecture/Support_Announcements_and_Status_Design.md`
+  - `docs/architecture/Rewards_Application_and_Notification_Flows.md`
+  - `docs/architecture/Discord_Integration_Application_Flow.md`
+  - `docs/architecture/Background_Jobs_Sync_and_Event_Processing.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+  - `docs/architecture/Rewards_Objectives_Badges_Domain_Decision_Record.md`
+  - `docs/architecture/Rewards_Objectives_Badges_UI_Interaction_Reference.md`
+  - `docs/architecture/Rewards_Objectives_Badges_Data_Model_Reference.md`
+  - `docs/architecture/Zeptalytic_Domain_Vocabulary_Decision_Record.md`
+- Repo search summary:
+  - `IMPLEMENTATION_PLAN.md` marks support complete and explicitly points to `specs/rewards_objectives_badges_application_api.json` as the next workstream even though the older `specs/rewards_api_application_layer.json` is already complete.
+  - Existing rewards router modules are `app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, `app/api/routers/reward_notifications.py`, with versioned mounting through `app/api/routers/v1/rewards.py` and route coverage in `tests/unit/test_router_registration.py`.
+  - Existing reward services and repositories already cover summary, objectives, notifications, and progression in `app/services/reward_summary_service.py`, `app/services/reward_objective_service.py`, `app/services/reward_notification_service.py`, `app/services/reward_progression_service.py`, plus the matching repository files under `app/db/repositories/`.
+  - Existing rewards DTOs and tests already cover the prior slice in `app/schemas/reward_summary.py`, `app/schemas/reward_objectives.py`, `app/schemas/reward_notifications.py`, `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/unit/test_reward_notifications_api.py`, `tests/unit/test_reward_notification_service.py`, `tests/unit/test_reward_progression_service.py`, and `tests/unit/test_reward_progression_repository.py`.
+  - Current wiring gaps for the future Build Agent: rewards browser routes still use `{account_id}` path parameters instead of the repo's newer authenticated self-service pattern, `app/api/deps.py` does not yet expose dedicated reward service providers, there is no dedicated badge-gallery repository or service module, and there is no worker-ready reward-event ingestion orchestration seam beyond the lower-level progression commands.
+- Files changed:
+  - `specs/rewards_objectives_badges_application_api.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - Do not reopen reward database models or Alembic migrations.
+  - Do not duplicate Pay commercial rules or let Pay-derived commercial truth move into parent rewards logic.
+  - Do not expose frontend endpoints that directly award points, complete objectives, or grant badges.
+  - Do not build admin reward dashboards, Discord-linked reward behavior, or unrelated background-worker infrastructure outside the scoped ingestion skeleton.
+- Risks/assumptions:
+  - Assumed the older completed `specs/rewards_api_application_layer.json` is a dependency, not the canonical next roadmap artifact, because the implementation plan explicitly names a new rewards spec filename after support completion.
+  - Assumed the next rewards build should align route contracts and fill remaining badge or ingestion gaps rather than rewriting the already-tested summary, objectives, and notification surfaces wholesale.
+  - Route-shape alignment from `{account_id}` to authenticated self-service paths may require coordinated test updates and careful compatibility decisions because current unit tests explicitly lock the older route paths.
+- Next command to run:
+  - `./scripts/ralph-loop.sh plan 1`
+2026-04-19T00:44:24.6868047-05:00 - Planning run reconciled the implementation plan with current repo reality and the authored rewards follow-on spec.
+- Mode: plan
+- Summary:
+  - Rehydrated AGENTS, IMPLEMENTATION_PLAN, PROMPT, recent progress, the active rewards spec, roadmap JSON, required architecture docs, `git status`, and recent git history.
+  - Verified repo reality for the active rewards workstream across routers, deps, repositories, services, schemas, metadata registration, Alembic discovery, docker test topology, and current unit/integration coverage.
+  - Confirmed the authored `specs/rewards_objectives_badges_application_api.json` matches the actual remaining rewards gaps: legacy `{account_id}` route shape, missing dedicated rewards deps wiring, no badge-gallery slice, and no worker-ready reward-event ingestion orchestration seam.
+  - Corrected `IMPLEMENTATION_PLAN.md` so the active-spec line, current-phase narrative, and next queued spec now consistently reflect support as complete, rewards as active, and Discord as the next follow-on roadmap spec.
+- Repo search summary:
+  - Canonical versioned routers are mounted from `app/api/routers/v1/__init__.py`, and rewards are still composed from legacy modules in `app/api/routers/v1/rewards.py`.
+  - Existing rewards browser routes remain `/api/v1/rewards/{account_id}/summary`, `/objectives`, and `/notifications`, with direct `get_db`-backed service construction inside the legacy reward router modules instead of shared providers in `app/api/deps.py`.
+  - Existing rewards services and repositories already cover summary, objectives, notifications, and progression, so the active spec should stay focused on contract alignment plus missing badge/ingestion seams rather than reopening prior rewards implementation.
+  - Rewards model registration still flows through `app/db/models/rewards/__init__.py` into `app/db/models/__init__.py`, `app/db/bootstrap.py`, and `alembic/env.py`; no planning change is needed there.
+  - Current tests explicitly lock the older rewards route topology in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/unit/test_reward_notifications_api.py`, and `tests/unit/test_router_registration.py`, so the eventual build iteration will need coordinated contract-test updates.
+- Files changed:
+  - `IMPLEMENTATION_PLAN.md`
+  - `progress/progress.txt`
+- Risks/notes:
+  - `git status` at rehydrate time already showed planning-file drift: modified `IMPLEMENTATION_PLAN.md`, modified `progress/progress.txt`, and untracked `specs/rewards_objectives_badges_application_api.json`.
+  - No runtime application code, models, migrations, or tests were modified in this planning run.
+- Next command to run:
+  - `./scripts/ralph-loop.sh build 1`
+- Date/time: 2026-04-19T00:55:08.2163026-05:00
+- Mode: build
+- Active spec: `specs/rewards_objectives_badges_application_api.json`
+- Selected item: `roba-010` - Align Rewards Routes With Authenticated `/api/v1` Self-Service Conventions
+- Summary:
+  - Rehydrated the active rewards spec, roadmap, architecture docs, repo status, and recent history, then selected the first incomplete item `roba-010`.
+  - Refactored the browser-facing rewards summary, objectives, and notification routes to use authenticated `/api/v1/rewards/me/...` endpoints guarded by `require_normal_authenticated_session_context`.
+  - Moved canonical reward summary/objective/notification service dependency builders into `app/api/deps.py` so the rewards routers now match the shared application-layer wiring pattern used by the other v1 self-service routers.
+  - Updated reward API, router-registration, and validation-error tests to lock the new `/me` contract, prove the verified-session guard behavior, keep the standard error envelope intact, and make the removal of legacy `{account_id}` paths explicit.
+- Repo search summary:
+  - `app/api/routers/v1/rewards.py` was already the canonical versioned registration surface, but it composed legacy reward router modules that still exposed `/{account_id}` paths.
+  - `app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, and `app/api/routers/reward_notifications.py` each built services directly from `get_db`, unlike `app/api/routers/v1/addresses.py` and `app/api/routers/v1/billing.py`, which consume shared deps and authenticated-session guards.
+  - `app/api/deps.py` already centralized dependency wiring for other domains but lacked reward summary/objective/notification providers.
+  - Existing reward-service and repository seams were already present in `app/services/reward_summary_service.py`, `app/services/reward_objective_service.py`, `app/services/reward_notification_service.py`, and the corresponding repository modules, so the gap was route/dependency contract alignment rather than missing domain logic.
+  - Existing tests covering the target surface were `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/unit/test_reward_notifications_api.py`, `tests/unit/test_router_registration.py`, and `tests/unit/test_api_error_contract.py`; they all locked the old `{account_id}` route shape before this iteration.
+- Files changed:
+  - `app/api/deps.py`
+  - `app/api/routers/rewards_summary.py`
+  - `app/api/routers/reward_objectives.py`
+  - `app/api/routers/reward_notifications.py`
+  - `tests/unit/test_rewards_summary_api.py`
+  - `tests/unit/test_reward_objectives_api.py`
+  - `tests/unit/test_reward_notifications_api.py`
+  - `tests/unit/test_router_registration.py`
+  - `tests/unit/test_api_error_contract.py`
+  - `specs/rewards_objectives_badges_application_api.json`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_rewards_summary_api.py tests/unit/test_reward_objectives_api.py tests/unit/test_reward_notifications_api.py tests/unit/test_router_registration.py tests/unit/test_api_error_contract.py` -> blocked locally because `pytest` is not installed in the host Python environment (`No module named pytest`).
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`320 passed in 6.64s` in the test container).
+- Blockers:
+  - None for required verification. Local ad hoc pytest execution was unavailable, but the authoritative Docker suite passed.
+- Next recommended item:
+  - `roba-020` - Add a Dedicated Badge Gallery Read Slice
+- Date/time: 2026-04-19T01:01:49.2251318-05:00
+- Mode: build
+- Active spec: `specs/rewards_objectives_badges_application_api.json`
+- Selected item: `roba-020` - Add a Dedicated Badge Gallery Read Slice
+- Summary:
+  - Rehydrated the active rewards spec, roadmap, architecture docs, repo status, and recent history, then selected the next incomplete rewards item `roba-020`.
+  - Added a dedicated badge-gallery read slice with a separate safe DTO module, badge-specific repository, application service, and authenticated `/api/v1/rewards/me/badges` route wired through the canonical rewards router and shared dependency providers.
+  - Kept the implementation read-only and browser-safe by exposing badge code, display metadata, earned state, and optional `earned_at`, without introducing badge-award writes, hidden-badge invention, or reward schema changes.
+  - Added focused service and API regression tests plus router-foundation updates so the new badge gallery route, empty-state behavior, and verified-session guard are locked in alongside the existing rewards registration surface.
+- Repo search summary:
+  - Existing rewards registration already flowed through `app/api/routers/v1/rewards.py`, `app/api/deps.py`, and the self-service `/api/v1/rewards/me/...` modules, but there was no badge-specific dependency, service, router, or DTO surface.
+  - The existing rewards substrate in `app/db/models/rewards/badge_definitions.py` and `app/db/models/rewards/account_badges.py` already supported visible badge catalog records plus earned-account linkage, so `roba-020` was an application/read-model gap rather than a model or migration gap.
+  - `app/db/repositories/reward_summary_repository.py` already returned earned badges only for the summary page; it did not provide a dedicated gallery read model that could expose both earned and currently visible locked badges.
+  - Existing tests covered rewards summary/objectives/notifications and router registration, but there were no badge-gallery API or service tests before this iteration.
+- Files changed:
+  - `app/api/deps.py`
+  - `app/api/routers/v1/rewards.py`
+  - `app/api/routers/reward_badges.py`
+  - `app/db/repositories/__init__.py`
+  - `app/db/repositories/reward_badge_repository.py`
+  - `app/schemas/__init__.py`
+  - `app/schemas/reward_badges.py`
+  - `app/services/__init__.py`
+  - `app/services/reward_badge_service.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_reward_badge_service.py`
+  - `tests/unit/test_reward_badges_api.py`
+  - `tests/unit/test_router_registration.py`
+  - `specs/rewards_objectives_badges_application_api.json`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_reward_badges_api.py tests/unit/test_reward_badge_service.py tests/unit/test_router_registration.py tests/unit/test_application_layer_foundation.py` -> blocked locally because `pytest` is not installed in the host Python environment (`No module named pytest`).
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`326 passed in 6.64s` in the test container).
+- Blockers:
+  - None for required verification. Local ad hoc pytest execution was unavailable, but the authoritative Docker suite passed.
+- Next recommended item:
+  - `roba-030` - Introduce a Worker-Ready Reward Event Ingestion Skeleton
+[2026-04-19T01:06:46.7448063-05:00] Build iteration
+- Active spec:
+  - `specs/rewards_objectives_badges_application_api.json`
+- Selected item:
+  - `roba-030` - Introduce a Worker-Ready Reward Event Ingestion Skeleton
+- Repo search summary:
+  - Used `git ls-files`, `rg`, and `git grep` to confirm the existing rewards surface already lives under `app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, `app/api/routers/reward_notifications.py`, `app/api/routers/reward_badges.py`, and `app/api/routers/v1/rewards.py`, with browser routes limited to `/api/v1/rewards/me/...`.
+  - Verified the existing progression primitives in `app/services/reward_progression_service.py` and `app/db/repositories/reward_progression_repository.py`, including point awards, reversals, objective completion, and notification queueing, but found no dedicated reward-event ingestion orchestration module or duplicate-event guard.
+  - Confirmed the relevant registration and architectural tests already lived in `tests/unit/test_application_layer_foundation.py` and `tests/unit/test_router_registration.py`, while no `tests/unit/test_reward_event_ingestion_service.py` existed yet.
+- Files changed:
+  - `app/db/repositories/reward_progression_repository.py`
+  - `app/services/__init__.py`
+  - `app/services/reward_event_ingestion_service.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_reward_event_ingestion_service.py`
+  - `tests/unit/test_router_registration.py`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_reward_event_ingestion_service.py tests/unit/test_application_layer_foundation.py tests/unit/test_router_registration.py` -> blocked locally because `pytest` is not installed in the host Python environment (`No module named pytest`).
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`330 passed in 6.67s` in the test container, command exit code `0`).
+- Blockers:
+  - None for required verification. Local ad hoc pytest execution was unavailable, but the authoritative Docker suite passed.
+- Next recommended item:
+  - `roba-999` - Verify Rewards, Objectives, and Badges Slice Completion
+
+2026-04-19T01:08:50.8026825-05:00
+- Active spec:
+  - `specs/rewards_objectives_badges_application_api.json`
+- Selected item:
+  - `roba-999` - Verify Rewards, Objectives, and Badges Slice Completion
+- Repo search summary:
+  - Used `git ls-files`, `rg`, and `git grep` to confirm the rewards browser surface is mounted through `app/api/routers/v1/rewards.py`, with `app/api/routers/rewards_summary.py`, `app/api/routers/reward_objectives.py`, `app/api/routers/reward_notifications.py`, and `app/api/routers/reward_badges.py` registered under `/api/v1/rewards/me/...`.
+  - Verified shared rewards dependency helpers exist in `app/api/deps.py` and that badge/event-ingestion seams are present in `app/db/repositories/reward_badge_repository.py`, `app/services/reward_badge_service.py`, and `app/services/reward_event_ingestion_service.py`.
+  - Confirmed focused regression coverage already exists in `tests/unit/test_rewards_summary_api.py`, `tests/unit/test_reward_objectives_api.py`, `tests/unit/test_reward_notifications_api.py`, `tests/unit/test_reward_badges_api.py`, `tests/unit/test_reward_badge_service.py`, `tests/unit/test_reward_event_ingestion_service.py`, `tests/unit/test_router_registration.py`, `tests/unit/test_application_layer_foundation.py`, and `tests/unit/test_api_error_contract.py`.
+- Files changed:
+  - `IMPLEMENTATION_PLAN.md`
+  - `specs/rewards_objectives_badges_application_api.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` -> passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` -> passed (`330 passed in 6.64s`; command exit code `0`).
+- Blockers:
+  - None.
+- Next recommended item:
+  - Author and activate `specs/discord_integration_application_flow.json`

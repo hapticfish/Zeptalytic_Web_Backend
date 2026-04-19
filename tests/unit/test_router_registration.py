@@ -22,11 +22,14 @@ def test_top_level_api_router_re_exports_versioned_router() -> None:
 
 def test_versioned_rewards_router_is_canonical_registration_surface() -> None:
     reward_paths = {route.path for route in rewards_router.routes}
-    assert "/rewards/{account_id}/summary" in reward_paths
-    assert "/rewards/{account_id}/objectives" in reward_paths
-    assert "/rewards/{account_id}/notifications" in reward_paths
-    assert "/rewards/{account_id}/notifications/{notification_id}/seen" in reward_paths
-    assert "/rewards/{account_id}/notifications/skip-all" in reward_paths
+    assert "/rewards/me/badges" in reward_paths
+    assert "/rewards/me/summary" in reward_paths
+    assert "/rewards/me/objectives" in reward_paths
+    assert "/rewards/me/notifications" in reward_paths
+    assert "/rewards/me/notifications/{notification_id}/seen" in reward_paths
+    assert "/rewards/me/notifications/skip-all" in reward_paths
+    assert "/rewards/{account_id}/summary" not in reward_paths
+    assert "/rewards/events" not in reward_paths
 
 
 def test_versioned_auth_router_is_canonical_registration_surface() -> None:
@@ -144,9 +147,10 @@ def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
     assert "/api/v1/support/tickets/{ticket_id}" in routes
     assert "/api/v1/announcements" in routes
     assert "/api/v1/service-status" in routes
-    assert "/api/v1/rewards/{account_id}/summary" in routes
-    assert "/api/v1/rewards/{account_id}/objectives" in routes
-    assert "/api/v1/rewards/{account_id}/notifications" in routes
+    assert "/api/v1/rewards/me/badges" in routes
+    assert "/api/v1/rewards/me/summary" in routes
+    assert "/api/v1/rewards/me/objectives" in routes
+    assert "/api/v1/rewards/me/notifications" in routes
     assert "/api/v1/dashboard/summary" in routes
     assert "/api/v1/launcher/products" in routes
     assert "/api/v1/billing/snapshot" in routes
