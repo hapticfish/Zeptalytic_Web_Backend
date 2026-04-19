@@ -1,6 +1,6 @@
 # Zeptalytic Web Backend Implementation Plan
 
-Active spec: specs/profile_settings_addresses_preferences_api.json
+Active spec: specs/parent_pay_integration_and_projection_foundation.json
 
 ## Current phase
 
@@ -16,7 +16,9 @@ The auth/session/account security spec is now complete:
 specs/auth_session_account_security.json
 ```
 
-The next recommended action is to author or activate the profile/settings/addresses/preferences workstream in roadmap order.
+The current active workstream is the parent-to-Pay integration and projection foundation.
+
+The next recommended action is to run planning/build work against that active spec in roadmap order.
 
 ## Next-phase roadmap
 
@@ -177,15 +179,15 @@ The following workstreams are treated as complete and should not be re-opened un
 - Rewards verification/regression
 - Rewards API/application-layer schema work
 
-## Next workstream to author
+## Next workstream to author after the active spec
 
-The next spec to author or activate should be the profile/settings/addresses/preferences workstream from the roadmap:
+After the active parent-to-Pay integration and projection foundation workstream is complete, the next spec to author or activate should be the dashboard/launcher/billing aggregation workstream from the roadmap:
 
 ```text
-specs/profile_settings_addresses_preferences_api.json
+specs/dashboard_launcher_billing_aggregation_api.json
 ```
 
-That follow-on spec should stay focused on profile/settings/addresses/preferences behavior and preserve the roadmap order from `specs/next_phase_spec_sequence.json`.
+That follow-on spec should stay focused on dashboard/launcher/billing aggregation behavior and preserve the roadmap order from `specs/next_phase_spec_sequence.json`.
 
 ## Progress rule
 

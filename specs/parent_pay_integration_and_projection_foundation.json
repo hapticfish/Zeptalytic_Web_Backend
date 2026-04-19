@@ -1,0 +1,172 @@
+{
+  "id": "parent-pay-integration-and-projection-foundation",
+  "title": "Parent-to-Pay Integration and Projection Foundation",
+  "status": "complete",
+  "owner": "Zeptalytic Web Backend",
+  "purpose": "Establish the parent-side application foundation for Pay integration without crossing the commercial ownership boundary: a reusable Pay client/authentication seam, projection-focused repositories and services for Pay-derived subscription or entitlement or payment or payment-method or product-access summaries, and focused tests that lock safe unavailable/fallback behavior. This spec intentionally does not implement browser-facing dashboard, launcher, billing, checkout, plan-change, promo-code, support, rewards, Discord, worker, admin, or database-schema work.",
+  "context": {
+    "summary": "The roadmap order and the latest completed progress entry both point next to the parent-to-Pay integration and projection foundation after the profile/settings/addresses/preferences slice completed on 2026-04-18. Repo reality shows the database already contains Pay-derived projection tables and the app config already has a base URL plus internal token fields, but there is still no `app/integrations/pay_client.py`, no projection repository/service layer for those tables, no dependency wiring for a Pay client, and no focused tests for parent-side Pay-unavailable handling. The next build workstream should therefore create the narrow integration and projection substrate that later dashboard/launcher/billing work can consume, while preserving Pay as the sole source of commercial truth.",
+    "source_docs": [
+      "docs/architecture/Spec_Authoring_and_Harness_Workflow.md",
+      "docs/architecture/Parent_Backend_Application_Architecture.md",
+      "docs/architecture/Parent_Backend_API_Contract_Standards.md",
+      "docs/architecture/Parent_Backend_Repository_Layer_Design.md",
+      "docs/architecture/Parent_Backend_Service_Layer_Design.md",
+      "docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md",
+      "docs/architecture/Frontend_Backend_Contract_Map.md",
+      "docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md",
+      "docs/architecture/Auth_Session_and_Security_Flows.md",
+      "docs/architecture/Security_Operational_Control_Guide.md",
+      "docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md"
+    ],
+    "previous_specs_or_dependencies": [
+      "specs/application_layer_foundation.json",
+      "specs/auth_session_account_security.json",
+      "specs/profile_settings_addresses_preferences_api.json",
+      "specs/next_phase_spec_sequence.json"
+    ],
+    "repo_reality_summary": [
+      "`app/core/config.py` already defines `pay_service_base_url` and `pay_service_internal_token`, so the repo has a starting configuration seam for internal Pay calls but no runtime integration client uses it yet.",
+      "Projection persistence already exists in `app/db/models/subscription_summaries.py` (`SubscriptionSummary`), `app/db/models/entitlement_summaries.py` (`EntitlementSummary`), `app/db/models/payment_summaries.py` (`PaymentSummary`), `app/db/models/payment_method_summaries.py` (`PaymentMethodSummary`), and `app/db/models/product_access_states.py` (`ProductAccessState`).",
+      "`app/db/models/accounts.py` already relates those projection tables back to `Account`, and `tests/integration/test_parent_db_round_trips.py`, `tests/integration/test_parent_db_constraints.py`, and `tests/unit/test_auth_models.py` already verify projection-table registration, indexes, uniqueness, and basic round-trip persistence.",
+      "Searches across `app/` found no `app/integrations/pay_client.py`, no Pay integration classes under `app/integrations/`, no projection repositories under `app/db/repositories/`, and no Pay projection service modules under `app/services/`.",
+      "Current API/router wiring in `app/main.py`, `app/api/routers/v1/__init__.py`, and `app/api/deps.py` only mounts auth, settings, and rewards slices. There are no `/api/v1/dashboard`, `/api/v1/launcher`, or `/api/v1/billing` routers yet, so this spec should not jump ahead into those browser endpoints.",
+      "Existing service and repository patterns are established in `app/services/auth_service.py`, `app/services/profile_settings_service.py`, `app/services/address_service.py`, `app/services/communication_preference_service.py`, and their paired repository modules; the Pay foundation should follow the same router -> service -> repository or integration boundary instead of introducing a parallel abstraction style.",
+      "`app/api/exception_handlers.py` and `app/api/errors.py` already provide the standard API error contract, but repo searches found no domain exceptions or fallback translation path yet for Pay-unavailable or projection-sync failure behavior.",
+      "Existing tests cover application foundation, auth, settings, rewards, config, and DB topology, but repo searches found no `test_pay_client.py`, `test_pay_projection_service.py`, `test_billing_projection_repository.py`, `test_dashboard_*`, `test_launcher_*`, or `test_billing_*` modules. The Build Agent will need to add focused unit coverage for the new integration and projection foundation rather than relying on dashboard or billing API tests that do not exist yet.",
+      "The implementation plan still lists `specs/profile_settings_addresses_preferences_api.json` as the active spec even though `progress/progress.txt` shows it completed on 2026-04-18; this spec-authoring run should only create the next spec and must not silently retarget the active spec."
+    ]
+  },
+  "global_guardrails": [
+    "Search before editing.",
+    "Do not expand scope beyond this spec.",
+    "Do not add dependencies unless John explicitly approves them.",
+    "Do not duplicate Pay commercial business rules in parent.",
+    "Do not store sensitive payment details in parent.",
+    "Do not build admin dashboards unless explicitly scoped.",
+    "Do not redesign stable frontend pages.",
+    "Do not make Discord linkage affect rewards or product access unless the spec explicitly says so.",
+    "Do not allow frontend APIs to directly award points/rewards/badges.",
+    "Do not return raw ORM objects from routers.",
+    "Do not mark incomplete items complete.",
+    "Append progress entries to the absolute end of `progress/progress.txt`.",
+    "Run `python -m compileall app tests alembic` before marking implementation items complete.",
+    "Run `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` before marking implementation items complete.",
+    "Keep this workstream on Pay client seams, Pay-derived projection persistence, and reusable application services; do not implement browser-facing dashboard, launcher, or billing endpoints in this spec.",
+    "Parent may initiate or read Pay flows, but any commercial decision or subscription or payment truth must remain delegated to Pay.",
+    "Projection rows are cached or aggregated summaries only; do not let normal user-facing mutations edit them as authoritative commercial records.",
+    "Do not add Stripe or Coinbase provider-specific webhook processing, payment-method update flows, or checkout action endpoints in this spec.",
+    "Do not modify database models or Alembic migrations unless repo reality proves a tiny support fix is absolutely required, and avoid that if at all possible for this spec."
+  ],
+  "expected_paths": {
+    "may_create_or_update": [
+      "app/core/config.py",
+      "app/api/deps.py",
+      "app/integrations/__init__.py",
+      "app/integrations/pay_client.py",
+      "app/db/repositories/__init__.py",
+      "app/db/repositories/pay_projection_repository.py",
+      "app/services/__init__.py",
+      "app/services/pay_projection_service.py",
+      "app/services/pay_sync_service.py",
+      "tests/unit/test_config.py",
+      "tests/unit/test_pay_client.py",
+      "tests/unit/test_pay_projection_service.py",
+      "tests/unit/test_pay_projection_repository.py",
+      "tests/unit/test_application_layer_foundation.py"
+    ],
+    "must_not_modify_without_strong_reason": [
+      "alembic/",
+      "app/db/models/",
+      "app/api/routers/v1/",
+      "app/workers/",
+      "tests/integration/",
+      "specs/application_layer_foundation.json",
+      "specs/auth_session_account_security.json",
+      "specs/profile_settings_addresses_preferences_api.json"
+    ]
+  },
+  "items": [
+    {
+      "id": "ppip-010",
+      "title": "Establish the Pay Client and Dependency Foundation",
+      "description": "Create the narrow internal integration client foundation for parent-to-Pay communication using the existing config seam in `app/core/config.py`. The result should provide a reusable authenticated client boundary, safe error types for unavailable or malformed Pay responses, and dependency construction helpers that later application services can consume without embedding raw HTTP or token logic throughout the repo.",
+      "acceptance_criteria": [
+        "A canonical Pay client module exists under `app/integrations/pay_client.py` and is exported through `app/integrations/__init__.py` if that matches current package style.",
+        "The Pay client reads configuration from existing settings fields and uses a clear internal-authentication pattern without hardcoding secrets.",
+        "The implementation defines narrow, reusable exceptions or result types for Pay-unavailable or invalid-response behavior that later services can translate safely.",
+        "No browser-facing billing, dashboard, or launcher router is introduced while establishing the client foundation.",
+        "Tests cover client construction and at least one unavailable or invalid-response path without reaching external live services."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-18T22:15:52-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "ppip-020",
+      "title": "Implement Projection Repository Coverage for Pay-Derived Summaries",
+      "description": "Add repository methods for parent-owned reads and upserts of the existing Pay-derived projection tables so later aggregation services can consume a stable persistence surface. Keep repository logic persistence-only and scoped to account-linked subscription, entitlement, payment, payment-method, and product-access summaries.",
+      "acceptance_criteria": [
+        "A projection-focused repository module exists for the existing Pay-derived tables and exposes specific account-scoped read and upsert helpers.",
+        "Repository methods clearly distinguish current-summary reads from upsert or stale-marking behavior and do not encode dashboard or billing presentation logic.",
+        "The repository does not introduce new schema work and does not let ordinary user-facing flows edit commercial truth directly.",
+        "Tests cover representative upsert and fetch behavior against the existing model schema, including at least one conflict or replacement-style scenario where relevant."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-18T22:23:31-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "ppip-030",
+      "title": "Implement Pay Projection Application Service Behavior",
+      "description": "Create the service-layer foundation that coordinates Pay client reads with projection repository updates and account-linked summary retrieval. The service should own transaction boundaries and safe fallback semantics, but it must stop short of exposing browser-facing dashboard, launcher, or billing payloads in this spec.",
+      "acceptance_criteria": [
+        "A Pay projection service exists and follows the established service -> repository or integration dependency direction.",
+        "The service can request account-linked Pay summary data, upsert the existing projection rows, and return a normalized internal application result suitable for later aggregation services.",
+        "The service defines explicit Pay-unavailable handling that preserves safe fallback behavior without inventing commercial truth locally.",
+        "No dashboard-summary, launcher-products, billing-snapshot, checkout, or promo-code API endpoint is added in this item.",
+        "Tests cover a successful sync or refresh path plus at least one Pay-unavailable or malformed-response path."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-18T22:31:54.4523684-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "ppip-040",
+      "title": "Lock Projection Access Boundaries and Safe Read Contracts",
+      "description": "Add the narrow application-contract and regression coverage needed so later billing or dashboard work can depend on this foundation safely. This includes verifying that projection services expose safe summary structures for internal consumption, that repository or service boundaries remain explicit, and that the parent application does not treat projection tables as editable commercial truth.",
+      "acceptance_criteria": [
+        "Focused tests document the intended boundary that routers or later aggregators should consume services rather than directly composing projection-table ORM rows.",
+        "Service outputs or typed internal summary results omit sensitive provider payloads and do not require later browser layers to inspect raw ORM objects.",
+        "Tests or assertions lock at least one safe-fallback contract for Pay-unavailable behavior and one no-commercial-truth duplication rule.",
+        "The work stays foundation-level and does not backdoor the next dashboard or billing spec into this run."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-18T22:36:32.3487775-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "ppip-999",
+      "title": "Verify Parent-to-Pay Foundation Completion",
+      "description": "Run the required verification suite after the Pay client and projection foundation lands and only mark this spec complete when the new integration client, repository, service, and focused regression tests pass without pulling in unrelated roadmap work.",
+      "acceptance_criteria": [
+        "`python -m compileall app tests alembic` passes.",
+        "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+        "Focused tests cover Pay client construction or failure handling, projection repository behavior, and projection service sync or fallback behavior.",
+        "Only fully completed items are marked complete, and progress is appended at EOF."
+      ],
+      "passes": true,
+      "completed_at": "2026-04-18T22:42:32.7874626-05:00",
+      "completed_by": "codex"
+    }
+  ],
+  "completion_definition": [
+    "All spec items have `passes=true`.",
+    "Relevant tests are added or updated for the Pay client seam, projection repositories, projection service behavior, and safe unavailable handling.",
+    "`python -m compileall app tests alembic` passes.",
+    "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+    "`progress/progress.txt` is updated at EOF.",
+    "No unrelated dirty files are introduced.",
+    "No incomplete item is marked complete."
+  ]
+}

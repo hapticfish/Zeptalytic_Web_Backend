@@ -5,6 +5,7 @@ from app.db.repositories.auth_repository import AuthRepository
 from app.db.repositories.communication_preference_repository import (
     CommunicationPreferenceRepository,
 )
+from app.db.repositories.pay_projection_repository import PayProjectionRepository
 from app.db.repositories.profile_settings_repository import ProfileSettingsRepository
 from app.db.repositories.reward_notification_repository import RewardNotificationRepository
 from app.db.repositories.reward_objective_repository import RewardObjectiveRepository
@@ -15,6 +16,7 @@ __all__ = [
     "AddressRepository",
     "AuthRepository",
     "CommunicationPreferenceRepository",
+    "PayProjectionRepository",
     "ProfileSettingsRepository",
     "RewardNotificationRepository",
     "RewardObjectiveRepository",

@@ -18,17 +18,32 @@ from app.schemas import (
     ProfileRouteContractResponse,
     ProfileSettingsSummary,
 )
+from app.api.deps import get_pay_client, get_pay_projection_service
+from app.integrations import (
+    PayClient,
+    PayClientConfigurationError,
+    PayClientInvalidResponseError,
+    PayClientUnavailableError,
+    build_pay_client,
+)
 from app.services import (
     AddressService,
     AuthService,
     CommunicationPreferenceService,
+    PayProjectionEntitlementSummary,
+    PayProjectionPaymentMethodSummary,
+    PayProjectionPaymentSummary,
+    PayProjectionProductAccessState,
+    PayProjectionService,
     ProfileSettingsService,
     RewardNotificationService,
     RewardObjectiveService,
     RewardSummaryService,
+    PayProjectionSubscriptionSummary,
     build_address_service,
     build_auth_service,
     build_communication_preference_service,
+    build_pay_projection_service,
     build_profile_settings_service,
     build_reward_notification_service,
     build_reward_objective_service,
@@ -101,6 +116,7 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert build_address_service is not None
     assert build_auth_service is not None
     assert build_communication_preference_service is not None
+    assert build_pay_projection_service is not None
     assert build_profile_settings_service is not None
     assert build_reward_summary_service is not None
     assert build_reward_objective_service is not None
@@ -108,10 +124,26 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert AddressService is not None
     assert AuthService is not None
     assert CommunicationPreferenceService is not None
+    assert PayProjectionSubscriptionSummary is not None
+    assert PayProjectionEntitlementSummary is not None
+    assert PayProjectionPaymentSummary is not None
+    assert PayProjectionPaymentMethodSummary is not None
+    assert PayProjectionProductAccessState is not None
+    assert PayProjectionService is not None
     assert ProfileSettingsService is not None
     assert RewardSummaryService is not None
     assert RewardObjectiveService is not None
     assert RewardNotificationService is not None
+
+
+def test_pay_integration_package_exports_client_boundary() -> None:
+    assert PayClient is not None
+    assert build_pay_client is not None
+    assert PayClientConfigurationError is not None
+    assert PayClientUnavailableError is not None
+    assert PayClientInvalidResponseError is not None
+    assert get_pay_client is not None
+    assert get_pay_projection_service is not None
 
 
 def test_reward_router_modules_do_not_import_repositories_directly() -> None:
