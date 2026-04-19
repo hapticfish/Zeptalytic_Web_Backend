@@ -15,6 +15,28 @@ This service owns:
 
 This service does not own commercial payment truth.
 
+## Current backend workstream
+
+The current backend workstream is frontend runtime integration readiness.
+
+The target active spec is:
+
+```text
+specs/frontend_runtime_integration_readiness.json
+```
+
+This workstream prepares the FastAPI parent backend to be safely called by the React/Vite frontend during local browser-based integration.
+
+It is limited to backend-side readiness:
+
+- explicit credentialed CORS for local Vite origins
+- HTTP-only cookie auth browser contract verification/documentation
+- frontend-facing backend route inventory
+- OpenAPI/runtime route surface regression coverage
+- backend compile/test verification
+
+This workstream must not edit the frontend repo.
+
 ## Non-negotiable rules always
 
 - Do not add new dependencies unless John explicitly approves.
@@ -32,6 +54,10 @@ This service does not own commercial payment truth.
 - Do not mark incomplete work complete.
 - Keep progress append-only.
 - Append progress entries to the absolute end of `progress/progress.txt`.
+- Do not edit the frontend repo.
+- Do not create frontend API clients.
+- Do not modify React/Vite files.
+- Do not redesign stable frontend pages.
 
 ## Locked architecture boundaries
 
@@ -44,6 +70,19 @@ This service does not own commercial payment truth.
 - Discord linkage does not affect rewards or product access in phase 1.
 - The docs under `docs/architecture/` are durable reference material; do not contradict them without updating the relevant decision record first.
 
+## Frontend runtime integration boundaries
+
+- The React/Vite frontend is a separate repo and must not be edited by backend harness runs.
+- Backend runtime readiness must support browser requests from:
+  - `http://localhost:5173`
+  - `http://127.0.0.1:5173`
+- Credentialed CORS must be explicit and non-wildcard.
+- Frontend requests must be able to use `credentials: "include"`.
+- Backend auth must preserve HTTP-only cookie session behavior.
+- Backend must not expose raw session tokens in browser-readable responses.
+- Backend OpenAPI/docs should accurately describe frontend-facing routes.
+- Backend route inventory must be based on actual repo reality, not invented endpoints.
+
 ## Required rehydrate behavior every run
 
 Read these first:
@@ -54,10 +93,25 @@ Read these first:
 4. `progress/progress.txt` last 1–3 entries
 5. Determine the active spec from the `Active spec:` line in `IMPLEMENTATION_PLAN.md`
 6. Read the active spec file when the run mode is `plan` or `build`
-7. Read `specs/next_phase_spec_sequence.json` when the run mode is `spec_author`, `plan`, or `build`
+7. Read `specs/next_phase_spec_sequence.json` when present and relevant
 8. Rehydrate the architecture docs named in `IMPLEMENTATION_PLAN.md`
 9. Run `git status`
 10. Run `git log -5 --oneline`
+
+## Required architecture references for this workstream
+
+Read these when relevant to frontend runtime integration readiness:
+
+- `docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md`
+- `docs/architecture/Frontend_Backend_Contract_Map.md`
+- `docs/architecture/Auth_Session_and_Security_Flows.md`
+- `docs/architecture/Parent_Backend_Application_Architecture.md`
+- `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+- `docs/architecture/Security_Operational_Control_Guide.md`
+- `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+- `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+
+If any of these files are missing, search for equivalent docs before assuming the information is unavailable.
 
 ## Legacy/foundation architecture references
 
@@ -112,9 +166,15 @@ prompt/prompt_spec_author.md
 
 The spec-authoring run may create or update exactly one spec JSON file and must append a progress entry to the absolute end of `progress/progress.txt`.
 
+For the current phase, the expected spec is:
+
+```text
+specs/frontend_runtime_integration_readiness.json
+```
+
 The spec-authoring run must not implement runtime application code.
 
-The spec-authoring run must not modify database models, Alembic migrations, routers, services, repositories, schemas, workers, integrations, or tests unless explicitly instructed.
+The spec-authoring run must not modify database models, Alembic migrations, routers, services, repositories, schemas, workers, integrations, tests, or frontend files unless explicitly instructed.
 
 The spec-authoring run must end with:
 
@@ -140,6 +200,8 @@ Planning mode may update planning-only artifacts such as specs, docs, prompts, s
 
 Planning mode must not implement runtime application code.
 
+Planning mode must not edit the frontend repo.
+
 Planning mode must end with:
 
 ```text
@@ -164,6 +226,8 @@ Build mode implements exactly one active spec item where `passes=false`.
 
 Build mode must search before editing, keep changes scoped, add/update tests, run verification, update the active spec honestly, and append progress at EOF.
 
+Build mode must not edit the frontend repo.
+
 Build mode must end with one of:
 
 ```text
@@ -176,14 +240,16 @@ ITERATION_BLOCKED
 
 Before changing code, search the repo for:
 
-- existing router patterns
+- existing config/settings patterns
+- existing middleware patterns
+- existing router registration patterns
 - existing service patterns
 - existing repository patterns
-- existing model patterns
 - existing schema/DTO patterns
+- existing session/cookie behavior
+- existing OpenAPI behavior
 - existing tests that already cover the same surface
-- existing migration/bootstrap conventions
-- existing integration/client conventions
+- existing documentation for frontend/backend contracts
 
 Use tools such as:
 
@@ -218,32 +284,33 @@ When a run is successful:
 - keep progress append-only
 - do not mark incomplete work complete
 - do not introduce unrelated dirty files
+- do not introduce frontend repo changes
 
-## Next-phase workstream strategy
+## Frontend runtime readiness workstream strategy
 
-Use `specs/next_phase_spec_sequence.json` as the roadmap.
+Use this sequence for the backend readiness spec:
 
-Recommended order:
+1. CORS runtime settings
+2. FastAPI CORSMiddleware wiring
+3. browser cookie auth contract verification/documentation
+4. frontend-facing backend API route inventory
+5. OpenAPI runtime surface regression coverage
+6. full backend verification
 
-1. application-layer foundation
-2. auth/session/account security
-3. profile/settings/addresses/preferences
-4. parent-to-Pay integration and projection foundation
-5. dashboard/launcher/billing aggregation
-6. support/announcements/service status
-7. rewards/objectives/badges application APIs
-8. Discord integration application flow
-9. background jobs/security hardening
-10. frontend/backend contract alignment
+Do not create one giant integration spec.
 
-Do not create one giant backend implementation spec.
+Do not perform frontend wiring in this repo.
 
-Use a small foundation spec first, then prefer vertical capability specs.
+Do not move on to frontend harness work until the backend readiness spec is complete or John explicitly directs otherwise.
 
-## Next-phase non-goals unless explicitly scoped
+## Non-goals unless explicitly scoped
 
 Do not implement these unless the active spec explicitly requires them:
 
+- frontend API clients
+- React/Vite route changes
+- frontend protected route implementation
+- frontend data replacement
 - admin dashboards
 - duplicated Pay commercial logic
 - local parent-side payment truth

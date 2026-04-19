@@ -1,0 +1,131 @@
+{
+  "id": "frontend-runtime-integration-readiness",
+  "title": "Frontend Runtime Integration Readiness",
+  "status": "active",
+  "owner": "Zeptalytic Web Backend",
+  "purpose": "Prepare the Zeptalytic Web Backend to be safely called by the React/Vite frontend during local development and future browser-based integration work.",
+  "context": {
+    "summary": "The backend now runs locally with uvicorn and exposes /docs and /openapi.json. The frontend is still static and will be integrated in a separate repo. This backend spec should add only the runtime and contract support needed for browser-based frontend integration.",
+    "repo_boundary": "This spec is backend-only and should be run from Dev/Zeptalytic_Web_Backend.",
+    "frontend_dev_origin": "http://localhost:5173",
+    "backend_dev_origin": "http://localhost:8000"
+  },
+  "global_guardrails": [
+    "Do not redesign backend domain APIs.",
+    "Do not implement new frontend behavior in the backend repo.",
+    "Do not duplicate Pay commercial rules.",
+    "Do not expose sensitive auth/session/payment data.",
+    "Keep cookie-based auth as the current model.",
+    "Allow browser credentialed requests only for explicitly configured local/dev origins.",
+    "Generate as many focused spec items as the workstream context requires; do not cap specs at an arbitrary 3–4 implementation items.",
+    "Run python -m compileall app tests alembic before marking implementation items complete.",
+    "Run docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test before marking implementation items complete."
+  ],
+  "expected_paths": {
+    "may_create_or_update": [
+      "app/main.py",
+      "app/core/config.py",
+      "tests/unit/test_cors_runtime_integration.py",
+      "tests/unit/test_openapi_frontend_contract_surface.py",
+      "docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md",
+      "docs/architecture/Frontend_Backend_API_Route_Inventory.md",
+      "progress/progress.txt"
+    ],
+    "must_not_modify_without_strong_reason": [
+      "app/db/models/",
+      "alembic/",
+      "app/services/",
+      "app/db/repositories/",
+      "app/integrations/pay_client.py",
+      "app/integrations/discord_oauth_client.py"
+    ]
+  },
+  "items": [
+    {
+      "id": "fri-010",
+      "title": "Add CORS Runtime Settings",
+      "description": "Add settings for local/dev frontend origins and credentialed browser requests.",
+      "acceptance_criteria": [
+        "Settings include configurable CORS allowed origins.",
+        "Settings include whether credentialed CORS requests are allowed.",
+        "Defaults support local Vite dev at http://localhost:5173 and http://127.0.0.1:5173.",
+        "No production wildcard credentialed CORS behavior is introduced."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "fri-020",
+      "title": "Wire FastAPI CORS Middleware",
+      "description": "Register FastAPI CORSMiddleware so the React/Vite frontend can call the backend with cookie credentials during local development.",
+      "acceptance_criteria": [
+        "CORSMiddleware is registered in app/main.py before routers are included.",
+        "The configured origins are used rather than hard-coded only in middleware.",
+        "Credentialed requests are supported for configured origins.",
+        "Tests verify CORS preflight behavior for http://localhost:5173."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "fri-030",
+      "title": "Verify Cookie-Based Auth Browser Contract",
+      "description": "Add focused tests or documentation proving that auth endpoints support browser cookie-based session behavior for frontend integration.",
+      "acceptance_criteria": [
+        "Login/signup behavior remains cookie-based.",
+        "Session cookie name matches settings.auth_session_cookie_name.",
+        "Documentation states that frontend requests must use credentials: include.",
+        "No localStorage/sessionStorage token model is introduced."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "fri-040",
+      "title": "Document Frontend API Route Inventory",
+      "description": "Generate or document the current route surface needed for the first frontend integration phases.",
+      "acceptance_criteria": [
+        "A backend route inventory document exists under docs/architecture or equivalent.",
+        "The route inventory includes auth, dashboard, launcher, billing, profile/settings/address, rewards, support/status/announcements, and integrations routes where present.",
+        "The route inventory references /api/v1 as the current API prefix.",
+        "The document is safe to copy into or reference from the frontend repo."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "fri-050",
+      "title": "Add OpenAPI Surface Regression Test",
+      "description": "Add a regression test that verifies the core frontend-needed API paths are present in app.openapi().",
+      "acceptance_criteria": [
+        "Test verifies /api/v1/auth/login is present.",
+        "Test verifies /api/v1/auth/session is present.",
+        "Test verifies /api/v1/dashboard/summary is present.",
+        "Test verifies /api/v1/launcher/products is present.",
+        "Test verifies core billing paths are present.",
+        "The test does not require live Pay or Discord services."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "fri-999",
+      "title": "Verify Backend Frontend-Readiness Baseline",
+      "description": "Run required backend verification commands after CORS and route contract readiness are complete.",
+      "acceptance_criteria": [
+        "python -m compileall app tests alembic passes.",
+        "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test passes.",
+        "progress/progress.txt is updated at EOF.",
+        "No unrelated frontend files are touched from the backend repo."
+      ],
+      "passes": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}

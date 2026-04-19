@@ -7,7 +7,7 @@
   "context": {
     "summary": "<Current repo state and why this spec is next.>",
     "source_docs": [
-      "docs/architecture/<relevant_doc>.md"
+      "docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md"
     ],
     "previous_specs_or_dependencies": [
       "<previous_spec_if_any>"
@@ -20,13 +20,20 @@
     "Search before editing.",
     "Do not expand scope beyond this spec.",
     "Do not add dependencies unless John explicitly approves them.",
+    "Do not edit the frontend repo.",
+    "Do not create frontend API clients.",
+    "Do not modify React/Vite files.",
+    "Do not redesign stable frontend pages.",
     "Do not duplicate Pay commercial business rules in parent.",
     "Do not store sensitive payment details in parent.",
     "Do not build admin dashboards unless explicitly scoped.",
-    "Do not redesign stable frontend pages.",
     "Do not make Discord linkage affect rewards or product access unless this spec explicitly says so.",
     "Do not allow frontend APIs to directly award points/rewards/badges.",
     "Do not return raw ORM objects from routers.",
+    "Use explicit safe DTOs for API responses.",
+    "Preserve HTTP-only cookie auth.",
+    "Do not expose raw session tokens in browser-readable payloads.",
+    "Use explicit allowed origins for credentialed CORS; do not use wildcard credentialed CORS.",
     "Do not mark incomplete items complete.",
     "Append progress entries to the absolute end of progress/progress.txt.",
     "Run python -m compileall app tests alembic before marking complete.",
@@ -58,6 +65,7 @@
     "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test passes.",
     "progress/progress.txt is updated at EOF.",
     "No unrelated dirty files are introduced.",
+    "No frontend repo files are modified.",
     "No incomplete item is marked complete."
   ]
 }

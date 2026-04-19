@@ -1,8 +1,38 @@
-You are Codex working in this repository. Run ONE build iteration only.
+# Zeptalytic Web Backend Build Prompt
 
-Follow this exact routine every run:
+You are Codex working in this repository.
 
-## 0) Rehydrate context mandatory
+Run ONE build iteration only.
+
+End the run with one of:
+
+```text
+ITERATION_DONE
+ALL_DONE
+ITERATION_BLOCKED
+```
+
+## 0) Current mission
+
+The active backend workstream is frontend runtime integration readiness.
+
+The intended active spec is:
+
+```text
+specs/frontend_runtime_integration_readiness.json
+```
+
+This build pass must implement exactly one incomplete item from the active spec.
+
+The work must remain backend-only.
+
+Do not edit the frontend repo.
+
+Do not create frontend API clients.
+
+Do not modify React/Vite files.
+
+## 1) Rehydrate context mandatory
 
 Read:
 
@@ -12,13 +42,21 @@ Read:
 4. `progress/progress.txt` last 1–3 entries
 5. Determine the ACTIVE SPEC from the `Active spec:` line in `IMPLEMENTATION_PLAN.md`
 6. Read the ACTIVE SPEC file
-7. Read `specs/next_phase_spec_sequence.json`
-8. Rehydrate the architecture docs named in `AGENTS.md` / `IMPLEMENTATION_PLAN.md`
-9. Read architecture docs relevant to the ACTIVE SPEC.
-10. Run `git status`
-11. Run `git log -5 --oneline`
+7. Read `specs/next_phase_spec_sequence.json` if present
+8. Read `docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md`
+9. Read `docs/architecture/Frontend_Backend_Contract_Map.md` if present
+10. Read `docs/architecture/Auth_Session_and_Security_Flows.md` if present
+11. Read `docs/architecture/Parent_Backend_Application_Architecture.md` if present
+12. Read `docs/architecture/Parent_Backend_API_Contract_Standards.md` if present
+13. Read `docs/architecture/Security_Operational_Control_Guide.md` if present
+14. Read `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md` if present
+15. Read `docs/architecture/Spec_Authoring_and_Harness_Workflow.md` if present
+16. Run `git status`
+17. Run `git log -5 --oneline`
 
-## 1) Pick ONE item to work on
+If the active spec file does not exist, append a blocker entry to `progress/progress.txt`, do not modify implementation files, print exactly `ITERATION_BLOCKED`, and stop.
+
+## 2) Pick ONE item to work on
 
 Choose exactly one item in the ACTIVE SPEC where:
 
@@ -30,7 +68,9 @@ Prefer earlier items first unless a later item is clearly blocking.
 
 Do not work on more than one item in a single build iteration unless the active spec item itself explicitly requires a tiny companion change.
 
-## 2) Search before editing mandatory
+Do not mark any item complete unless its acceptance criteria are fully satisfied and required verification passes.
+
+## 3) Search before editing mandatory
 
 Use:
 
@@ -42,17 +82,34 @@ find
 grep -R
 ```
 
-Summarize what you found BEFORE changing anything:
+Before changing anything, summarize what you found:
 
 - file paths
 - key functions/classes/models/schemas/repositories/services involved
-- current wiring/import registration/router registration
+- current config/settings structure
+- current middleware/app startup structure
+- current router registration
+- current session cookie behavior
+- current OpenAPI behavior
 - existing tests that already cover the target area
-- gaps the current spec item should address
+- gaps the selected spec item should address
+
+Use relevant commands such as:
+
+```bash
+git grep -n "CORSMiddleware\|allow_origins\|allow_credentials\|CORS" app tests docs || true
+git grep -n "api_v1_prefix\|include_router\|APIRouter" app tests docs || true
+git grep -n "zeptalytic_session\|session" app tests docs || true
+git grep -n "set_cookie\|delete_cookie\|httponly\|samesite\|secure" app tests docs || true
+git grep -n "openapi\|app.openapi\|include_in_schema" app tests docs || true
+git grep -n "localhost:5173\|127.0.0.1:5173\|Vite" app tests docs || true
+find app -maxdepth 5 -type f | sort
+find tests -maxdepth 5 -type f | sort
+```
 
 Do not assume something is missing until you search for it.
 
-## 3) Implement the smallest safe change
+## 4) Implement the smallest safe change
 
 - Keep changes small and localized.
 - Match repository patterns and architecture docs.
@@ -63,39 +120,47 @@ Do not assume something is missing until you search for it.
 - Do not modify unrelated files.
 - Do not implement future spec work early.
 - Do not duplicate existing patterns without searching first.
+- Do not edit the frontend repo.
+- Do not create frontend API clients.
+- Do not modify React/Vite files.
+- Do not redesign stable frontend pages.
 
-### Model/layout rules mandatory
+## 5) Backend runtime-readiness guardrails
 
-- Do not dump unrelated tables/models into one file.
-- Use one table/model per file by default unless the spec explicitly says otherwise.
-- Create sensible directories when needed instead of collapsing concerns into a generic module.
-- Update import/metadata/Alembic discovery registration cleanly when model work is in scope.
+- Follow the ACTIVE SPEC exactly.
+- Preserve `/api/v1` API versioning.
+- Preserve HTTP-only cookie auth.
+- Frontend browser requests must be able to use `credentials: "include"`.
+- Backend must not return raw session tokens to browser-readable payloads.
+- Allowed local frontend origins must be explicit:
+  - `http://localhost:5173`
+  - `http://127.0.0.1:5173`
+- Credentialed CORS must not use wildcard origins.
+- CORS configuration should live in the backend settings/config layer when practical.
+- Do not duplicate Pay commercial business rules in parent.
+- Do not store sensitive payment data in parent.
+- Do not implement admin dashboards unless explicitly scoped.
+- Do not make Discord linkage affect rewards or product access unless explicitly scoped.
+- Do not allow frontend APIs to directly award points/rewards/badges.
+- Do not implement unrelated routers/services/repositories outside the ACTIVE SPEC.
+- Do not modify database schema unless the ACTIVE SPEC explicitly scopes it.
 - Do not return raw ORM objects from routers.
 - Use explicit safe DTOs for API responses.
 
-### Domain-specific guardrails for the next-phase backend workstream
-
-- Follow the ACTIVE SPEC exactly.
-- Rehydrate the architecture docs listed in `IMPLEMENTATION_PLAN.md`.
-- Do not duplicate Pay commercial business rules in parent.
-- Do not store sensitive payment data in parent.
-- Do not implement admin dashboards unless the ACTIVE SPEC explicitly scopes them.
-- Do not redesign stable frontend pages.
-- Do not make Discord linkage affect rewards or product access unless the ACTIVE SPEC explicitly scopes it.
-- Do not allow frontend APIs to directly award points/rewards/badges.
-- Do not implement unrelated routers/services/repositories outside the ACTIVE SPEC.
-- Keep foundation specs small.
-- After the foundation pass, prefer vertical feature slices.
-- If the ACTIVE SPEC concerns Pay integration, parent may initiate Pay actions, but Pay must execute commercial behavior.
-- If the ACTIVE SPEC concerns rewards, frontend APIs must not directly award points/rewards/badges.
-- If the ACTIVE SPEC concerns Discord, Discord linkage must not affect rewards or product access unless explicitly scoped.
-- If the ACTIVE SPEC concerns support, do not build a full admin dashboard unless explicitly scoped.
-
-## 4) Tests required
+## 6) Tests required
 
 Add or update tests for the behavior/structure you changed.
 
 For structural refactors, add regression tests that prove the intended layout and registration still work.
+
+Expected test areas by item:
+
+- CORS settings: config/settings tests where present, or app/middleware tests.
+- CORSMiddleware wiring: preflight/request tests for allowed origins and credential headers.
+- Cookie auth contract: tests proving HTTP-only cookie behavior and session endpoint behavior.
+- Route inventory docs: docs consistency checks if repo has docs tests, otherwise clear doc update.
+- OpenAPI surface: tests that inspect `app.openapi()` for frontend-critical routes.
+- Full verification item: no code behavior change required, but required commands must pass.
 
 If tests fail, fix them in this same iteration; do not move on while tests are failing.
 
@@ -111,7 +176,7 @@ Then run the authoritative Docker test suite:
 docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test
 ```
 
-## 5) If Docker or verification is blocked
+## 7) If Docker or verification is blocked
 
 If Docker is unavailable or the authoritative command cannot run:
 
@@ -139,7 +204,7 @@ ITERATION_BLOCKED
 
 - stop the iteration
 
-## 6) Update durable artifacts only when not blocked
+## 8) Update durable artifacts only when not blocked
 
 Only when tests are green:
 
@@ -150,7 +215,7 @@ Only when tests are green:
 - Update `IMPLEMENTATION_PLAN.md` checkbox/status only if needed.
 - Append an iteration entry to `progress/progress.txt`.
 - Verify the new entry is appended at EOF.
-- Commit only if tests are green.
+- Commit only if tests are green and a commit is appropriate.
 
 The progress entry must include:
 
@@ -163,16 +228,22 @@ The progress entry must include:
 - blockers if any
 - next recommended item
 
-## 7) Completion marker
+## 9) Completion marker
 
-If the active spec is fully complete, end with:
+If the active spec is fully complete, end with exactly:
 
 ```text
 ALL_DONE
 ```
 
-Otherwise end with:
+Otherwise end with exactly:
 
 ```text
 ITERATION_DONE
+```
+
+If blocked, end with exactly:
+
+```text
+ITERATION_BLOCKED
 ```

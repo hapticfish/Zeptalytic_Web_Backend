@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="${1:-build}"          # plan | build
+MODE="${1:-build}"          # spec_author | plan | build
 MAX_ITERS="${2:-10}"        # cap iterations
 MODEL="${MODEL:-gpt-5.4}"
 
@@ -16,7 +16,7 @@ fi
 
 mkdir -p progress
 
-# Derive a conventional branch slug from the active spec (if available)
+# Derive a conventional branch slug from the active spec when available.
 spec_slug=""
 if [[ -f "IMPLEMENTATION_PLAN.md" ]]; then
   active_spec="$(grep -E '^Active spec:' -m 1 IMPLEMENTATION_PLAN.md 2>/dev/null | sed -E 's/^Active spec:[[:space:]]*//')"
@@ -26,7 +26,7 @@ if [[ -f "IMPLEMENTATION_PLAN.md" ]]; then
   fi
 fi
 
-# Fallback to PROMPT.md if needed
+# Fallback to PROMPT.md if needed.
 if [[ -z "${spec_slug}" && -f "PROMPT.md" ]]; then
   active_spec="$(grep -E '^Active spec:' -m 1 PROMPT.md 2>/dev/null | sed -E 's/^Active spec:[[:space:]]*//')"
   if [[ -n "${active_spec:-}" ]]; then
@@ -35,17 +35,17 @@ if [[ -z "${spec_slug}" && -f "PROMPT.md" ]]; then
   fi
 fi
 
-# Final fallback if nothing found
+# Final fallback if nothing found.
 if [[ -z "${spec_slug}" ]]; then
   spec_slug="$MODE"
 fi
 
-# Sanitize slug for branch naming
+# Sanitize slug for branch naming.
 spec_slug="$(printf '%s' "$spec_slug" \
   | tr '[:upper:]' '[:lower:]' \
   | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
 
-# Safety: always work on a branch
+# Safety: always work on a branch.
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 if [[ "$BRANCH" == "main" || "$BRANCH" == "master" ]]; then
   TS="$(date +%Y%m%d-%H%M%S)"
@@ -57,7 +57,7 @@ fi
 OUT_LAST="progress/last_message.txt"
 LOG="progress/codex.log"
 
-# Run header for traceability
+# Run header for traceability.
 echo "=== Run started: $(date -Iseconds) mode=$MODE model=$MODEL ===" | tee -a "$LOG"
 
 FLAGS=(
@@ -88,37 +88,37 @@ for ((i=1; i<=MAX_ITERS; i++)); do
 
   BEFORE_HEAD="$(git rev-parse HEAD)"
 
-  # Capture pre-run tail for append-to-end enforcement
+  # Capture pre-run tail for append-to-end enforcement.
   BEFORE_PROGRESS_TAIL=""
   if [[ -f "progress/progress.txt" ]]; then
     BEFORE_PROGRESS_TAIL="$(tail -n 40 progress/progress.txt || true)"
   fi
 
-  # Capture stdout + stderr into the log
+  # Capture stdout + stderr into the log.
   codex "${FLAGS[@]}" - < "$PROMPT_FILE" 2>&1 | tee -a "$LOG"
 
   AFTER_HEAD="$(git rev-parse HEAD)"
 
-  # Stop markers / blocked marker from last message file
+  # Stop markers / blocked marker from last message file.
   TERMINAL_MARKER="false"
   BLOCKED_MARKER="false"
   if [[ -f "$OUT_LAST" ]]; then
     if grep -Eq "ALL_DONE|PLAN_DONE|SPEC_DONE" "$OUT_LAST"; then
-  TERMINAL_MARKER="true"
+      TERMINAL_MARKER="true"
     fi
     if grep -Eq "^ITERATION_BLOCKED\b" "$OUT_LAST"; then
       BLOCKED_MARKER="true"
     fi
   fi
 
-  # Collect changes (committed during the run and/or left in working tree)
+  # Collect changes committed during the run and/or left in working tree.
   COMMITTED_CHANGED="$(_changed_between_commits "$BEFORE_HEAD" "$AFTER_HEAD" | awk 'NF' | sort -u)"
   WORKTREE_CHANGED="$(_changed_in_worktree)"
 
-  # Convenience: combined changed set
+  # Combined changed set.
   CHANGED_ALL="$(printf "%s\n%s\n" "$COMMITTED_CHANGED" "$WORKTREE_CHANGED" | awk 'NF' | sort -u)"
 
-  # Enforcement: if blocked, forbid spec/plan completion changes
+  # Enforcement: if blocked, forbid spec/plan completion changes.
   if [[ "$BLOCKED_MARKER" == "true" ]]; then
     if printf "%s\n" "$CHANGED_ALL" | grep -qE '^(specs/.*\.json|IMPLEMENTATION_PLAN\.md)$'; then
       echo "ERROR: ITERATION_BLOCKED but specs/*.json or IMPLEMENTATION_PLAN.md changed. Revert those changes." | tee -a "$LOG"
@@ -126,7 +126,7 @@ for ((i=1; i<=MAX_ITERS; i++)); do
     fi
   fi
 
-  # Enforcement: if any spec JSON changed, require progress/progress.txt also changed
+  # Enforcement: if any spec JSON changed, require progress/progress.txt also changed.
   if printf "%s\n" "$CHANGED_ALL" | grep -qE '^specs/.*\.json$'; then
     if ! printf "%s\n" "$CHANGED_ALL" | grep -qx 'progress/progress.txt'; then
       echo "ERROR: Spec changed but progress/progress.txt did not change. Refusing run." | tee -a "$LOG"
@@ -134,7 +134,7 @@ for ((i=1; i<=MAX_ITERS; i++)); do
     fi
   fi
 
-  # NEW enforcement: if anything changed and not blocked, progress/progress.txt must change
+  # Enforcement: if anything changed and not blocked, progress/progress.txt must change.
   if [[ "$BLOCKED_MARKER" != "true" ]]; then
     if [[ -n "$CHANGED_ALL" ]]; then
       if ! printf "%s\n" "$CHANGED_ALL" | grep -qx 'progress/progress.txt'; then
@@ -144,7 +144,7 @@ for ((i=1; i<=MAX_ITERS; i++)); do
     fi
   fi
 
-  # Enforcement: if progress/progress.txt changed, its EOF tail must change
+  # Enforcement: if progress/progress.txt changed, its EOF tail must change.
   if printf "%s\n" "$CHANGED_ALL" | grep -qx 'progress/progress.txt'; then
     AFTER_PROGRESS_TAIL="$(tail -n 40 progress/progress.txt || true)"
     if [[ -n "$BEFORE_PROGRESS_TAIL" && "$AFTER_PROGRESS_TAIL" == "$BEFORE_PROGRESS_TAIL" ]]; then
@@ -153,14 +153,14 @@ for ((i=1; i<=MAX_ITERS; i++)); do
     fi
   fi
 
-  # Stop if Codex reports a terminal marker in the last message file
+  # Stop if Codex reports a terminal marker in the last message file.
   if [[ "$TERMINAL_MARKER" == "true" ]]; then
     echo "Terminal marker detected. Exiting." | tee -a "$LOG"
     exit 0
   fi
 
-  # If no changes in working tree after an iteration, stop to avoid spinning.
-  # NOTE: this may still have created commits; that is fine.
+  # Stop to avoid spinning if the working tree is clean.
+  # This may still have created commits; that is fine.
   if [[ -z "$(git status --porcelain)" ]]; then
     echo "No working tree changes detected; stopping." | tee -a "$LOG"
     exit 0
