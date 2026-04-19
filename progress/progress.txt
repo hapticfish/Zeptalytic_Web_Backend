@@ -3079,3 +3079,220 @@
   - None for the required verification commands.
 - Next recommended item:
   - Author or activate the next roadmap spec: `background_jobs_and_security_hardening.json`
+2026-04-19T09:37:11.7508052-05:00
+- Mode:
+  - `spec_author`
+- Selected roadmap item:
+  - `background-jobs-security`
+- Spec file created:
+  - `specs/background_jobs_and_security_hardening.json`
+- Architecture docs used:
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+  - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
+  - `docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md`
+  - `docs/architecture/Frontend_Backend_Contract_Map.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md`
+  - `docs/architecture/Support_Announcements_and_Status_Design.md`
+  - `docs/architecture/Rewards_Application_and_Notification_Flows.md`
+  - `docs/architecture/Discord_Integration_Application_Flow.md`
+  - `docs/architecture/Background_Jobs_Sync_and_Event_Processing.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+- Repo search summary:
+  - Searched router, exception, schema, repository, service, worker, request-id, rate-limit, audit, and integration patterns with `git grep`, `git ls-files`, and repo file listings before authoring the spec.
+  - Found the canonical v1 wiring in `app/api/routers/v1/__init__.py`, shared dependency construction in `app/api/deps.py`, and standard error handling in `app/api/errors.py` plus `app/api/exception_handlers.py`.
+  - Found request ID is already supported in the error DTO and exception handlers via `request.state.request_id`, but `app/main.py` has no middleware assigning that state today.
+  - Found existing worker-ready business logic in `app/services/pay_projection_service.py`, `app/services/reward_event_ingestion_service.py`, `app/services/auth_service.py`, and `app/db/repositories/auth_repository.py`.
+  - Found `app/workers/__init__.py` is the only worker package file today; no concrete worker modules, no rate-limiting implementation, no audit-hook abstraction, and no logging helper modules currently exist.
+  - Found adjacent regression coverage in `tests/unit/test_application_layer_foundation.py`, `tests/unit/test_api_error_contract.py`, `tests/unit/test_pay_projection_service.py`, `tests/unit/test_reward_event_ingestion_service.py`, `tests/unit/test_auth_service.py`, and `tests/unit/test_config.py`, but no tests for request-ID middleware, worker entrypoints, rate limits, or audit hooks.
+- Files changed:
+  - `specs/background_jobs_and_security_hardening.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - No runtime application code implementation.
+  - No database model or Alembic migration changes.
+  - No admin dashboards, no queue-framework adoption, no full outbox/event bus, and no duplicated Pay commercial logic.
+  - No Discord reward/access coupling and no sensitive payment-data handling.
+- Risks/assumptions:
+  - Assumes the next build phase should stay foundation-scoped and dependency-free rather than adopting Celery, Redis, or a durable event store immediately.
+  - Assumes stale-session cleanup can be implemented from existing auth repository/service behavior without a schema change.
+  - Assumes `IMPLEMENTATION_PLAN.md` will be updated separately before planning/build runs, since this spec-authoring run was not asked to activate the new spec.
+- Next command to run:
+  - `./scripts/ralph-loop.sh plan 1`
+2026-04-19T09:56:02.6766311-05:00
+- Mode:
+  - `plan`
+- Active spec:
+  - `specs/background_jobs_and_security_hardening.json`
+- Repo search summary:
+  - Rehydrated `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, `PROMPT.md`, the active background-jobs/security spec, `specs/next_phase_spec_sequence.json`, the required architecture docs, `git status`, and `git log -5 --oneline`.
+  - Verified the current app topology with `git ls-files`, `git grep`, and targeted file reads across routers, dependencies, exception handlers, repositories, services, workers, model registration, Alembic bootstrap, tests, and `docker-compose.test.yml`.
+  - Confirmed the active operational-hardening spec matches repo reality: `app/main.py` still has no request-ID middleware, `app/workers/` only contains `__init__.py`, and there is still no rate-limit or audit-hook foundation in `app/`.
+  - Confirmed reusable implementation bases already exist in `app/services/pay_projection_service.py`, `app/services/reward_event_ingestion_service.py`, `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, `app/api/errors.py`, and `app/api/exception_handlers.py`, with adjacent regression coverage already present in `tests/unit/test_application_layer_foundation.py`, `tests/unit/test_api_error_contract.py`, `tests/unit/test_pay_projection_service.py`, `tests/unit/test_reward_event_ingestion_service.py`, `tests/unit/test_auth_service.py`, and `tests/unit/test_config.py`.
+- Files changed:
+  - `IMPLEMENTATION_PLAN.md`
+  - `specs/background_jobs_and_security_hardening.json`
+  - `progress/progress.txt`
+- Planning updates:
+  - Corrected `IMPLEMENTATION_PLAN.md` so the active-spec path matches the real file name `specs/background_jobs_and_security_hardening.json`.
+  - Updated the implementation plan narrative to reflect completed profile/settings, dashboard/launcher/billing, and Discord workstreams, to mark background jobs/security as the active workstream, and to point the post-active roadmap handoff at frontend/backend contract alignment.
+  - Tightened the background-jobs/security spec's repo-reality note so it reflects current plan state instead of the pre-activation Discord note.
+- Non-goals:
+  - No runtime application code, database models, Alembic migrations, routers, services, repositories, schemas, workers, integrations, or tests were modified.
+  - No dependencies were added.
+- Verification:
+  - Planning/docs-only run; no compile or Docker test commands were run.
+  - Verified the new progress entry is appended at EOF after editing.
+- Next command to run:
+  - `./scripts/ralph-loop.sh build 1`
+2026-04-19T10:16:28.6552496-05:00
+- Mode:
+  - `build`
+- Active spec:
+  - `specs/background_jobs_and_security_hardening.json`
+- Selected item:
+  - `bjsh-010` - Add Request ID Middleware and Error Propagation Foundation
+- Repo search summary:
+  - Rehydrated `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, `PROMPT.md`, the active spec, `specs/next_phase_spec_sequence.json`, the relevant architecture docs, `git status`, and `git log -5 --oneline`.
+  - Searched request-ID, middleware, exception-handler, router wiring, and test patterns with `git ls-files`, `rg`, and targeted file reads across `app/main.py`, `app/api/errors.py`, `app/api/exception_handlers.py`, `app/api/routers/v1/__init__.py`, `tests/unit/test_api_error_contract.py`, `tests/unit/test_application_layer_foundation.py`, `tests/unit/test_health.py`, and the affected API test modules.
+  - Confirmed the existing error envelope already supported `request_id` via `request.state.request_id`, but the app had no middleware assigning that state or exposing a tracing header on successful responses.
+  - Confirmed router registration required no route-by-route changes, and identified the regression gap as exact API-test expectations that assumed handled error payloads never included `request_id`.
+- Files changed:
+  - `app/main.py`
+  - `app/utils/__init__.py`
+  - `app/utils/request_id.py`
+  - `tests/unit/assertions.py`
+  - `tests/unit/test_request_id_middleware.py`
+  - `tests/unit/test_health.py`
+  - `tests/unit/test_addresses_api.py`
+  - `tests/unit/test_auth_api.py`
+  - `tests/unit/test_billing_api.py`
+  - `tests/unit/test_communication_preferences_api.py`
+  - `tests/unit/test_dashboard_api.py`
+  - `tests/unit/test_discord_integration_api.py`
+  - `tests/unit/test_launcher_api.py`
+  - `tests/unit/test_profiles_api.py`
+  - `tests/unit/test_reward_badges_api.py`
+  - `tests/unit/test_reward_notifications_api.py`
+  - `tests/unit/test_reward_objectives_api.py`
+  - `tests/unit/test_rewards_summary_api.py`
+  - `tests/unit/test_support_api.py`
+  - `specs/background_jobs_and_security_hardening.json`
+  - `progress/progress.txt`
+- Implementation summary:
+  - Added dependency-free request-ID middleware that assigns `request.state.request_id`, reuses a non-empty inbound `X-Request-ID` when present, and exposes `X-Request-ID` on responses.
+  - Wired the middleware into the main FastAPI app without changing route payloads or router registration.
+  - Added focused request-ID regression tests and updated existing API tests to assert the standardized traced error contract instead of the pre-middleware error payload.
+- Tests run and results:
+  - `python -m compileall app tests alembic` - passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` - passed (`357 passed`)
+- Blockers:
+  - None
+- Next recommended item:
+  - `bjsh-020` - Introduce Worker Entrypoint Scaffolding Around Existing Services
+
+## 2026-04-19T10:20:22.0522394-05:00
+- Active spec:
+  - `specs/background_jobs_and_security_hardening.json`
+- Selected item:
+  - `bjsh-020` - Introduce Worker Entrypoint Scaffolding Around Existing Services
+- Repo search summary:
+  - Rehydrated `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, `PROMPT.md`, the active spec, `specs/next_phase_spec_sequence.json`, the relevant background-job/security architecture docs, `git status`, and `git log -5 --oneline`.
+  - Searched worker, service, auth-session, and test surfaces with `git ls-files` and `rg`, then read `app/services/pay_projection_service.py`, `app/services/reward_event_ingestion_service.py`, `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, `app/workers/__init__.py`, `app/services/__init__.py`, `tests/unit/test_pay_projection_service.py`, `tests/unit/test_reward_event_ingestion_service.py`, and `tests/unit/test_auth_service.py`.
+  - Confirmed there were no concrete worker modules or scheduler hooks yet, `app/workers/__init__.py` was only a package marker, Pay and reward services already exposed the business operations to wrap, and auth had session revocation/listing behavior but no stale-session cleanup primitive.
+- Files changed:
+  - `app/db/repositories/auth_repository.py`
+  - `app/services/auth_service.py`
+  - `app/workers/__init__.py`
+  - `app/workers/pay_projection_worker.py`
+  - `app/workers/reward_event_worker.py`
+  - `app/workers/session_cleanup_worker.py`
+  - `tests/unit/test_auth_service.py`
+  - `tests/unit/test_worker_foundation.py`
+  - `specs/background_jobs_and_security_hardening.json`
+  - `progress/progress.txt`
+- Implementation summary:
+  - Added a repository-backed stale-session deletion path and an `AuthService.cleanup_stale_sessions` result type so cleanup stays limited to expired or revoked auth-session maintenance.
+  - Added thin worker entrypoints for Pay projection refresh, trusted reward event ingestion, and stale session cleanup; each delegates to existing service-layer behavior and remains directly callable without any queue infrastructure.
+  - Added regression coverage for direct worker invocation and auth stale-session cleanup semantics.
+- Tests run and results:
+  - `python -m compileall app tests alembic` - passed
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` - passed (`361 passed`)
+- Blockers:
+  - `python -m pytest tests/unit/test_auth_service.py tests/unit/test_worker_foundation.py` could not run in the host shell because the local Python environment does not have `pytest` installed; authoritative Docker verification still passed.
+- Next recommended item:
+  - `bjsh-030` - Add Lightweight Rate-Limit and Audit-Hook Primitives for Sensitive Flows
+## 2026-04-19T10:28:27.7107556-05:00
+- Active spec:
+  - `specs/background_jobs_and_security_hardening.json`
+- Selected item:
+  - `bjsh-030` - Add Lightweight Rate-Limit and Audit-Hook Primitives for Sensitive Flows
+- Repo search summary:
+  - Searched `app/api/routers/v1/auth.py`, `billing.py`, `integrations.py`, and `support.py` for the highest-risk browser actions called out in the security docs and confirmed the sensitive mutation endpoints were present but had no shared rate-limit or audit-control wiring.
+  - Confirmed request ID and worker foundations already existed in the dirty worktree via `app/main.py`, `app/utils/request_id.py`, `app/workers/*.py`, `tests/unit/test_request_id_middleware.py`, and `tests/unit/test_worker_foundation.py`, so this iteration stayed scoped to `bjsh-030`.
+  - Checked `app/core/config.py`, `app/api/deps.py`, `app/api/exception_handlers.py`, and the existing API tests (`tests/unit/test_auth_api.py`, `test_billing_api.py`, `test_discord_integration_api.py`, `test_support_api.py`, `test_config.py`) to match current dependency and error-contract patterns before editing.
+- Files changed:
+  - `app/core/config.py`
+  - `app/api/deps.py`
+  - `app/api/exception_handlers.py`
+  - `app/api/routers/v1/auth.py`
+  - `app/api/routers/v1/billing.py`
+  - `app/api/routers/v1/integrations.py`
+  - `app/api/routers/v1/support.py`
+  - `app/utils/__init__.py`
+  - `app/utils/audit.py`
+  - `app/utils/rate_limits.py`
+  - `tests/unit/test_config.py`
+  - `tests/unit/test_rate_limit_controls.py`
+  - `specs/background_jobs_and_security_hardening.json`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_rate_limit_controls.py tests/unit/test_config.py` could not run in the host shell because the local Python environment does not have `pytest` installed.
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the authoritative suite reported `366 passed`.
+- Blockers:
+  - None.
+- Next recommended item:
+  - `bjsh-040` - Lock Operational Foundation Regression Coverage
+## 2026-04-19T10:31:43.3779635-05:00
+- Active spec:
+  - `specs/background_jobs_and_security_hardening.json`
+- Selected item:
+  - `bjsh-040` - Lock Operational Foundation Regression Coverage
+- Repo search summary:
+  - Searched the operational hardening surface with `git ls-files`, `rg`, and `git grep` and confirmed request ID wiring in `app/main.py` and `app/utils/request_id.py`, shared rate-limit and audit primitives in `app/utils/rate_limits.py` and `app/utils/audit.py`, and thin worker entrypoints in `app/workers/pay_projection_worker.py`, `reward_event_worker.py`, and `session_cleanup_worker.py`.
+  - Verified current application wiring through `app/api/deps.py`, `app/api/exception_handlers.py`, and the sensitive route modules `app/api/routers/v1/auth.py`, `billing.py`, `integrations.py`, and `support.py`.
+  - Confirmed regression coverage already existed in `tests/unit/test_request_id_middleware.py`, `tests/unit/test_worker_foundation.py`, `tests/unit/test_rate_limit_controls.py`, and `tests/unit/test_config.py`; the gap was one flaky stale-session cleanup assertion in `tests/unit/test_auth_service.py`.
+- Files changed:
+  - `tests/unit/test_auth_service.py`
+  - `specs/background_jobs_and_security_hardening.json`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_auth_service.py -k cleanup_stale_sessions_deletes_expired_and_revoked_rows_only -q` could not run in the host shell because the local Python environment does not have `pytest` installed.
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the authoritative suite reported `366 passed`.
+- Blockers:
+  - None.
+- Next recommended item:
+  - `bjsh-999` - Verify Background Jobs and Security Hardening Foundation
+## 2026-04-19T10:33:37.9284624-05:00
+- Active spec:
+  - `specs/background_jobs_and_security_hardening.json`
+- Selected item:
+  - `bjsh-999` - Verify Background Jobs and Security Hardening Foundation
+- Repo search summary:
+  - Searched the operational-hardening surface with `git ls-files` and `rg` and confirmed the completed implementation paths already existed in `app/main.py`, `app/utils/request_id.py`, `app/utils/rate_limits.py`, `app/utils/audit.py`, `app/workers/pay_projection_worker.py`, `app/workers/reward_event_worker.py`, and `app/workers/session_cleanup_worker.py`.
+  - Verified application wiring through `app/api/exception_handlers.py`, `app/api/deps.py`, and the sensitive route modules `app/api/routers/v1/auth.py`, `billing.py`, `integrations.py`, and `support.py`.
+  - Confirmed regression coverage for this spec in `tests/unit/test_request_id_middleware.py`, `tests/unit/test_worker_foundation.py`, `tests/unit/test_rate_limit_controls.py`, `tests/unit/test_config.py`, and adjacent auth contract tests.
+- Files changed:
+  - `specs/background_jobs_and_security_hardening.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed; the authoritative suite reported `366 passed`.
+- Blockers:
+  - None.
+- Next recommended item:
+  - Author or activate the frontend/backend contract alignment workstream after updating planning artifacts in a separate run.

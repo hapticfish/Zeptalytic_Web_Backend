@@ -14,6 +14,7 @@ from app.services.auth_service import (
     AuthenticatedSessionContext,
     EmailVerificationRequiredError,
 )
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubDashboardService:
@@ -150,11 +151,10 @@ def test_dashboard_summary_endpoint_requires_verified_session() -> None:
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "email_verification_required",
-            "message": "Email verification is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="email_verification_required",
+        message="Email verification is required.",
+        details={},
+    )

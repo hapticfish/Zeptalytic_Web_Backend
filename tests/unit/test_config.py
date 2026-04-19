@@ -23,6 +23,14 @@ def test_settings_accept_environment_values() -> None:
         discord_oauth_redirect_uri="https://parent.example.com/api/v1/integrations/discord/callback",
         discord_oauth_state_secret="discord-state-secret",
         discord_oauth_state_ttl_seconds=900,
+        security_rate_limit_auth_window_seconds=120,
+        security_rate_limit_auth_max_attempts=4,
+        security_rate_limit_discord_callback_window_seconds=180,
+        security_rate_limit_discord_callback_max_attempts=7,
+        security_rate_limit_billing_action_window_seconds=240,
+        security_rate_limit_billing_action_max_attempts=8,
+        security_rate_limit_support_ticket_window_seconds=3600,
+        security_rate_limit_support_ticket_max_attempts=3,
     )
 
     assert settings.app_env == "test"
@@ -48,3 +56,11 @@ def test_settings_accept_environment_values() -> None:
     )
     assert settings.discord_oauth_state_secret == "discord-state-secret"
     assert settings.discord_oauth_state_ttl_seconds == 900
+    assert settings.security_rate_limit_auth_window_seconds == 120
+    assert settings.security_rate_limit_auth_max_attempts == 4
+    assert settings.security_rate_limit_discord_callback_window_seconds == 180
+    assert settings.security_rate_limit_discord_callback_max_attempts == 7
+    assert settings.security_rate_limit_billing_action_window_seconds == 240
+    assert settings.security_rate_limit_billing_action_max_attempts == 8
+    assert settings.security_rate_limit_support_ticket_window_seconds == 3600
+    assert settings.security_rate_limit_support_ticket_max_attempts == 3

@@ -18,6 +18,7 @@ from app.services.auth_service import (
     EmailVerificationRequiredError,
 )
 from app.services.reward_summary_service import RewardSummaryNotFoundError
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubRewardSummaryService:
@@ -202,14 +203,13 @@ def test_rewards_summary_endpoint_blocks_pending_verification_context() -> None:
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "email_verification_required",
-            "message": "Email verification is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="email_verification_required",
+        message="Email verification is required.",
+        details={},
+    )
 
 
 def test_rewards_summary_endpoint_returns_not_found_for_missing_account_summary() -> None:
@@ -224,14 +224,13 @@ def test_rewards_summary_endpoint_returns_not_found_for_missing_account_summary(
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "reward_summary_not_found",
-            "message": "Reward summary not found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="reward_summary_not_found",
+        message="Reward summary not found.",
+        details={},
+    )
 
 
 def test_legacy_rewards_summary_account_path_is_not_registered() -> None:

@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app.api.deps import get_auth_service, require_normal_authenticated_session_context
 from app.api.exception_handlers import register_exception_handlers
 from app.main import app
+from app.utils import register_request_id_middleware
 from app.services.auth_service import (
     AccountAccessRestrictedError,
     AuthClientInfo,
@@ -27,6 +28,7 @@ from app.services.auth_service import (
     TwoFactorEnrollment,
     TwoFactorNotEnabledError,
 )
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubAuthService:
@@ -450,15 +452,14 @@ def test_auth_session_endpoint_requires_authenticated_cookie_context() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 401
     assert stub_service.received_tokens == [None]
-    assert response.json() == {
-        "error": {
-            "code": "authentication_required",
-            "message": "Authentication is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=401,
+        code="authentication_required",
+        message="Authentication is required.",
+        details={},
+    )
 
 
 def test_auth_session_endpoint_reflects_pending_verification_access_limits() -> None:
@@ -530,14 +531,13 @@ def test_signup_endpoint_returns_conflict_error_for_duplicate_account() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 409
-    assert response.json() == {
-        "error": {
-            "code": "account_already_exists",
-            "message": "An account with that username or email already exists.",
-            "details": {"conflicts": ["email"]},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=409,
+        code="account_already_exists",
+        message="An account with that username or email already exists.",
+        details={"conflicts": ["email"]},
+    )
 
 
 def test_login_endpoint_sets_session_cookie_for_valid_credentials() -> None:
@@ -597,14 +597,13 @@ def test_verify_email_endpoint_returns_invalid_token_error() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 400
-    assert response.json() == {
-        "error": {
-            "code": "email_verification_token_invalid",
-            "message": "The email verification link is invalid or expired.",
-            "details": {"reason": "expired"},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=400,
+        code="email_verification_token_invalid",
+        message="The email verification link is invalid or expired.",
+        details={"reason": "expired"},
+    )
 
 
 def test_resend_verification_endpoint_uses_authenticated_pending_session() -> None:
@@ -688,14 +687,13 @@ def test_reset_password_endpoint_returns_invalid_token_error() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 400
-    assert response.json() == {
-        "error": {
-            "code": "password_reset_token_invalid",
-            "message": "The password reset link is invalid or expired.",
-            "details": {"reason": "expired"},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=400,
+        code="password_reset_token_invalid",
+        message="The password reset link is invalid or expired.",
+        details={"reason": "expired"},
+    )
 
 
 def test_change_password_endpoint_rotates_cookie_for_authenticated_user() -> None:
@@ -743,18 +741,18 @@ def test_change_password_endpoint_returns_current_password_error() -> None:
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 401
-    assert response.json() == {
-        "error": {
-            "code": "current_password_invalid",
-            "message": "The current password is incorrect.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=401,
+        code="current_password_invalid",
+        message="The current password is incorrect.",
+        details={},
+    )
 
 
 def test_verified_guard_blocks_pending_verification_context() -> None:
     gated_app = FastAPI()
+    register_request_id_middleware(gated_app)
     register_exception_handlers(gated_app)
 
     @gated_app.get("/gated")
@@ -774,14 +772,13 @@ def test_verified_guard_blocks_pending_verification_context() -> None:
         gated_client.cookies.clear()
         gated_app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "email_verification_required",
-            "message": "Email verification is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="email_verification_required",
+        message="Email verification is required.",
+        details={},
+    )
 
 
 def test_login_endpoint_returns_invalid_credentials_error() -> None:
@@ -799,14 +796,13 @@ def test_login_endpoint_returns_invalid_credentials_error() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 401
-    assert response.json() == {
-        "error": {
-            "code": "invalid_credentials",
-            "message": "Invalid email or password.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=401,
+        code="invalid_credentials",
+        message="Invalid email or password.",
+        details={},
+    )
 
 
 def test_login_endpoint_returns_account_access_restricted_for_closed_accounts() -> None:
@@ -824,14 +820,13 @@ def test_login_endpoint_returns_account_access_restricted_for_closed_accounts() 
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "account_access_restricted",
-            "message": "Account access is restricted.",
-            "details": {"status": "closed"},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="account_access_restricted",
+        message="Account access is restricted.",
+        details={"status": "closed"},
+    )
 
 
 def test_logout_endpoint_revokes_current_session_and_clears_cookie() -> None:
@@ -917,14 +912,13 @@ def test_two_factor_challenge_endpoint_returns_error_for_used_recovery_code() ->
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 400
-    assert response.json() == {
-        "error": {
-            "code": "two_factor_code_invalid",
-            "message": "The two-factor code is invalid.",
-            "details": {"reason": "used"},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=400,
+        code="two_factor_code_invalid",
+        message="The two-factor code is invalid.",
+        details={"reason": "used"},
+    )
 
 
 def test_session_list_endpoint_returns_safe_device_contract() -> None:

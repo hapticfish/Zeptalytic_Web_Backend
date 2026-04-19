@@ -15,6 +15,7 @@ from app.services import (
     DiscordIntegrationNotFoundError,
 )
 from app.services.auth_service import EmailVerificationRequiredError
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubDiscordIntegrationService:
@@ -144,14 +145,13 @@ def test_discord_integration_routes_require_verified_session_context() -> None:
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "email_verification_required",
-            "message": "Email verification is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="email_verification_required",
+        message="Email verification is required.",
+        details={},
+    )
 
 
 def test_discord_integration_status_endpoint_returns_safe_response() -> None:
@@ -254,14 +254,13 @@ def test_discord_callback_endpoint_uses_standard_error_shape_for_invalid_state()
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 400
-    assert response.json() == {
-        "error": {
-            "code": "discord_oauth_state_invalid",
-            "message": "Discord OAuth callback state is invalid.",
-            "details": {"reason": "expired_state"},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=400,
+        code="discord_oauth_state_invalid",
+        message="Discord OAuth callback state is invalid.",
+        details={"reason": "expired_state"},
+    )
 
 
 def test_discord_disconnect_endpoint_returns_disconnected_state() -> None:
@@ -318,11 +317,10 @@ def test_discord_disconnect_endpoint_uses_standard_error_shape_for_missing_link(
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "discord_integration_link_not_found",
-            "message": "No active Discord connection was found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="discord_integration_link_not_found",
+        message="No active Discord connection was found.",
+        details={},
+    )

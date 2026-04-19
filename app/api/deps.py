@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from functools import lru_cache
 
 from fastapi import Cookie, Depends
 from sqlalchemy.orm import Session
@@ -47,10 +48,30 @@ from app.services import (
     build_service_status_service,
     build_support_service,
 )
+from app.utils.audit import AuditHook, LoggingAuditHook
+from app.utils.rate_limits import InMemoryRateLimiter
 
 
 def get_settings():
     return settings
+
+
+@lru_cache
+def _build_rate_limiter() -> InMemoryRateLimiter:
+    return InMemoryRateLimiter()
+
+
+def get_rate_limiter() -> InMemoryRateLimiter:
+    return _build_rate_limiter()
+
+
+@lru_cache
+def _build_audit_hook() -> AuditHook:
+    return LoggingAuditHook()
+
+
+def get_audit_hook() -> AuditHook:
+    return _build_audit_hook()
 
 
 def get_pay_client(active_settings=Depends(get_settings)) -> PayClient:

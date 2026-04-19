@@ -16,6 +16,7 @@ from app.services.auth_service import (
     AuthenticatedSessionContext,
     EmailVerificationRequiredError,
 )
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubAddressService:
@@ -195,14 +196,13 @@ def test_addresses_contract_endpoint_blocks_pending_verification_context() -> No
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "email_verification_required",
-            "message": "Email verification is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="email_verification_required",
+        message="Email verification is required.",
+        details={},
+    )
 
 
 def test_addresses_me_endpoint_returns_address_list() -> None:
@@ -499,14 +499,13 @@ def test_addresses_patch_me_endpoint_returns_not_found_for_missing_address() -> 
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "address_not_found",
-            "message": "Address not found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="address_not_found",
+        message="Address not found.",
+        details={},
+    )
 
 
 def test_addresses_post_primary_endpoint_returns_not_found_for_missing_address() -> None:
@@ -521,14 +520,13 @@ def test_addresses_post_primary_endpoint_returns_not_found_for_missing_address()
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "address_not_found",
-            "message": "Address not found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="address_not_found",
+        message="Address not found.",
+        details={},
+    )
 
 
 def test_addresses_post_me_endpoint_rejects_invalid_address_type() -> None:

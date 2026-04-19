@@ -5,7 +5,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, Response
 
 from app.api.deps import (
+    get_audit_hook,
     get_auth_service,
+    get_rate_limiter,
     require_authenticated_session_context,
     require_normal_authenticated_session_context,
 )
@@ -42,6 +44,13 @@ from app.schemas.auth import (
     VerifyEmailResponse,
 )
 from app.services import AuthClientInfo, AuthMutationResult, AuthService, AuthenticatedSessionContext
+from app.utils.audit import AuditHook, emit_audit_event
+from app.utils.rate_limits import (
+    InMemoryRateLimiter,
+    build_auth_rate_limit_policy,
+    build_authenticated_rate_limit_key,
+    build_request_rate_limit_key,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -128,19 +137,55 @@ def _build_session_device_list_response(
     )
 
 
+def _enforce_public_auth_rate_limit(
+    *,
+    request: Request,
+    rate_limiter: InMemoryRateLimiter,
+    action: str,
+) -> None:
+    rate_limiter.check(
+        action=action,
+        key=build_request_rate_limit_key(request),
+        policy=build_auth_rate_limit_policy(settings),
+    )
+
+
+def _enforce_authenticated_auth_rate_limit(
+    *,
+    request: Request,
+    context: AuthenticatedSessionContext,
+    rate_limiter: InMemoryRateLimiter,
+    action: str,
+) -> None:
+    rate_limiter.check(
+        action=action,
+        key=build_authenticated_rate_limit_key(request, account_id=context.account_id),
+        policy=build_auth_rate_limit_policy(settings),
+    )
+
+
 @router.post("/signup", response_model=AuthSessionResponse, status_code=201)
 def signup(
     payload: SignupRequest,
     response: Response,
     request: Request,
     auth_service: AuthService = Depends(get_auth_service),
+    rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
+    audit_hook: AuditHook = Depends(get_audit_hook),
 ) -> AuthSessionResponse:
+    _enforce_public_auth_rate_limit(
+        request=request,
+        rate_limiter=rate_limiter,
+        action="auth_signup",
+    )
+    emit_audit_event(audit_hook, request=request, action="auth.signup", outcome="attempt")
     result = auth_service.signup(
         username=payload.username,
         email=payload.email,
         password=payload.password,
         client_info=_build_client_info(request),
     )
+    emit_audit_event(audit_hook, request=request, action="auth.signup", outcome="success")
     _set_session_cookie(response, result.session_token)
     return _build_auth_session_response(result)
 
@@ -151,12 +196,21 @@ def login(
     response: Response,
     request: Request,
     auth_service: AuthService = Depends(get_auth_service),
+    rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
+    audit_hook: AuditHook = Depends(get_audit_hook),
 ) -> AuthSessionResponse:
+    _enforce_public_auth_rate_limit(
+        request=request,
+        rate_limiter=rate_limiter,
+        action="auth_login",
+    )
+    emit_audit_event(audit_hook, request=request, action="auth.login", outcome="attempt")
     result = auth_service.login(
         email=payload.email,
         password=payload.password,
         client_info=_build_client_info(request),
     )
+    emit_audit_event(audit_hook, request=request, action="auth.login", outcome="success")
     _set_session_cookie(response, result.session_token)
     return _build_auth_session_response(result)
 
@@ -179,10 +233,32 @@ def resend_verification(
     request: Request,
     context: AuthenticatedSessionContext = Depends(require_authenticated_session_context),
     auth_service: AuthService = Depends(get_auth_service),
+    rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
+    audit_hook: AuditHook = Depends(get_audit_hook),
 ) -> ResendEmailVerificationResponse:
+    _enforce_authenticated_auth_rate_limit(
+        request=request,
+        context=context,
+        rate_limiter=rate_limiter,
+        action="auth_resend_verification",
+    )
+    emit_audit_event(
+        audit_hook,
+        request=request,
+        action="auth.resend_verification",
+        outcome="attempt",
+        account_id=context.account_id,
+    )
     auth_service.resend_email_verification(
         context=context,
         client_info=_build_client_info(request),
+    )
+    emit_audit_event(
+        audit_hook,
+        request=request,
+        action="auth.resend_verification",
+        outcome="success",
+        account_id=context.account_id,
     )
     return ResendEmailVerificationResponse()
 
@@ -192,10 +268,29 @@ def forgot_password(
     payload: ForgotPasswordRequest,
     request: Request,
     auth_service: AuthService = Depends(get_auth_service),
+    rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
+    audit_hook: AuditHook = Depends(get_audit_hook),
 ) -> ForgotPasswordResponse:
+    _enforce_public_auth_rate_limit(
+        request=request,
+        rate_limiter=rate_limiter,
+        action="auth_forgot_password",
+    )
+    emit_audit_event(
+        audit_hook,
+        request=request,
+        action="auth.forgot_password",
+        outcome="attempt",
+    )
     auth_service.forgot_password(
         email=payload.email,
         client_info=_build_client_info(request),
+    )
+    emit_audit_event(
+        audit_hook,
+        request=request,
+        action="auth.forgot_password",
+        outcome="success",
     )
     return ForgotPasswordResponse()
 

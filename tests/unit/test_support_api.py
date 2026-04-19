@@ -22,6 +22,7 @@ from app.services.support_service import (
     SupportAccessRestrictedError,
     SupportTicketNotFoundError,
 )
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubAuthService:
@@ -199,14 +200,13 @@ def test_support_ticket_detail_returns_standard_not_found_error() -> None:
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "support_ticket_not_found",
-            "message": "Support ticket not found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="support_ticket_not_found",
+        message="Support ticket not found.",
+        details={},
+    )
 
 
 def test_support_ticket_create_returns_standard_restricted_error() -> None:
@@ -233,14 +233,13 @@ def test_support_ticket_create_returns_standard_restricted_error() -> None:
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "support_access_restricted",
-            "message": "Support access is restricted.",
-            "details": {"status": "closed"},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="support_access_restricted",
+        message="Support access is restricted.",
+        details={"status": "closed"},
+    )
 
 
 def test_support_ticket_endpoints_require_authentication() -> None:
@@ -253,11 +252,10 @@ def test_support_ticket_endpoints_require_authentication() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 401
-    assert response.json() == {
-        "error": {
-            "code": "authentication_required",
-            "message": "Authentication is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=401,
+        code="authentication_required",
+        message="Authentication is required.",
+        details={},
+    )

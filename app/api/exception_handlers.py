@@ -53,6 +53,7 @@ from app.services.communication_preference_service import (
 )
 from app.services.reward_objective_service import RewardObjectivesNotFoundError
 from app.services.reward_summary_service import RewardSummaryNotFoundError
+from app.utils.rate_limits import RateLimitExceededError
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -155,6 +156,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         DiscordOAuthConfigurationError,
         discord_oauth_configuration_handler,
     )
+    app.add_exception_handler(RateLimitExceededError, rate_limit_exceeded_handler)
     app.add_exception_handler(RequestValidationError, request_validation_error_handler)
 
 
@@ -589,6 +591,24 @@ async def discord_oauth_configuration_handler(
         message="Discord OAuth is temporarily unavailable.",
         request_id=_request_id(request),
     )
+
+
+async def rate_limit_exceeded_handler(
+    request: Request,
+    exc: RateLimitExceededError,
+) -> JSONResponse:
+    response = build_error_response(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        code="rate_limit_exceeded",
+        message="Rate limit exceeded. Please retry later.",
+        details={
+            "action": exc.action,
+            "retry_after_seconds": exc.retry_after_seconds,
+        },
+        request_id=_request_id(request),
+    )
+    response.headers["Retry-After"] = str(exc.retry_after_seconds)
+    return response
 
 
 async def request_validation_error_handler(

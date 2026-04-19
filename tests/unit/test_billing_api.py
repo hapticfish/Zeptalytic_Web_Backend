@@ -23,6 +23,7 @@ from app.schemas.billing import (
 from app.schemas.common import CursorPageInfo
 from app.services.billing_summary_service import BillingActionUnavailableError
 from app.services.auth_service import AuthenticatedSessionContext
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubBillingSummaryService:
@@ -317,11 +318,10 @@ def test_billing_checkout_endpoint_returns_standard_error_when_pay_is_unavailabl
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 503
-    assert response.json() == {
-        "error": {
-            "code": "billing_action_unavailable",
-            "message": "Billing action is temporarily unavailable.",
-            "details": {"action": "checkout"},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=503,
+        code="billing_action_unavailable",
+        message="Billing action is temporarily unavailable.",
+        details={"action": "checkout"},
+    )

@@ -75,6 +75,12 @@ class SessionDevice:
     is_current: bool
 
 
+@dataclass(slots=True)
+class StaleSessionCleanupResult:
+    deleted_session_count: int
+    stale_before: datetime
+
+
 class AuthenticationRequiredError(Exception):
     """Raised when a request does not present a valid authenticated session."""
 
@@ -845,6 +851,23 @@ class AuthService:
         except Exception:
             self._db.rollback()
             raise
+
+    def cleanup_stale_sessions(
+        self,
+        *,
+        stale_before: datetime | None = None,
+    ) -> StaleSessionCleanupResult:
+        cutoff = stale_before or datetime.now(timezone.utc)
+        try:
+            deleted_session_count = self._repository.delete_stale_sessions(stale_before=cutoff)
+            self._db.commit()
+        except Exception:
+            self._db.rollback()
+            raise
+        return StaleSessionCleanupResult(
+            deleted_session_count=deleted_session_count,
+            stale_before=cutoff,
+        )
 
     def _get_signup_conflicts(self, *, username: str, email: str) -> list[str]:
         conflicts: list[str] = []

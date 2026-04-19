@@ -16,6 +16,7 @@ from app.services.auth_service import (
     AuthenticatedSessionContext,
     EmailVerificationRequiredError,
 )
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubProfileSettingsService:
@@ -154,14 +155,13 @@ def test_profiles_contract_endpoint_blocks_pending_verification_context() -> Non
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "email_verification_required",
-            "message": "Email verification is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="email_verification_required",
+        message="Email verification is required.",
+        details={},
+    )
 
 
 def test_profiles_me_endpoint_returns_profile_settings_summary() -> None:
@@ -231,14 +231,13 @@ def test_profiles_me_endpoint_returns_not_found_when_profile_settings_missing() 
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "profile_settings_not_found",
-            "message": "Profile settings not found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="profile_settings_not_found",
+        message="Profile settings not found.",
+        details={},
+    )
 
 
 def test_profiles_patch_me_endpoint_updates_profile_settings() -> None:

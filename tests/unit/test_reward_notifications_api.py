@@ -20,6 +20,7 @@ from app.services.reward_notification_service import (
     RewardNotificationNotFoundError,
     RewardNotificationQueueNotFoundError,
 )
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubRewardNotificationService:
@@ -220,14 +221,13 @@ def test_reward_notifications_endpoint_blocks_pending_verification_context() -> 
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "email_verification_required",
-            "message": "Email verification is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="email_verification_required",
+        message="Email verification is required.",
+        details={},
+    )
 
 
 def test_reward_notifications_endpoint_returns_not_found_for_missing_account() -> None:
@@ -246,14 +246,13 @@ def test_reward_notifications_endpoint_returns_not_found_for_missing_account() -
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "reward_notification_queue_not_found",
-            "message": "Reward notification queue not found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="reward_notification_queue_not_found",
+        message="Reward notification queue not found.",
+        details={},
+    )
 
 
 def test_mark_reward_notification_seen_returns_transition_payload() -> None:
@@ -307,14 +306,13 @@ def test_mark_reward_notification_seen_returns_not_found_for_missing_notificatio
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "reward_notification_not_found",
-            "message": "Reward notification not found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="reward_notification_not_found",
+        message="Reward notification not found.",
+        details={},
+    )
 
 
 def test_skip_all_reward_notifications_returns_skip_summary() -> None:
@@ -369,14 +367,13 @@ def test_skip_all_reward_notifications_returns_not_found_for_missing_account() -
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "reward_notification_queue_not_found",
-            "message": "Reward notification queue not found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="reward_notification_queue_not_found",
+        message="Reward notification queue not found.",
+        details={},
+    )
 
 
 def test_legacy_reward_notifications_account_paths_are_not_registered() -> None:

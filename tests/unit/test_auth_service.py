@@ -861,3 +861,56 @@ def test_account_closure_revokes_sessions_and_blocks_future_login() -> None:
         )
 
     assert exc.value.status == "closed"
+
+
+def test_cleanup_stale_sessions_deletes_expired_and_revoked_rows_only() -> None:
+    session = _create_in_memory_session()
+    service = _build_service(session)
+    signup_result = service.signup(
+        username="cleanup-user",
+        email="cleanup@example.com",
+        password="Password123",
+        client_info=_client_info(),
+    )
+    current_context = service.get_authenticated_session_context(signup_result.session_token)
+    assert current_context is not None
+
+    second_login = service.login(
+        email="cleanup@example.com",
+        password="Password123",
+        client_info=AuthClientInfo(ip_address="10.0.0.20", user_agent="cleanup-other"),
+    )
+    second_context = service.get_authenticated_session_context(second_login.session_token)
+    assert second_context is not None
+    third_login = service.login(
+        email="cleanup@example.com",
+        password="Password123",
+        client_info=AuthClientInfo(ip_address="10.0.0.21", user_agent="cleanup-active"),
+    )
+    third_context = service.get_authenticated_session_context(third_login.session_token)
+    assert third_context is not None
+
+    sessions_before = session.scalars(
+        select(AuthSession).where(AuthSession.account_id == current_context.account_id)
+    ).all()
+    assert len(sessions_before) == 3
+
+    sessions_by_id = {persisted_session.id: persisted_session for persisted_session in sessions_before}
+    sessions_by_id[current_context.session_id].expires_at = datetime(
+        2026, 4, 18, 12, 0, tzinfo=timezone.utc
+    )
+    sessions_by_id[second_context.session_id].revoked_at = datetime(
+        2026, 4, 19, 12, 0, tzinfo=timezone.utc
+    )
+    session.commit()
+
+    result = service.cleanup_stale_sessions(
+        stale_before=datetime(2026, 4, 19, 13, 0, tzinfo=timezone.utc)
+    )
+
+    remaining_sessions = session.scalars(
+        select(AuthSession).where(AuthSession.account_id == current_context.account_id)
+    ).all()
+
+    assert result.deleted_session_count == 2
+    assert [persisted_session.id for persisted_session in remaining_sessions] == [third_context.session_id]

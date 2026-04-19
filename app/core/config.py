@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     discord_oauth_redirect_uri: str | None = None
     discord_oauth_state_secret: str = "dev-discord-oauth-state-secret"
     discord_oauth_state_ttl_seconds: int = 600
+    security_rate_limit_auth_window_seconds: int = 300
+    security_rate_limit_auth_max_attempts: int = 5
+    security_rate_limit_discord_callback_window_seconds: int = 300
+    security_rate_limit_discord_callback_max_attempts: int = 10
+    security_rate_limit_billing_action_window_seconds: int = 300
+    security_rate_limit_billing_action_max_attempts: int = 10
+    security_rate_limit_support_ticket_window_seconds: int = 3600
+    security_rate_limit_support_ticket_max_attempts: int = 5
 
     model_config = SettingsConfigDict(
         env_file=".env",

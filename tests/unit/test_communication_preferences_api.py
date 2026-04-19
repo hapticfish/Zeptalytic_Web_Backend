@@ -16,6 +16,7 @@ from app.services.auth_service import (
     AuthenticatedSessionContext,
     EmailVerificationRequiredError,
 )
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubCommunicationPreferenceService:
@@ -165,14 +166,13 @@ def test_communication_preferences_contract_endpoint_blocks_pending_verification
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "email_verification_required",
-            "message": "Email verification is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="email_verification_required",
+        message="Email verification is required.",
+        details={},
+    )
 
 
 def test_communication_preferences_me_endpoint_returns_preference_summary() -> None:
@@ -228,14 +228,13 @@ def test_communication_preferences_me_endpoint_returns_not_found_when_missing() 
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "communication_preferences_not_found",
-            "message": "Communication preferences not found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="communication_preferences_not_found",
+        message="Communication preferences not found.",
+        details={},
+    )
 
 
 def test_communication_preferences_patch_me_endpoint_updates_preferences() -> None:

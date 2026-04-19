@@ -13,6 +13,7 @@ from app.services.auth_service import (
     EmailVerificationRequiredError,
 )
 from app.services.reward_objective_service import RewardObjectivesNotFoundError
+from tests.unit.assertions import assert_standard_error_response
 
 
 class StubRewardObjectiveService:
@@ -248,14 +249,13 @@ def test_reward_objectives_endpoint_blocks_pending_verification_context() -> Non
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "code": "email_verification_required",
-            "message": "Email verification is required.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=403,
+        code="email_verification_required",
+        message="Email verification is required.",
+        details={},
+    )
 
 
 def test_reward_objectives_endpoint_returns_not_found_for_missing_account() -> None:
@@ -270,14 +270,13 @@ def test_reward_objectives_endpoint_returns_not_found_for_missing_account() -> N
         client.cookies.clear()
         app.dependency_overrides.clear()
 
-    assert response.status_code == 404
-    assert response.json() == {
-        "error": {
-            "code": "reward_objectives_not_found",
-            "message": "Reward objectives not found.",
-            "details": {},
-        }
-    }
+    assert_standard_error_response(
+        response,
+        status_code=404,
+        code="reward_objectives_not_found",
+        message="Reward objectives not found.",
+        details={},
+    )
 
 
 def test_legacy_reward_objectives_account_path_is_not_registered() -> None:

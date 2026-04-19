@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.db.models.account_security_settings import AccountSecuritySettings
@@ -462,6 +462,21 @@ class AuthRepository:
             )
             .values(revoked_at=revoked_at)
         )
+
+    def delete_stale_sessions(
+        self,
+        *,
+        stale_before: datetime,
+    ) -> int:
+        result = self._db.execute(
+            delete(AuthSession).where(
+                or_(
+                    AuthSession.revoked_at.is_not(None),
+                    AuthSession.expires_at <= stale_before,
+                )
+            )
+        )
+        return int(result.rowcount or 0)
 
     def mark_password_reset_token_used(
         self,
