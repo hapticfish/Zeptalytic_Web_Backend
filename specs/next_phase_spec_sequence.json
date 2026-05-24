@@ -1,118 +1,143 @@
 {
-  "purpose": "Next-phase implementation roadmap for Zeptalytic Web Backend after DB/schema specs are complete.",
-  "strategy": "Commit architecture/control docs first, then use small foundation specs followed by vertical capability specs.",
-  "active_spec_recommendation": "application_layer_foundation.json",
+  "purpose": "Next-phase implementation roadmap for Zeptalytic Web Backend transactional email service implementation using Brevo.",
+  "strategy": "Use the committed transactional email architecture/control docs first, then generate exactly one focused implementation spec for Brevo-backed transactional email infrastructure, followed by planning and one-item-at-a-time build iterations.",
+  "active_spec_recommendation": "transactional_email_service_brevo.json",
   "specs": [
     {
-      "id": "app-foundation",
-      "filename": "application_layer_foundation.json",
-      "goal": "Establish API versioning, standard error response shape, schema conventions, service/repository boundaries, and dependency patterns.",
+      "id": "transactional-email-brevo",
+      "filename": "transactional_email_service_brevo.json",
+      "goal": "Implement Brevo-backed transactional email infrastructure for the Zeptalytic Web Backend, including configuration, template catalog, sender profile resolver, Brevo client abstraction, provider-neutral EmailService, send-attempt logging, delivery-event webhook ingestion, and approved auth/account email flows.",
       "expected_docs": [
+        "Brevo_Google_Workspace_Email_Decision_Record.md",
+        "Transactional_Email_Service_Architecture.md",
+        "Auth_Email_Verification_Flow.md",
+        "Email_Delivery_Events_And_Webhooks.md",
+        "Email_Template_Catalog.md",
+        "Transactional_Email_Agent_Run_Guidance.md",
+        "Auth_Session_and_Security_Flows.md",
         "Parent_Backend_Application_Architecture.md",
         "Parent_Backend_API_Contract_Standards.md",
         "Parent_Backend_Repository_Layer_Design.md",
-        "Parent_Backend_Service_Layer_Design.md"
-      ],
-      "notes": "Keep this foundation small. Do not build every domain repository here."
-    },
-    {
-      "id": "auth-session-account",
-      "filename": "auth_session_account_security.json",
-      "goal": "Build auth/session/account security flows: signup, login, logout, email verification, password reset/change, 2FA enrollment/recovery, account closure, and session/device management.",
-      "expected_docs": [
-        "Auth_Session_and_Security_Flows.md",
-        "Security_Operational_Control_Guide.md"
-      ],
-      "notes": "Parent is sole login authority. Product apps will trust parent-issued identity/session state."
-    },
-    {
-      "id": "profile-settings-addresses",
-      "filename": "profile_settings_addresses_preferences_api.json",
-      "goal": "Implement profile/settings/address/communication preference repositories, services, schemas, and APIs.",
-      "expected_docs": [
-        "Frontend_Backend_Contract_Map.md",
-        "Parent_Backend_API_Contract_Standards.md"
-      ],
-      "notes": "Username static. Email/phone/timezone/profile picture/Discord username display. Multiple billing/mailing addresses with normalized Google fields and display formatted address."
-    },
-    {
-      "id": "parent-pay-integration",
-      "filename": "parent_pay_integration_and_projection_foundation.json",
-      "goal": "Implement Pay client foundation, service authentication pattern, account_id linking, projection repositories/services for subscription/payment/entitlement/payment-method/product-access summaries.",
-      "expected_docs": [
-        "Parent_Pay_Integration_and_Projection_Strategy.md"
-      ],
-      "notes": "Parent may initiate commercial actions but Pay executes. Parent must not duplicate Pay commercial rules."
-    },
-    {
-      "id": "dashboard-launcher-billing",
-      "filename": "dashboard_launcher_billing_aggregation_api.json",
-      "goal": "Implement dashboard summary, launcher product access, billing snapshot, transaction/payment method reads, and manage-subscription initiation APIs.",
-      "expected_docs": [
-        "Dashboard_Launcher_Billing_Aggregation_Design.md",
-        "Frontend_Backend_Contract_Map.md",
-        "Parent_Pay_Integration_and_Projection_Strategy.md"
-      ],
-      "notes": "Pay unavailable should null/empty safe fields, block critical actions, and prevent product launch if entitlement cannot be trusted."
-    },
-    {
-      "id": "support-announcements-status",
-      "filename": "support_announcements_service_status_api.json",
-      "goal": "Implement support ticket creation, attachment metadata/storage abstraction, announcement reads, service status by product, and dashboard/support notification feed support.",
-      "expected_docs": [
-        "Support_Announcements_and_Status_Design.md",
-        "Security_Operational_Control_Guide.md"
-      ],
-      "notes": "No admin dashboard in phase 1."
-    },
-    {
-      "id": "rewards-application",
-      "filename": "rewards_objectives_badges_application_api.json",
-      "goal": "Implement rewards/objectives/badges read APIs, progress computation, milestone notification state, objective notification queue, reward event ingestion skeleton, and mark-viewed/skip presentation writes.",
-      "expected_docs": [
-        "Rewards_Application_and_Notification_Flows.md",
-        "Frontend_Backend_Contract_Map.md"
-      ],
-      "notes": "Frontend cannot directly award points. Product/admin/backend events trigger reward writes."
-    },
-    {
-      "id": "discord-integration",
-      "filename": "discord_integration_application_flow.json",
-      "goal": "Implement Discord OAuth capture/linkage flow, settings display, current status, and internal history preservation.",
-      "expected_docs": [
-        "Discord_Integration_Application_Flow.md"
-      ],
-      "notes": "Discord linkage does not affect rewards or product access."
-    },
-    {
-      "id": "background-jobs-security",
-      "filename": "background_jobs_and_security_hardening.json",
-      "goal": "Add worker scaffolding and hardened operational controls for Pay projection sync, email sending, support attachment processing, announcement publishing, Discord sync, stale session cleanup, request IDs, rate limiting, and audit hooks.",
-      "expected_docs": [
-        "Background_Jobs_Sync_and_Event_Processing.md",
+        "Parent_Backend_Service_Layer_Design.md",
         "Security_Operational_Control_Guide.md",
-        "Agent_Non_Goals_and_Implementation_Guardrails.md"
+        "Agent_Non_Goals_and_Implementation_Guardrails.md",
+        "Spec_Authoring_and_Harness_Workflow.md"
       ],
-      "notes": "Formal outbox can wait unless needed by implementation."
+      "notes": "Keep this implementation spec backend-only and focused. Do not edit the frontend repo. Do not edit the Pay Service repo. Do not invent billing, newsletter, or support workflow email triggers. Do not implement retry/outbox workers unless a later spec explicitly scopes them."
+    }
+  ],
+  "expected_implementation_sequence": [
+    "email/Brevo runtime configuration",
+    "template catalog and sender profile resolver",
+    "BrevoClient abstraction",
+    "email_send_attempts model/repository/migration",
+    "email_delivery_events model/repository/migration",
+    "provider-neutral EmailService",
+    "auth integration for signup verification",
+    "auth integration for resend verification",
+    "auth integration for forgot-password/password reset email",
+    "post-verification welcome email",
+    "account-details-changed notification only where existing reset/account flow safely supports it",
+    "Brevo webhook route with secret validation",
+    "delivery event normalization and deduplication",
+    "tests for configuration, template mapping, sender mapping, Brevo client behavior, send-attempt logging, auth integration, webhook ingestion, deduplication, and failure handling",
+    "full backend compile and Docker test verification"
+  ],
+  "first_phase_email_triggers": [
+    {
+      "template_key": "email_verification",
+      "brevo_template_id": 9,
+      "trigger": "signup and resend verification"
     },
     {
-      "id": "frontend-contract-regression",
-      "filename": "frontend_backend_contract_alignment.json",
-      "goal": "Add contract/regression checks ensuring API payloads support the stable frontend pages and modals.",
-      "expected_docs": [
-        "Frontend_Backend_Contract_Map.md",
-        "Parent_Backend_API_Contract_Standards.md"
-      ],
-      "notes": "Use normalized long-term payloads while supporting current UI surfaces."
+      "template_key": "password_reset",
+      "brevo_template_id": 7,
+      "trigger": "forgot-password flow"
+    },
+    {
+      "template_key": "welcome",
+      "brevo_template_id": 1,
+      "trigger": "after successful email verification"
+    },
+    {
+      "template_key": "account_details_changed",
+      "brevo_template_id": 8,
+      "trigger": "only where existing password reset or account detail change flow safely supports it"
+    }
+  ],
+  "configured_future_scope_templates": [
+    {
+      "template_key": "support_response",
+      "brevo_template_id": 2,
+      "future_scope": "support workflow email automation"
+    },
+    {
+      "template_key": "order_confirmation",
+      "brevo_template_id": 3,
+      "future_scope": "Pay/billing integration"
+    },
+    {
+      "template_key": "news_updates",
+      "brevo_template_id": 4,
+      "future_scope": "newsletter/update communications"
+    },
+    {
+      "template_key": "failed_signup",
+      "brevo_template_id": 5,
+      "future_scope": "internal/security use only unless explicitly approved"
+    },
+    {
+      "template_key": "email_changed",
+      "brevo_template_id": 6,
+      "future_scope": "email-change flow only if a safe existing flow exists or later spec creates one"
+    },
+    {
+      "template_key": "payment_failed",
+      "brevo_template_id": 10,
+      "future_scope": "Pay/billing integration"
+    },
+    {
+      "template_key": "subscription_expiring",
+      "brevo_template_id": 11,
+      "future_scope": "Pay/billing integration"
     }
   ],
   "global_guardrails": [
+    "Search before editing.",
+    "Do not expand scope beyond the active spec.",
+    "Do not add dependencies unless John explicitly approves them.",
+    "Do not edit the frontend repo.",
+    "Do not create frontend API clients.",
+    "Do not modify React/Vite files.",
+    "Do not redesign stable frontend pages.",
+    "Do not edit the Pay Service repo.",
     "Do not duplicate Pay commercial business rules in parent.",
     "Do not store sensitive payment details in parent.",
+    "Do not invent billing/order/payment email triggers.",
+    "Do not invent newsletter/update email triggers.",
+    "Do not invent support workflow email triggers.",
+    "Do not invent an account email-change workflow if one does not already exist.",
     "Do not build admin dashboards unless explicitly scoped.",
-    "Do not make Discord linkage affect rewards/access.",
-    "Do not allow frontend to directly award rewards/points/badges.",
+    "Do not implement automatic retry/outbox worker in this phase.",
+    "Do not use no-reply@zeptalytic.com.",
+    "Use real reply-capable senders.",
+    "Preserve HTTP-only cookie auth.",
+    "Preserve pending-verification access restrictions.",
+    "Signup must succeed even if verification email sending fails.",
+    "Forgot-password must remain account-enumeration safe.",
+    "Welcome email must be sent after successful email verification.",
+    "Welcome email failure must not undo successful verification.",
+    "Do not verify accounts based on Brevo sent/delivered/opened/clicked events.",
+    "Do not mutate account, billing, Pay, or support-ticket state from email delivery events.",
+    "Do not store raw verification tokens.",
+    "Do not store raw password reset tokens.",
+    "Do not store full token URLs in operational metadata.",
+    "Do not store rendered email bodies.",
+    "Do not commit real Brevo API keys.",
+    "Do not commit real webhook secrets.",
     "Progress entries must be appended at EOF.",
-    "Authoritative Docker tests must pass before marking spec items complete."
+    "Do not mark incomplete items complete.",
+    "python -m compileall app tests alembic must pass before marking implementation items complete.",
+    "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test must pass before marking implementation items complete."
   ]
 }

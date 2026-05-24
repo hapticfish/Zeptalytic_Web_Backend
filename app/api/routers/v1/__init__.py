@@ -8,6 +8,7 @@ from app.api.routers.v1.communication_preferences import (
     router as communication_preferences_router,
 )
 from app.api.routers.v1.dashboard import router as dashboard_router
+from app.api.routers.v1.email_webhooks import router as email_webhooks_router
 from app.api.routers.v1.integrations import router as integrations_router
 from app.api.routers.v1.launcher import router as launcher_router
 from app.api.routers.v1.profiles import router as profiles_router
@@ -23,6 +24,7 @@ api_router.include_router(communication_preferences_router)
 api_router.include_router(support_router)
 api_router.include_router(announcements_router)
 api_router.include_router(service_status_router)
+api_router.include_router(email_webhooks_router)
 api_router.include_router(rewards_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(launcher_router)

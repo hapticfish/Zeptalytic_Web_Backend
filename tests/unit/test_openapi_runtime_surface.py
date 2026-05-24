@@ -28,6 +28,7 @@ def test_openapi_runtime_surface_exposes_frontend_critical_api_v1_paths() -> Non
         "/api/v1/support/tickets/{ticket_id}",
         "/api/v1/announcements",
         "/api/v1/service-status",
+        "/api/v1/email/webhooks/brevo",
         "/api/v1/rewards/me/summary",
         "/api/v1/rewards/me/objectives",
         "/api/v1/rewards/me/notifications",

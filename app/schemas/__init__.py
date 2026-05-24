@@ -77,6 +77,17 @@ from app.schemas.dashboard import (
     DashboardSummaryResponse,
     DashboardSystemStatusSummary,
 )
+from app.schemas.email import (
+    EmailSenderProfileKey,
+    EmailTemplateCatalogEntry,
+    EmailTemplateKey,
+    FUTURE_SCOPE_TEMPLATE_KEYS,
+    PHASE_ONE_TRIGGER_TEMPLATE_KEYS,
+    ResolvedEmailSenderProfile,
+    build_email_sender_profiles,
+    build_email_template_catalog,
+    resolve_email_sender_profile,
+)
 from app.schemas.integrations import (
     DiscordConnectInitiationResponse,
     DiscordIntegrationReadResponse,
@@ -157,6 +168,12 @@ __all__ = [
     "DiscordIntegrationReadResponse",
     "DiscordIntegrationSummary",
     "DiscordProfileDisplaySummary",
+    "EmailSenderProfileKey",
+    "EmailTemplateCatalogEntry",
+    "EmailTemplateKey",
+    "FUTURE_SCOPE_TEMPLATE_KEYS",
+    "PHASE_ONE_TRIGGER_TEMPLATE_KEYS",
+    "ResolvedEmailSenderProfile",
     "ForgotPasswordRequest",
     "ForgotPasswordResponse",
     "LauncherBlockingReason",
@@ -199,4 +216,7 @@ __all__ = [
     "TwoFactorVerifyRequest",
     "VerifyEmailRequest",
     "VerifyEmailResponse",
+    "build_email_sender_profiles",
+    "build_email_template_catalog",
+    "resolve_email_sender_profile",
 ]

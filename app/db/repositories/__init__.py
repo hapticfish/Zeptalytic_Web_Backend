@@ -7,6 +7,8 @@ from app.db.repositories.communication_preference_repository import (
     CommunicationPreferenceRepository,
 )
 from app.db.repositories.discord_integration_repository import DiscordIntegrationRepository
+from app.db.repositories.email_delivery_event_repository import EmailDeliveryEventRepository
+from app.db.repositories.email_send_attempt_repository import EmailSendAttemptRepository
 from app.db.repositories.pay_projection_repository import PayProjectionRepository
 from app.db.repositories.profile_settings_repository import ProfileSettingsRepository
 from app.db.repositories.reward_badge_repository import RewardBadgeRepository
@@ -23,6 +25,8 @@ __all__ = [
     "AuthRepository",
     "CommunicationPreferenceRepository",
     "DiscordIntegrationRepository",
+    "EmailDeliveryEventRepository",
+    "EmailSendAttemptRepository",
     "PayProjectionRepository",
     "ProfileSettingsRepository",
     "RewardBadgeRepository",

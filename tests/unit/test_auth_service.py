@@ -7,17 +7,22 @@ import pytest
 from sqlalchemy import MetaData, create_engine, event, select
 from sqlalchemy.orm import Session
 
+from app.db.models import import_models
 from app.db.models.account_security_settings import AccountSecuritySettings
 from app.db.models.accounts import Account
 from app.db.models.auth_events import AuthEvent
 from app.db.models.auth_sessions import AuthSession
 from app.db.models.communication_preferences import CommunicationPreference
+from app.db.models.email_send_attempts import EmailSendAttempt
 from app.db.models.email_verification_tokens import EmailVerificationToken
 from app.db.models.mfa_recovery_codes import MfaRecoveryCode
 from app.db.models.password_reset_tokens import PasswordResetToken
 from app.db.models.profile_preferences import ProfilePreference
 from app.db.models.profiles import Profile
 from app.db.repositories.auth_repository import AuthRepository
+from app.schemas.email import EmailTemplateKey, FUTURE_SCOPE_TEMPLATE_KEYS
+from app.integrations import BrevoSendEmailResult
+from app.services.email_service import EmailSendResult
 from app.services.auth_service import (
     AccountAccessRestrictedError,
     AuthClientInfo,
@@ -43,7 +48,176 @@ class StubParentAccountLinker:
         self.account_ids.append(account_id)
 
 
+class StubEmailService:
+    def __init__(self, *, should_raise: bool = False) -> None:
+        self.should_raise = should_raise
+        self.signup_verification_calls: list[dict[str, object]] = []
+        self.resend_verification_calls: list[dict[str, object]] = []
+        self.password_reset_calls: list[dict[str, object]] = []
+        self.welcome_calls: list[dict[str, object]] = []
+        self.account_details_changed_calls: list[dict[str, object]] = []
+
+    def send_signup_verification(
+        self,
+        *,
+        account_id,
+        to_email: str,
+        verification_url: str,
+        display_name: str | None = None,
+    ) -> EmailSendResult:
+        self.signup_verification_calls.append(
+            {
+                "account_id": account_id,
+                "to_email": to_email,
+                "verification_url": verification_url,
+                "display_name": display_name,
+            }
+        )
+        if self.should_raise:
+            raise RuntimeError("email send failed")
+        return EmailSendResult(
+            attempt_id=uuid4(),
+            template_key=EmailTemplateKey.EMAIL_VERIFICATION,
+            status="sent",
+            provider="brevo",
+            provider_template_id=109,
+            provider_message_id="provider-message-id",
+            failure_code=None,
+            failure_message=None,
+        )
+
+    def send_resend_verification(
+        self,
+        *,
+        account_id,
+        to_email: str,
+        verification_url: str,
+        display_name: str | None = None,
+    ) -> EmailSendResult:
+        self.resend_verification_calls.append(
+            {
+                "account_id": account_id,
+                "to_email": to_email,
+                "verification_url": verification_url,
+                "display_name": display_name,
+            }
+        )
+        if self.should_raise:
+            raise RuntimeError("email send failed")
+        return EmailSendResult(
+            attempt_id=uuid4(),
+            template_key=EmailTemplateKey.EMAIL_VERIFICATION,
+            status="sent",
+            provider="brevo",
+            provider_template_id=109,
+            provider_message_id="provider-message-id",
+            failure_code=None,
+            failure_message=None,
+        )
+
+    def send_password_reset(
+        self,
+        *,
+        account_id,
+        to_email: str,
+        reset_url: str,
+        display_name: str | None = None,
+    ) -> EmailSendResult:
+        self.password_reset_calls.append(
+            {
+                "account_id": account_id,
+                "to_email": to_email,
+                "reset_url": reset_url,
+                "display_name": display_name,
+            }
+        )
+        if self.should_raise:
+            raise RuntimeError("email send failed")
+        return EmailSendResult(
+            attempt_id=uuid4(),
+            template_key=EmailTemplateKey.PASSWORD_RESET,
+            status="sent",
+            provider="brevo",
+            provider_template_id=107,
+            provider_message_id="provider-message-id",
+            failure_code=None,
+            failure_message=None,
+        )
+
+    def send_welcome(
+        self,
+        *,
+        account_id,
+        to_email: str,
+        display_name: str | None = None,
+    ) -> EmailSendResult:
+        self.welcome_calls.append(
+            {
+                "account_id": account_id,
+                "to_email": to_email,
+                "display_name": display_name,
+            }
+        )
+        if self.should_raise:
+            raise RuntimeError("email send failed")
+        return EmailSendResult(
+            attempt_id=uuid4(),
+            template_key=EmailTemplateKey.WELCOME,
+            status="sent",
+            provider="brevo",
+            provider_template_id=101,
+            provider_message_id="provider-message-id",
+            failure_code=None,
+            failure_message=None,
+        )
+
+    def send_account_details_changed(
+        self,
+        *,
+        account_id,
+        to_email: str,
+        display_name: str | None = None,
+        change_summary: str | None = None,
+        changed_at: datetime | None = None,
+    ) -> EmailSendResult:
+        self.account_details_changed_calls.append(
+            {
+                "account_id": account_id,
+                "to_email": to_email,
+                "display_name": display_name,
+                "change_summary": change_summary,
+                "changed_at": changed_at,
+            }
+        )
+        if self.should_raise:
+            raise RuntimeError("email send failed")
+        return EmailSendResult(
+            attempt_id=uuid4(),
+            template_key=EmailTemplateKey.ACCOUNT_DETAILS_CHANGED,
+            status="sent",
+            provider="brevo",
+            provider_template_id=108,
+            provider_message_id="provider-message-id",
+            failure_code=None,
+            failure_message=None,
+        )
+
+
+class StubBrevoClient:
+    def __init__(self) -> None:
+        self.captured_requests: list[object] = []
+
+    def send_template_email(self, request):  # noqa: ANN001
+        self.captured_requests.append(request)
+        return BrevoSendEmailResult(
+            provider_message_id="brevo-message-id",
+            status_code=201,
+        )
+
+
 def _create_in_memory_session() -> Session:
+    import_models()
+
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
 
     @event.listens_for(engine, "connect")
@@ -62,6 +236,7 @@ def _create_in_memory_session() -> Session:
         AccountSecuritySettings.__table__,
         MfaRecoveryCode.__table__,
         AuthEvent.__table__,
+        EmailSendAttempt.__table__,
         Profile.__table__,
         ProfilePreference.__table__,
         CommunicationPreference.__table__,
@@ -76,10 +251,13 @@ def _build_service(
     session: Session,
     *,
     parent_account_linker: StubParentAccountLinker | None = None,
+    email_service: StubEmailService | None = None,
 ) -> AuthService:
     return AuthService(
         AuthRepository(session),
         session,
+        email_service=email_service,
+        frontend_base_url="https://frontend.example.com",
         session_ttl_hours=12,
         parent_account_linker=parent_account_linker,
     )
@@ -224,7 +402,12 @@ def test_auth_service_blocks_suspended_and_closed_accounts_from_normal_actions()
 def test_signup_creates_parent_auth_state_session_and_auth_event() -> None:
     session = _create_in_memory_session()
     parent_account_linker = StubParentAccountLinker()
-    service = _build_service(session, parent_account_linker=parent_account_linker)
+    email_service = StubEmailService()
+    service = _build_service(
+        session,
+        parent_account_linker=parent_account_linker,
+        email_service=email_service,
+    )
 
     result = service.signup(
         username="new-user",
@@ -261,6 +444,110 @@ def test_signup_creates_parent_auth_state_session_and_auth_event() -> None:
     assert persisted_token is not None
     assert persisted_token.token_hash
     assert parent_account_linker.account_ids == [persisted_account.id]
+    assert len(email_service.signup_verification_calls) == 1
+    assert email_service.signup_verification_calls[0]["account_id"] == persisted_account.id
+    assert email_service.signup_verification_calls[0]["to_email"] == "new-user@example.com"
+    assert email_service.signup_verification_calls[0]["display_name"] == "new-user"
+    verification_url = email_service.signup_verification_calls[0]["verification_url"]
+    assert isinstance(verification_url, str)
+    assert verification_url.startswith("https://frontend.example.com/verify-email?token=")
+
+
+def test_signup_still_succeeds_when_verification_email_send_raises() -> None:
+    session = _create_in_memory_session()
+    email_service = StubEmailService(should_raise=True)
+    service = _build_service(session, email_service=email_service)
+
+    result = service.signup(
+        username="email-failure-user",
+        email="email-failure@example.com",
+        password="Password123",
+        client_info=_client_info(),
+    )
+
+    persisted_account = session.scalar(
+        select(Account).where(Account.email == "email-failure@example.com")
+    )
+    assert persisted_account is not None
+    persisted_session = session.scalar(
+        select(AuthSession).where(AuthSession.account_id == persisted_account.id)
+    )
+    persisted_token = session.scalar(
+        select(EmailVerificationToken).where(EmailVerificationToken.account_id == persisted_account.id)
+    )
+
+    assert result.context.email == "email-failure@example.com"
+    assert persisted_account.status == "pending_verification"
+    assert persisted_session is not None
+    assert persisted_token is not None
+    assert len(email_service.signup_verification_calls) == 1
+
+
+def test_signup_creates_email_send_attempt_without_persisting_raw_verification_url() -> None:
+    session = _create_in_memory_session()
+    brevo_client = StubBrevoClient()
+    from app.services.email_service import build_email_service
+
+    email_service = build_email_service(
+        session,
+        brevo_client,
+        app_settings=type(
+            "AuthEmailSettings",
+            (),
+            {
+                "email_provider": "brevo",
+                "frontend_base_url": "https://frontend.example.com",
+                "email_from_address": "hello@example.com",
+                "email_from_name": "Zeptalytic",
+                "email_reply_to_address": "support@example.com",
+                "email_support_from_address": "support@example.com",
+                "email_billing_from_address": "billing@example.com",
+                "email_alerts_from_address": "alerts@example.com",
+                "email_updates_from_address": "updates@example.com",
+                "brevo_template_welcome_id": 101,
+                "brevo_template_support_response_id": 102,
+                "brevo_template_order_confirmation_id": 103,
+                "brevo_template_news_updates_id": 104,
+                "brevo_template_failed_signup_id": 105,
+                "brevo_template_email_changed_id": 106,
+                "brevo_template_password_reset_id": 107,
+                "brevo_template_account_details_changed_id": 108,
+                "brevo_template_email_verification_id": 109,
+                "brevo_template_payment_failed_id": 110,
+                "brevo_template_subscription_expiring_id": 111,
+            },
+        )(),
+    )
+    service = _build_service(session, email_service=email_service)
+
+    service.signup(
+        username="send-attempt-user",
+        email="send-attempt@example.com",
+        password="Password123",
+        client_info=_client_info(),
+    )
+
+    persisted_account = session.scalar(
+        select(Account).where(Account.email == "send-attempt@example.com")
+    )
+    assert persisted_account is not None
+    persisted_attempt = session.scalar(
+        select(EmailSendAttempt).where(EmailSendAttempt.account_id == persisted_account.id)
+    )
+
+    assert persisted_attempt is not None
+    assert persisted_attempt.template_key == "email_verification"
+    assert persisted_attempt.status == "sent"
+    assert persisted_attempt.provider_template_id == 109
+    assert persisted_attempt.provider_message_id == "brevo-message-id"
+    assert persisted_attempt.attempt_metadata == {
+        "flow": "signup",
+        "token_type": "email_verification",
+        "has_verification_url": True,
+    }
+    assert brevo_client.captured_requests[0].params["verificationUrl"].startswith(
+        "https://frontend.example.com/verify-email?token="
+    )
 
 
 def test_signup_rejects_duplicate_username_or_email() -> None:
@@ -381,7 +668,8 @@ def test_logout_revokes_current_session_and_records_event() -> None:
 
 def test_verify_email_marks_account_active_and_token_used() -> None:
     session = _create_in_memory_session()
-    service = _build_service(session)
+    email_service = StubEmailService()
+    service = _build_service(session, email_service=email_service)
     service.signup(
         username="verify-user",
         email="verify@example.com",
@@ -414,6 +702,56 @@ def test_verify_email_marks_account_active_and_token_used() -> None:
     assert persisted_account.email_verified_at is not None
     assert persisted_token.used_at is not None
     assert persisted_events[-1].event_type == "email_verification_completed"
+    assert email_service.welcome_calls == [
+        {
+            "account_id": persisted_account.id,
+            "to_email": "verify@example.com",
+            "display_name": "verify-user",
+        }
+    ]
+
+
+def test_verify_email_keeps_account_verified_when_welcome_email_send_raises() -> None:
+    session = _create_in_memory_session()
+    email_service = StubEmailService(should_raise=True)
+    service = _build_service(session, email_service=email_service)
+    service.signup(
+        username="verify-email-failure-user",
+        email="verify-email-failure@example.com",
+        password="Password123",
+        client_info=_client_info(),
+    )
+    persisted_account = session.scalar(
+        select(Account).where(Account.email == "verify-email-failure@example.com")
+    )
+    assert persisted_account is not None
+    persisted_token = session.scalar(
+        select(EmailVerificationToken).where(EmailVerificationToken.account_id == persisted_account.id)
+    )
+    assert persisted_token is not None
+
+    verification_secret = "verify-failure-secret"
+    persisted_token.token_hash = AuthService._hash_secret(verification_secret)  # type: ignore[attr-defined]
+    session.commit()
+
+    service.verify_email(
+        token=verification_secret,
+        client_info=_client_info(),
+    )
+
+    session.refresh(persisted_account)
+    session.refresh(persisted_token)
+
+    assert persisted_account.status == "active"
+    assert persisted_account.email_verified_at is not None
+    assert persisted_token.used_at is not None
+    assert email_service.welcome_calls == [
+        {
+            "account_id": persisted_account.id,
+            "to_email": "verify-email-failure@example.com",
+            "display_name": "verify-email-failure-user",
+        }
+    ]
 
 
 def test_verify_email_rejects_expired_or_used_tokens() -> None:
@@ -453,7 +791,8 @@ def test_verify_email_rejects_expired_or_used_tokens() -> None:
 
 def test_resend_email_verification_creates_new_token_for_unverified_session() -> None:
     session = _create_in_memory_session()
-    service = _build_service(session)
+    email_service = StubEmailService()
+    service = _build_service(session, email_service=email_service)
     signup_result = service.signup(
         username="resend-user",
         email="resend@example.com",
@@ -480,6 +819,191 @@ def test_resend_email_verification_creates_new_token_for_unverified_session() ->
     assert len(persisted_tokens) == 2
     assert all(token.token_hash for token in persisted_tokens)
     assert persisted_events[-1].event_type == "email_verification_resent"
+    assert len(email_service.resend_verification_calls) == 1
+    assert email_service.resend_verification_calls[0]["account_id"] == context.account_id
+    assert email_service.resend_verification_calls[0]["to_email"] == "resend@example.com"
+    assert email_service.resend_verification_calls[0]["display_name"] == "resend-user"
+    verification_url = email_service.resend_verification_calls[0]["verification_url"]
+    assert isinstance(verification_url, str)
+    assert verification_url.startswith("https://frontend.example.com/verify-email?token=")
+    assert "token_hash" not in verification_url
+
+
+def test_resend_email_verification_still_creates_token_when_email_send_raises() -> None:
+    session = _create_in_memory_session()
+    email_service = StubEmailService(should_raise=True)
+    service = _build_service(session, email_service=email_service)
+    signup_result = service.signup(
+        username="resend-email-failure-user",
+        email="resend-email-failure@example.com",
+        password="Password123",
+        client_info=_client_info(),
+    )
+    context = service.get_authenticated_session_context(signup_result.session_token)
+    assert context is not None
+
+    service.resend_email_verification(
+        context=context,
+        client_info=_client_info(),
+    )
+
+    persisted_tokens = session.scalars(
+        select(EmailVerificationToken).where(EmailVerificationToken.account_id == context.account_id)
+    ).all()
+    persisted_events = session.scalars(
+        select(AuthEvent).where(AuthEvent.account_id == context.account_id).order_by(AuthEvent.created_at.asc())
+    ).all()
+
+    assert len(persisted_tokens) == 2
+    assert persisted_events[-1].event_type == "email_verification_resent"
+    assert len(email_service.resend_verification_calls) == 1
+
+
+def test_resend_email_verification_creates_email_send_attempt_without_persisting_raw_verification_url() -> None:
+    session = _create_in_memory_session()
+    brevo_client = StubBrevoClient()
+    from app.services.email_service import build_email_service
+
+    email_service = build_email_service(
+        session,
+        brevo_client,
+        app_settings=type(
+            "EmailSettings",
+            (),
+            {
+                "email_provider": "brevo",
+                "frontend_base_url": "https://frontend.example.com",
+                "email_from_address": "hello@example.com",
+                "email_from_name": "Zeptalytic",
+                "email_reply_to_address": "support@example.com",
+                "email_support_from_address": "support@example.com",
+                "email_billing_from_address": "billing@example.com",
+                "email_alerts_from_address": "alerts@example.com",
+                "email_updates_from_address": "updates@example.com",
+                "brevo_template_welcome_id": 101,
+                "brevo_template_support_response_id": 102,
+                "brevo_template_order_confirmation_id": 103,
+                "brevo_template_news_updates_id": 104,
+                "brevo_template_failed_signup_id": 105,
+                "brevo_template_email_changed_id": 106,
+                "brevo_template_password_reset_id": 107,
+                "brevo_template_account_details_changed_id": 108,
+                "brevo_template_email_verification_id": 109,
+                "brevo_template_payment_failed_id": 110,
+                "brevo_template_subscription_expiring_id": 111,
+            },
+        )(),
+    )
+    service = _build_service(session, email_service=email_service)
+    signup_result = service.signup(
+        username="resend-attempt-user",
+        email="resend-attempt@example.com",
+        password="Password123",
+        client_info=_client_info(),
+    )
+    context = service.get_authenticated_session_context(signup_result.session_token)
+    assert context is not None
+
+    service.resend_email_verification(
+        context=context,
+        client_info=_client_info(),
+    )
+
+    attempts = session.scalars(
+        select(EmailSendAttempt)
+        .where(EmailSendAttempt.account_id == context.account_id)
+        .order_by(EmailSendAttempt.created_at.asc())
+    ).all()
+
+    assert len(attempts) == 2
+    resend_attempt = attempts[-1]
+    assert resend_attempt.template_key == "email_verification"
+    assert resend_attempt.provider_message_id == "brevo-message-id"
+    assert resend_attempt.attempt_metadata == {
+        "flow": "resend_verification",
+        "token_type": "email_verification",
+        "has_verification_url": True,
+    }
+    assert brevo_client.captured_requests[-1].params["verificationUrl"].startswith(
+        "https://frontend.example.com/verify-email?token="
+    )
+
+
+def test_verify_email_creates_welcome_send_attempt_without_persisting_tokens() -> None:
+    session = _create_in_memory_session()
+    brevo_client = StubBrevoClient()
+    from app.services.email_service import build_email_service
+
+    email_service = build_email_service(
+        session,
+        brevo_client,
+        app_settings=type(
+            "VerifyWelcomeEmailSettings",
+            (),
+            {
+                "email_provider": "brevo",
+                "frontend_base_url": "https://frontend.example.com",
+                "email_from_address": "hello@example.com",
+                "email_from_name": "Zeptalytic",
+                "email_reply_to_address": "support@example.com",
+                "email_support_from_address": "support@example.com",
+                "email_billing_from_address": "billing@example.com",
+                "email_alerts_from_address": "alerts@example.com",
+                "email_updates_from_address": "updates@example.com",
+                "brevo_template_welcome_id": 101,
+                "brevo_template_support_response_id": 102,
+                "brevo_template_order_confirmation_id": 103,
+                "brevo_template_news_updates_id": 104,
+                "brevo_template_failed_signup_id": 105,
+                "brevo_template_email_changed_id": 106,
+                "brevo_template_password_reset_id": 107,
+                "brevo_template_account_details_changed_id": 108,
+                "brevo_template_email_verification_id": 109,
+                "brevo_template_payment_failed_id": 110,
+                "brevo_template_subscription_expiring_id": 111,
+            },
+        )(),
+    )
+    service = _build_service(session, email_service=email_service)
+    service.signup(
+        username="verify-attempt-user",
+        email="verify-attempt@example.com",
+        password="Password123",
+        client_info=_client_info(),
+    )
+    persisted_account = session.scalar(
+        select(Account).where(Account.email == "verify-attempt@example.com")
+    )
+    assert persisted_account is not None
+    persisted_token = session.scalar(
+        select(EmailVerificationToken).where(EmailVerificationToken.account_id == persisted_account.id)
+    )
+    assert persisted_token is not None
+
+    verification_secret = "verify-attempt-secret"
+    persisted_token.token_hash = AuthService._hash_secret(verification_secret)  # type: ignore[attr-defined]
+    session.commit()
+
+    service.verify_email(
+        token=verification_secret,
+        client_info=_client_info(),
+    )
+
+    attempts = session.scalars(
+        select(EmailSendAttempt)
+        .where(EmailSendAttempt.account_id == persisted_account.id)
+        .order_by(EmailSendAttempt.created_at.asc())
+    ).all()
+
+    assert len(attempts) == 2
+    welcome_attempt = attempts[-1]
+    assert welcome_attempt.template_key == "welcome"
+    assert welcome_attempt.status == "sent"
+    assert welcome_attempt.provider_template_id == 101
+    assert welcome_attempt.provider_message_id == "brevo-message-id"
+    assert welcome_attempt.attempt_metadata == {"flow": "welcome"}
+    assert brevo_client.captured_requests[-1].params["loginUrl"] == "https://frontend.example.com/login"
+    assert brevo_client.captured_requests[-1].params["dashboardUrl"] == "https://frontend.example.com/dashboard"
 
 
 def test_forgot_password_is_enumeration_safe_for_unknown_email() -> None:
@@ -504,7 +1028,8 @@ def test_forgot_password_is_enumeration_safe_for_unknown_email() -> None:
 def test_forgot_password_creates_reset_token_for_known_account() -> None:
     session = _create_in_memory_session()
     account = _persist_account(session, email="forgot@example.com", username="forgot-user")
-    service = _build_service(session)
+    email_service = StubEmailService()
+    service = _build_service(session, email_service=email_service)
 
     service.forgot_password(
         email="FORGOT@example.com",
@@ -524,11 +1049,118 @@ def test_forgot_password_creates_reset_token_for_known_account() -> None:
     assert persisted_token.token_hash
     assert persisted_event is not None
     assert persisted_event.event_type == "password_reset_requested"
+    assert len(email_service.password_reset_calls) == 1
+    assert email_service.password_reset_calls[0]["account_id"] == account.id
+    assert email_service.password_reset_calls[0]["to_email"] == "forgot@example.com"
+    assert email_service.password_reset_calls[0]["display_name"] == "forgot-user"
+    reset_url = email_service.password_reset_calls[0]["reset_url"]
+    assert isinstance(reset_url, str)
+    assert reset_url.startswith("https://frontend.example.com/reset-password?token=")
+
+
+def test_forgot_password_still_returns_generic_behavior_when_password_reset_email_send_raises() -> None:
+    session = _create_in_memory_session()
+    account = _persist_account(
+        session,
+        email="forgot-email-failure@example.com",
+        username="forgot-email-failure-user",
+    )
+    email_service = StubEmailService(should_raise=True)
+    service = _build_service(session, email_service=email_service)
+
+    service.forgot_password(
+        email="forgot-email-failure@example.com",
+        client_info=_client_info(),
+    )
+
+    persisted_token = session.scalar(
+        select(PasswordResetToken).where(PasswordResetToken.account_id == account.id)
+    )
+    persisted_event = session.scalar(
+        select(AuthEvent)
+        .where(AuthEvent.account_id == account.id)
+        .order_by(AuthEvent.created_at.desc())
+    )
+
+    assert persisted_token is not None
+    assert persisted_event is not None
+    assert persisted_event.event_type == "password_reset_requested"
+    assert len(email_service.password_reset_calls) == 1
+
+
+def test_forgot_password_creates_email_send_attempt_without_persisting_raw_reset_url() -> None:
+    session = _create_in_memory_session()
+    account = _persist_account(
+        session,
+        email="forgot-attempt@example.com",
+        username="forgot-attempt-user",
+    )
+    brevo_client = StubBrevoClient()
+    from app.services.email_service import build_email_service
+
+    email_service = build_email_service(
+        session,
+        brevo_client,
+        app_settings=type(
+            "ForgotPasswordEmailSettings",
+            (),
+            {
+                "email_provider": "brevo",
+                "frontend_base_url": "https://frontend.example.com",
+                "email_from_address": "hello@example.com",
+                "email_from_name": "Zeptalytic",
+                "email_reply_to_address": "support@example.com",
+                "email_support_from_address": "support@example.com",
+                "email_billing_from_address": "billing@example.com",
+                "email_alerts_from_address": "alerts@example.com",
+                "email_updates_from_address": "updates@example.com",
+                "brevo_template_welcome_id": 101,
+                "brevo_template_support_response_id": 102,
+                "brevo_template_order_confirmation_id": 103,
+                "brevo_template_news_updates_id": 104,
+                "brevo_template_failed_signup_id": 105,
+                "brevo_template_email_changed_id": 106,
+                "brevo_template_password_reset_id": 107,
+                "brevo_template_account_details_changed_id": 108,
+                "brevo_template_email_verification_id": 109,
+                "brevo_template_payment_failed_id": 110,
+                "brevo_template_subscription_expiring_id": 111,
+            },
+        )(),
+    )
+    service = _build_service(session, email_service=email_service)
+
+    service.forgot_password(
+        email="FORGOT-ATTEMPT@example.com",
+        client_info=_client_info(),
+    )
+
+    attempts = session.scalars(
+        select(EmailSendAttempt)
+        .where(EmailSendAttempt.account_id == account.id)
+        .order_by(EmailSendAttempt.created_at.asc())
+    ).all()
+
+    assert len(attempts) == 1
+    reset_attempt = attempts[0]
+    assert reset_attempt.template_key == "password_reset"
+    assert reset_attempt.status == "sent"
+    assert reset_attempt.provider_template_id == 107
+    assert reset_attempt.provider_message_id == "brevo-message-id"
+    assert reset_attempt.attempt_metadata == {
+        "flow": "forgot_password",
+        "token_type": "password_reset",
+        "has_reset_url": True,
+    }
+    assert brevo_client.captured_requests[-1].params["resetUrl"].startswith(
+        "https://frontend.example.com/reset-password?token="
+    )
 
 
 def test_reset_password_updates_password_revokes_sessions_and_marks_token_used() -> None:
     session = _create_in_memory_session()
-    service = _build_service(session)
+    email_service = StubEmailService()
+    service = _build_service(session, email_service=email_service)
     signup_result = service.signup(
         username="reset-user",
         email="reset@example.com",
@@ -572,6 +1204,219 @@ def test_reset_password_updates_password_revokes_sessions_and_marks_token_used()
     assert all(persisted_session.revoked_at is not None for persisted_session in persisted_sessions)
     assert persisted_events[-1].event_type == "password_reset_completed"
     assert service.get_authenticated_session_context(signup_result.session_token) is None
+    assert len(email_service.account_details_changed_calls) == 1
+    notification_call = email_service.account_details_changed_calls[0]
+    assert notification_call["account_id"] == account.id
+    assert notification_call["to_email"] == "reset@example.com"
+    assert notification_call["display_name"] == "reset-user"
+    assert notification_call["change_summary"] == "Password updated"
+    assert isinstance(notification_call["changed_at"], datetime)
+
+
+def test_reset_password_keeps_completed_reset_when_account_details_changed_email_send_raises() -> None:
+    session = _create_in_memory_session()
+    email_service = StubEmailService(should_raise=True)
+    service = _build_service(session, email_service=email_service)
+    signup_result = service.signup(
+        username="reset-email-failure-user",
+        email="reset-email-failure@example.com",
+        password="Password123",
+        client_info=_client_info(),
+    )
+    account = session.scalar(
+        select(Account).where(Account.email == "reset-email-failure@example.com")
+    )
+    assert account is not None
+    reset_token = PasswordResetToken(
+        account_id=account.id,
+        token_hash=AuthService._hash_secret("reset-email-failure-secret"),  # type: ignore[attr-defined]
+        expires_at=datetime(2099, 4, 18, 12, 0, tzinfo=timezone.utc),
+    )
+    session.add(reset_token)
+    session.commit()
+
+    service.reset_password(
+        token="reset-email-failure-secret",
+        new_password="NewPassword123",
+        client_info=_client_info(),
+    )
+
+    session.refresh(account)
+    session.refresh(reset_token)
+
+    assert AuthService._verify_password("NewPassword123", account.password_hash)  # type: ignore[attr-defined]
+    assert reset_token.used_at is not None
+    assert len(email_service.account_details_changed_calls) == 1
+    assert service.get_authenticated_session_context(signup_result.session_token) is None
+
+
+def test_reset_password_creates_account_details_changed_send_attempt_without_persisting_tokens() -> None:
+    session = _create_in_memory_session()
+    brevo_client = StubBrevoClient()
+    from app.services.email_service import build_email_service
+
+    email_service = build_email_service(
+        session,
+        brevo_client,
+        app_settings=type(
+            "ResetPasswordEmailSettings",
+            (),
+            {
+                "email_provider": "brevo",
+                "frontend_base_url": "https://frontend.example.com",
+                "email_from_address": "hello@example.com",
+                "email_from_name": "Zeptalytic",
+                "email_reply_to_address": "support@example.com",
+                "email_support_from_address": "support@example.com",
+                "email_billing_from_address": "billing@example.com",
+                "email_alerts_from_address": "alerts@example.com",
+                "email_updates_from_address": "updates@example.com",
+                "brevo_template_welcome_id": 101,
+                "brevo_template_support_response_id": 102,
+                "brevo_template_order_confirmation_id": 103,
+                "brevo_template_news_updates_id": 104,
+                "brevo_template_failed_signup_id": 105,
+                "brevo_template_email_changed_id": 106,
+                "brevo_template_password_reset_id": 107,
+                "brevo_template_account_details_changed_id": 108,
+                "brevo_template_email_verification_id": 109,
+                "brevo_template_payment_failed_id": 110,
+                "brevo_template_subscription_expiring_id": 111,
+            },
+        )(),
+    )
+    service = _build_service(session, email_service=email_service)
+    service.signup(
+        username="reset-attempt-user",
+        email="reset-attempt@example.com",
+        password="Password123",
+        client_info=_client_info(),
+    )
+    account = session.scalar(select(Account).where(Account.email == "reset-attempt@example.com"))
+    assert account is not None
+    reset_token = PasswordResetToken(
+        account_id=account.id,
+        token_hash=AuthService._hash_secret("reset-attempt-secret"),  # type: ignore[attr-defined]
+        expires_at=datetime(2099, 4, 18, 12, 0, tzinfo=timezone.utc),
+    )
+    session.add(reset_token)
+    session.commit()
+
+    service.reset_password(
+        token="reset-attempt-secret",
+        new_password="NewPassword123",
+        client_info=_client_info(),
+    )
+
+    attempts = session.scalars(
+        select(EmailSendAttempt)
+        .where(EmailSendAttempt.account_id == account.id)
+        .order_by(EmailSendAttempt.created_at.asc())
+    ).all()
+
+    assert len(attempts) == 2
+    notification_attempt = attempts[-1]
+    assert notification_attempt.template_key == "account_details_changed"
+    assert notification_attempt.status == "sent"
+    assert notification_attempt.provider_template_id == 108
+    assert notification_attempt.provider_message_id == "brevo-message-id"
+    assert notification_attempt.attempt_metadata == {
+        "flow": "account_details_changed",
+        "change_summary_present": True,
+    }
+    captured_request = brevo_client.captured_requests[-1]
+    assert captured_request.params["changeSummary"] == "Password updated"
+    assert "resetUrl" not in captured_request.params
+    assert "verificationUrl" not in captured_request.params
+
+
+def test_auth_email_flows_only_persist_phase_one_template_keys() -> None:
+    session = _create_in_memory_session()
+    brevo_client = StubBrevoClient()
+    from app.services.email_service import build_email_service
+
+    email_service = build_email_service(
+        session,
+        brevo_client,
+        app_settings=type(
+            "PhaseOneTemplateSettings",
+            (),
+            {
+                "email_provider": "brevo",
+                "frontend_base_url": "https://frontend.example.com",
+                "email_from_address": "hello@example.com",
+                "email_from_name": "Zeptalytic",
+                "email_reply_to_address": "support@example.com",
+                "email_support_from_address": "support@example.com",
+                "email_billing_from_address": "billing@example.com",
+                "email_alerts_from_address": "alerts@example.com",
+                "email_updates_from_address": "updates@example.com",
+                "brevo_template_welcome_id": 101,
+                "brevo_template_support_response_id": 102,
+                "brevo_template_order_confirmation_id": 103,
+                "brevo_template_news_updates_id": 104,
+                "brevo_template_failed_signup_id": 105,
+                "brevo_template_email_changed_id": 106,
+                "brevo_template_password_reset_id": 107,
+                "brevo_template_account_details_changed_id": 108,
+                "brevo_template_email_verification_id": 109,
+                "brevo_template_payment_failed_id": 110,
+                "brevo_template_subscription_expiring_id": 111,
+            },
+        )(),
+    )
+    service = _build_service(session, email_service=email_service)
+    signup_result = service.signup(
+        username="phase-one-user",
+        email="phase-one@example.com",
+        password="Password123",
+        client_info=_client_info(),
+    )
+    context = service.get_authenticated_session_context(signup_result.session_token)
+    assert context is not None
+    account = session.scalar(select(Account).where(Account.email == "phase-one@example.com"))
+    assert account is not None
+
+    service.resend_email_verification(context=context, client_info=_client_info())
+
+    session.add(
+        EmailVerificationToken(
+            account_id=account.id,
+            token_hash=AuthService._hash_secret("phase-one-verify"),  # type: ignore[attr-defined]
+            expires_at=datetime(2099, 4, 18, 12, 0, tzinfo=timezone.utc),
+        )
+    )
+    session.commit()
+    service.verify_email(token="phase-one-verify", client_info=_client_info())
+
+    service.forgot_password(email="phase-one@example.com", client_info=_client_info())
+
+    session.add(
+        PasswordResetToken(
+            account_id=account.id,
+            token_hash=AuthService._hash_secret("phase-one-reset"),  # type: ignore[attr-defined]
+            expires_at=datetime(2099, 4, 18, 12, 0, tzinfo=timezone.utc),
+        )
+    )
+    session.commit()
+    service.reset_password(
+        token="phase-one-reset",
+        new_password="NewPassword123",
+        client_info=_client_info(),
+    )
+
+    persisted_template_keys = {
+        template_key
+        for template_key in session.scalars(select(EmailSendAttempt.template_key)).all()
+    }
+
+    assert persisted_template_keys == {
+        EmailTemplateKey.EMAIL_VERIFICATION.value,
+        EmailTemplateKey.WELCOME.value,
+        EmailTemplateKey.PASSWORD_RESET.value,
+        EmailTemplateKey.ACCOUNT_DETAILS_CHANGED.value,
+    }
+    assert persisted_template_keys.isdisjoint({key.value for key in FUTURE_SCOPE_TEMPLATE_KEYS})
 
 
 def test_reset_password_rejects_invalid_expired_or_used_tokens() -> None:

@@ -1,0 +1,344 @@
+{
+  "id": "transactional_email_service_brevo",
+  "title": "Transactional Email Service with Brevo",
+  "status": "active",
+  "owner": "Zeptalytic Web Backend",
+  "purpose": "Add the backend-only transactional email foundation for Brevo sending, email send-attempt persistence, Brevo delivery webhook ingestion, and approved auth/account email flows without expanding into frontend work, Pay-owned billing behavior, newsletter automation, support workflow automation, or retry workers.",
+  "context": {
+    "summary": "The repository already has stable auth/session/account flows, router registration, repository/service patterns, and test coverage for pending-verification and password-reset behavior, but it does not yet contain an EmailService, Brevo client, email telemetry tables, or an email webhook route. This spec is the next focused backend workstream and should be executed in small build iterations against the existing FastAPI, SQLAlchemy, Alembic, and httpx conventions already present in the repo.",
+    "source_docs": [
+      "docs/architecture/Brevo_Google_Workspace_Email_Decision_Record.md",
+      "docs/architecture/Transactional_Email_Service_Architecture.md",
+      "docs/architecture/Auth_Email_Verification_Flow.md",
+      "docs/architecture/Email_Delivery_Events_And_Webhooks.md",
+      "docs/architecture/Email_Template_Catalog.md",
+      "docs/architecture/Transactional_Email_Agent_Run_Guidance.md",
+      "docs/architecture/Auth_Session_and_Security_Flows.md",
+      "docs/architecture/Parent_Backend_Application_Architecture.md",
+      "docs/architecture/Parent_Backend_API_Contract_Standards.md",
+      "docs/architecture/Parent_Backend_Repository_Layer_Design.md",
+      "docs/architecture/Parent_Backend_Service_Layer_Design.md",
+      "docs/architecture/Security_Operational_Control_Guide.md",
+      "docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md",
+      "docs/architecture/Spec_Authoring_and_Harness_Workflow.md"
+    ],
+    "previous_specs_or_dependencies": [
+      "specs/auth_session_account_security.json",
+      "specs/application_layer_foundation.json",
+      "specs/frontend_runtime_integration_readiness.json"
+    ],
+    "repo_reality_summary": [
+      "No transactional-email runtime implementation exists yet: there is no `app/services/email_service.py`, no `app/integrations/brevo_client.py`, no email webhook router, and no `email_send_attempts` or `email_delivery_events` model/repository files in `app/`.",
+      "Auth flows already exist in `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py`, including signup, verify-email, resend-verification, forgot-password, reset-password, pending-verification account state, and hashed token persistence for `email_verification_tokens` and `password_reset_tokens`.",
+      "Signup currently creates a verification token but does not send email; resend-verification currently creates a new token without invalidating the prior one; forgot-password currently creates a reset token for known non-closed accounts and remains enumeration-safe for unknown email addresses.",
+      "Configuration is centralized in `app/core/config.py` with existing auth TTLs, CORS, Pay, and Discord settings, while `.env.example` currently contains only app/database/Pay placeholders and has no email or Brevo variables yet.",
+      "FastAPI dependency wiring is centralized in `app/api/deps.py`, where integration clients and services are built from `build_*` helpers, so any Brevo client or EmailService should follow the same DI/export pattern instead of ad hoc construction in routers.",
+      "Router registration is centralized in `app/api/routers/v1/__init__.py`, mounted under `settings.api_v1_prefix` from `app/main.py`, and current OpenAPI/runtime route coverage is asserted by `tests/unit/test_openapi_runtime_surface.py` and `tests/unit/test_router_registration.py`.",
+      "Model metadata registration is centralized in `app/db/models/__init__.py` via `MODEL_MODULES`, and JSONB portability uses the existing `app/db/models/_json.py` helper, so new email models should reuse those patterns for Alembic and metadata tests.",
+      "The repo already uses `httpx.Client` integration patterns in `app/integrations/pay_client.py` and `app/integrations/discord_oauth_client.py`, which is the expected pattern for a new Brevo client without adding dependencies.",
+      "Repository/service patterns already exist and are tested heavily in `tests/unit/test_auth_service.py`, `tests/unit/test_auth_api.py`, `tests/unit/test_auth_models.py`, `tests/unit/test_config.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_openapi_runtime_surface.py`, and `tests/integration/test_parent_db_round_trips.py`, making those the primary adjacent regression surfaces for the email workstream.",
+      "The working tree already has an unrelated modified file at `specs/next_phase_spec_sequence.json`; transactional-email spec/build work must leave that user change untouched."
+    ]
+  },
+  "global_guardrails": [
+    "Search before editing.",
+    "Do not expand scope beyond this spec.",
+    "Do not add dependencies unless John explicitly approves them.",
+    "Do not edit the frontend repo.",
+    "Do not create frontend API clients.",
+    "Do not modify React/Vite files.",
+    "Do not redesign stable frontend pages.",
+    "Do not edit the Pay Service repo.",
+    "Do not duplicate Pay commercial business rules in parent.",
+    "Do not store sensitive payment details in parent.",
+    "Do not invent billing/order/payment email triggers.",
+    "Do not invent newsletter/update email triggers.",
+    "Do not invent support workflow email triggers.",
+    "Do not invent an account email-change workflow if one does not already exist.",
+    "Do not build admin dashboards unless explicitly scoped.",
+    "Do not return raw ORM objects from routers.",
+    "Use explicit safe DTOs for API responses.",
+    "Preserve HTTP-only cookie auth.",
+    "Preserve pending-verification access restrictions.",
+    "Signup must succeed even if verification email sending fails.",
+    "Forgot-password must remain account-enumeration safe.",
+    "Do not verify accounts based on Brevo delivered/opened/clicked events.",
+    "Do not mutate billing/payment state from email delivery events.",
+    "Do not mutate Pay Service state from email delivery events.",
+    "Do not mutate support-ticket state from email delivery events.",
+    "Do not implement automatic retry/outbox worker in this phase.",
+    "Do not use no-reply@zeptalytic.com.",
+    "Do not store rendered email bodies.",
+    "Do not store raw verification tokens.",
+    "Do not store raw password reset tokens.",
+    "Do not store full token URLs in send-attempt metadata.",
+    "Do not commit real Brevo API keys.",
+    "Do not commit real webhook secrets.",
+    "Follow existing `httpx` integration patterns already used by `pay_client.py` and `discord_oauth_client.py`.",
+    "Follow the existing model metadata registration pattern in `app/db/models/__init__.py`.",
+    "Do not mark incomplete items complete.",
+    "Append progress entries to the absolute end of `progress/progress.txt`.",
+    "Run `python -m compileall app tests alembic` before marking implementation items complete.",
+    "Run `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` before marking implementation items complete."
+  ],
+  "expected_paths": {
+    "may_create_or_update": [
+      ".env.example",
+      "app/core/config.py",
+      "app/api/deps.py",
+      "app/api/routers/v1/__init__.py",
+      "app/api/routers/v1/auth.py",
+      "app/api/routers/v1/email_webhooks.py",
+      "app/db/models/_json.py",
+      "app/db/models/__init__.py",
+      "app/db/models/email_send_attempts.py",
+      "app/db/models/email_delivery_events.py",
+      "app/db/repositories/__init__.py",
+      "app/db/repositories/auth_repository.py",
+      "app/db/repositories/email_send_attempt_repository.py",
+      "app/db/repositories/email_delivery_event_repository.py",
+      "app/integrations/__init__.py",
+      "app/integrations/brevo_client.py",
+      "app/schemas/email.py",
+      "app/services/__init__.py",
+      "app/services/auth_service.py",
+      "app/services/email_service.py",
+      "alembic/versions/*",
+      "tests/unit/test_auth_api.py",
+      "tests/unit/test_auth_service.py",
+      "tests/unit/test_auth_models.py",
+      "tests/unit/test_config.py",
+      "tests/unit/test_model_metadata_registration.py",
+      "tests/unit/test_model_module_layout.py",
+      "tests/unit/test_openapi_runtime_surface.py",
+      "tests/unit/test_router_registration.py",
+      "tests/integration/test_parent_db_constraints.py",
+      "tests/integration/test_parent_db_round_trips.py",
+      "specs/transactional_email_service_brevo.json",
+      "progress/progress.txt"
+    ],
+    "must_not_modify_without_strong_reason": [
+      "../zeptalytic_web/*",
+      "Zeptalytic_Pay_Service/*",
+      "node_modules/*",
+      "venv/*",
+      ".venv/*",
+      "app/api/routers/v1/billing.py",
+      "app/integrations/pay_client.py",
+      "app/services/billing_summary_service.py",
+      "app/db/models/payment_method_summaries.py",
+      "app/db/models/payment_summaries.py",
+      "app/db/models/subscription_summaries.py",
+      "app/db/models/entitlement_summaries.py",
+      "unrelated routers, services, repositories, or database models outside approved email/auth integration seams"
+    ]
+  },
+  "items": [
+    {
+      "id": "email-010",
+      "title": "Add email and Brevo configuration",
+      "description": "Extend the existing `Settings`/`.env.example` convention with backend-only email and Brevo configuration for provider selection, API base URL/key, webhook secret, frontend base URL, sender addresses, reply-to addresses, all approved Brevo template IDs, and request timeout.",
+      "acceptance_criteria": [
+        "`app/core/config.py` exposes email/Brevo settings using the existing `BaseSettings` pattern and `.env.example` adds placeholders only.",
+        "All known template IDs are configurable, `FRONTEND_BASE_URL` is available for verification/reset link generation, and `BREVO_REQUEST_TIMEOUT_SECONDS` is represented.",
+        "No real secrets, raw tokens, or full token URLs are committed in `.env.example`, specs, docs, tests, source defaults, or progress logs."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T15:53:20.4305433-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-020",
+      "title": "Add template catalog and sender profile resolver",
+      "description": "Create a stable backend template-key catalog for all 11 Brevo templates plus a centralized sender-profile resolver that maps each template/category to the correct reply-capable sender and reply-to identity.",
+      "acceptance_criteria": [
+        "The catalog represents all configured templates: `welcome`, `support_response`, `order_confirmation`, `news_updates`, `failed_signup`, `email_changed`, `password_reset`, `account_details_changed`, `email_verification`, `payment_failed`, and `subscription_expiring`.",
+        "Auth/security templates resolve to the support sender, welcome/general account templates resolve to the hello sender, billing templates resolve to the billing sender, updates resolve to the updates sender, and no template uses `no-reply@zeptalytic.com`.",
+        "Future-scope templates are configurable and addressable through the catalog but are not yet wired to live business triggers."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T15:59:38.6001880-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-030",
+      "title": "Add BrevoClient abstraction",
+      "description": "Introduce a provider-specific Brevo integration client that follows the repo’s existing `httpx.Client` client pattern, calls Brevo’s transactional template send endpoint, applies timeout, captures provider message IDs when available, and normalizes provider errors.",
+      "acceptance_criteria": [
+        "`app/integrations/brevo_client.py` encapsulates `POST /smtp/email` under `BREVO_API_BASE_URL` and business services do not call Brevo directly.",
+        "The client handles success plus normalized failures such as `provider_timeout`, `provider_http_error`, and `provider_unexpected_response` without logging secrets or auth headers.",
+        "The module is wired through existing integration/dependency patterns so future services can inject/use it similarly to current integration clients."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T16:05:36.6430796-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-040",
+      "title": "Add email_send_attempts model, repository, and migration",
+      "description": "Add persistent operational logging for backend email send attempts using the repo’s one-table-per-file model convention, repository layer pattern, model metadata registration, and Alembic migration flow.",
+      "acceptance_criteria": [
+        "A model, repository, metadata registration update, and Alembic migration exist for `email_send_attempts` using UUID/timestamp/JSON conventions already present in the repo.",
+        "Records include account, recipient, sender, template key, provider template ID, provider message ID, status, failure code/message, safe metadata, and timestamps, with statuses at least `pending`, `sent`, `failed`, and `skipped`.",
+        "Raw verification tokens, raw reset tokens, full token URLs, rendered email bodies, API keys, and webhook secrets are explicitly excluded from stored metadata."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T16:43:00.8963766-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-050",
+      "title": "Add email_delivery_events model, repository, and migration",
+      "description": "Add persistent storage for Brevo webhook delivery telemetry with normalized event typing, deterministic dedupe support, raw payload JSON storage, and the same metadata-registration/Alembic discipline used by the current backend.",
+      "acceptance_criteria": [
+        "A model, repository, metadata registration update, and Alembic migration exist for `email_delivery_events` with UUID primary key, JSON payload storage, and a unique `dedupe_key`.",
+        "Records include provider, normalized event type, provider message ID, provider event ID, recipient email, template ID, subject, provider event timestamp, raw payload, and created-at timestamp.",
+        "Unknown events can be persisted as `unknown`, raw payload is stored as sensitive operational data only, and the data is not exposed through public API DTOs."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T16:49:44.0417242-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-060",
+      "title": "Add provider-neutral EmailService with approved template method coverage",
+      "description": "Introduce a backend-facing EmailService that centralizes template selection, sender resolution, send-attempt creation/update, BrevoClient calls, and provider failure normalization for approved auth/account flows while allowing the full catalog to be represented safely.",
+      "acceptance_criteria": [
+        "`app/services/email_service.py` exists and routes transactional sends through the catalog/resolver plus BrevoClient instead of calling the provider directly from domain services.",
+        "The service exposes approved methods for signup verification, resend verification, password reset, welcome email, and account-details-changed notification, and may expose additional future-scope methods without wiring them to live triggers.",
+        "Send-attempt records are created/updated through repository calls, normalized failures are captured, and raw tokens/full token URLs/rendered bodies are not persisted."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T16:56:20.0752457-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-070",
+      "title": "Wire signup verification email",
+      "description": "Integrate signup with EmailService so account creation still succeeds and the account remains `pending_verification` even when Brevo or EmailService send behavior fails.",
+      "acceptance_criteria": [
+        "`AuthService.signup()` generates the verification token and routes the verification email through EmailService using the approved template key and sender.",
+        "Signup success, session cookie behavior, and pending-verification access restrictions remain unchanged even if email send fails.",
+        "A send-attempt row is created for the verification email path, failed sends are recorded safely, and raw verification tokens are not stored in metadata."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T17:03:25.3320882-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-080",
+      "title": "Wire resend verification email",
+      "description": "Integrate resend verification with EmailService while preserving existing auth context requirements and documenting or implementing token invalidation only where the current architecture safely supports it.",
+      "acceptance_criteria": [
+        "`AuthService.resend_email_verification()` sends the verification email through EmailService for eligible pending-verification users.",
+        "A new verification token is generated; if previous unused-token invalidation is implemented it is done explicitly and safely, otherwise the spec implementation must document the retained behavior honestly.",
+        "A send-attempt record is created, provider failure is handled without activating the account, and raw tokens are not stored in metadata."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T17:10:38.8170870-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-090",
+      "title": "Wire forgot-password password reset email",
+      "description": "Integrate forgot-password with EmailService so eligible existing accounts get a password-reset email while the HTTP/API response remains generic and account-enumeration safe.",
+      "acceptance_criteria": [
+        "`AuthService.forgot_password()` sends `password_reset` through EmailService only for eligible existing accounts and still returns the existing generic success response for unknown or ineligible accounts.",
+        "Provider failure does not change the generic response and does not reveal account existence.",
+        "Send-attempt rows are recorded when an eligible account path attempts sending, and raw reset tokens/full reset URLs are not stored in metadata."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T17:15:51.1394549-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-100",
+      "title": "Wire successful verification welcome email",
+      "description": "Trigger the welcome email only after successful backend token-based verification and keep verification as the source of truth even if welcome-email delivery later fails.",
+      "acceptance_criteria": [
+        "`AuthService.verify_email()` remains token-driven and, after successful verification, sends the welcome email through EmailService.",
+        "Welcome email send failure does not undo account verification or reintroduce pending-verification state.",
+        "Brevo sent/delivered/opened/clicked events are not used to verify accounts, and the welcome send path records a send attempt."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T17:22:31.2106513-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-110",
+      "title": "Wire account details changed notification where the existing flow safely supports it",
+      "description": "Add post-sensitive-change notification only at a proven safe integration seam, with password reset completion as the expected first candidate, and do not invent a broader account email-change workflow if the repo does not already have one.",
+      "acceptance_criteria": [
+        "If the existing reset-password flow safely supports it, successful password reset sends `account_details_changed` through EmailService after the password change completes.",
+        "Notification failure does not undo the successful password reset, and the notification metadata excludes passwords, tokens, secrets, and full token URLs.",
+        "If the existing flow is not safe or ready, the implementation documents the blocker and does not invent unrelated account-change behavior."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T17:27:59.9450001-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-120",
+      "title": "Add Brevo webhook route with secret validation",
+      "description": "Add the public provider-facing Brevo webhook ingestion route under the existing versioned router surface, validate the query secret before processing, and keep the route telemetry-only.",
+      "acceptance_criteria": [
+        "`POST /api/v1/email/webhooks/brevo` is registered through the existing v1 router pattern and validates `?secret=` against `BREVO_WEBHOOK_SECRET` before storing anything.",
+        "The route requires no user session, no CSRF token, and no internal service token, and invalid/missing secrets are rejected safely.",
+        "The route stores events through a repository path and does not mutate auth, billing, Pay, or support-ticket state."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T17:33:06.8937577-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-130",
+      "title": "Add delivery event normalization and deduplication",
+      "description": "Normalize Brevo webhook payloads into stable internal event types, compute deterministic dedupe keys, store raw payloads, and keep duplicate deliveries idempotent.",
+      "acceptance_criteria": [
+        "Supported normalized event types include `sent`, `delivered`, `opened`, `clicked`, `soft_bounce`, `hard_bounce`, `invalid_email`, `deferred`, `complaint`, `unsubscribed`, `blocked`, `error`, and `unknown`.",
+        "Duplicate events return success without creating duplicate rows, and malformed or unsupported payloads are handled with controlled behavior.",
+        "Unknown events are stored as `unknown`, raw payload is preserved, and normalization logic remains testable without requiring live provider traffic."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T17:36:44.5939098-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-140",
+      "title": "Add tests for transactional email behavior",
+      "description": "Add or extend unit/integration tests across config, catalog, sender resolution, Brevo client behavior, EmailService behavior, email persistence, auth integration, webhook security, normalization, and dedupe based on the repo’s current test structure.",
+      "acceptance_criteria": [
+        "Tests cover config loading, catalog/sender mapping, BrevoClient normalization, EmailService send-attempt behavior, auth flow integration, webhook secret protection, normalization, and dedupe.",
+        "Tests prove signup-success-on-send-failure, forgot-password enumeration safety, welcome-email non-rollback behavior, and token-safety rules for metadata storage.",
+        "Tests also prove future-scope templates are not accidentally wired and that model/route/OpenAPI registration stays aligned with existing regression suites."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T17:40:27.1823621-05:00",
+      "completed_by": "codex"
+    },
+    {
+      "id": "email-999",
+      "title": "Run full backend verification",
+      "description": "Run the authoritative backend verification gates only after the implementation items above are actually complete, and do not mark this item complete unless both required commands pass.",
+      "acceptance_criteria": [
+        "`python -m compileall app tests alembic` passes.",
+        "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+        "If either command fails or cannot run, the blocker is recorded in `progress/progress.txt` and no incomplete implementation item is marked complete."
+      ],
+      "passes": true,
+      "completed_at": "2026-05-24T17:42:48.3368552-05:00",
+      "completed_by": "codex"
+    }
+  ],
+  "completion_definition": [
+    "All spec items have `passes=true`.",
+    "Relevant tests are added or updated for config, catalog, integration client, EmailService, auth integration, webhook ingestion, and persistence surfaces.",
+    "`python -m compileall app tests alembic` passes.",
+    "`docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passes.",
+    "`progress/progress.txt` is updated at EOF.",
+    "No unrelated dirty files are introduced.",
+    "No frontend repo files are modified.",
+    "No Pay Service repo files are modified.",
+    "No incomplete item is marked complete."
+  ]
+}

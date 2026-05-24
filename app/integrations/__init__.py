@@ -1,5 +1,12 @@
 """External integration clients and adapters."""
 
+from app.integrations.brevo_client import (
+    BrevoClient,
+    BrevoClientConfigurationError,
+    BrevoSendEmailResult,
+    BrevoTemplateEmailRequest,
+    build_brevo_client,
+)
 from app.integrations.discord_oauth_client import (
     DiscordOAuthClient,
     DiscordOAuthConfigurationError,
@@ -18,6 +25,11 @@ from app.integrations.pay_client import (
 )
 
 __all__ = [
+    "BrevoClient",
+    "BrevoClientConfigurationError",
+    "BrevoSendEmailResult",
+    "BrevoTemplateEmailRequest",
+    "build_brevo_client",
     "DiscordOAuthClient",
     "DiscordOAuthConfigurationError",
     "DiscordOAuthIdentity",

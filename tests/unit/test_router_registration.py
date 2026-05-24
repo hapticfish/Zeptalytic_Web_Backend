@@ -8,6 +8,7 @@ from app.api.routers.v1.communication_preferences import (
     router as communication_preferences_router,
 )
 from app.api.routers.v1.dashboard import router as dashboard_router
+from app.api.routers.v1.email_webhooks import router as email_webhooks_router
 from app.api.routers.v1.integrations import router as integrations_router
 from app.api.routers.v1.launcher import router as launcher_router
 from app.api.routers.v1.profiles import router as profiles_router
@@ -117,6 +118,14 @@ def test_versioned_dashboard_launcher_billing_routers_are_canonical_registration
     assert ("/service-status", ("GET",)) in service_status_routes
 
 
+def test_versioned_email_webhook_router_is_canonical_registration_surface() -> None:
+    email_routes = {
+        (route.path, tuple(sorted(route.methods or []))) for route in email_webhooks_router.routes
+    }
+
+    assert ("/email/webhooks/brevo", ("POST",)) in email_routes
+
+
 def test_versioned_integrations_router_is_canonical_registration_surface() -> None:
     integration_routes = {
         (route.path, tuple(sorted(route.methods or []))) for route in integrations_router.routes
@@ -161,6 +170,7 @@ def test_main_app_mounts_versioned_rewards_routes_under_api_v1() -> None:
     assert "/api/v1/support/tickets/{ticket_id}" in routes
     assert "/api/v1/announcements" in routes
     assert "/api/v1/service-status" in routes
+    assert "/api/v1/email/webhooks/brevo" in routes
     assert "/api/v1/rewards/me/badges" in routes
     assert "/api/v1/rewards/me/summary" in routes
     assert "/api/v1/rewards/me/objectives" in routes

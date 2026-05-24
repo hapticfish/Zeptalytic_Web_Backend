@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.integrations import (
+    BrevoClient,
     DiscordOAuthClient,
     PayClient,
+    build_brevo_client,
     build_discord_oauth_client,
     build_pay_client,
 )
@@ -22,6 +24,7 @@ from app.services import (
     CommunicationPreferenceService,
     DashboardService,
     DiscordIntegrationService,
+    EmailService,
     LauncherService,
     PayProjectionService,
     ProfileSettingsService,
@@ -38,6 +41,7 @@ from app.services import (
     build_communication_preference_service,
     build_dashboard_service,
     build_discord_integration_service,
+    build_email_service,
     build_launcher_service,
     build_pay_projection_service,
     build_profile_settings_service,
@@ -78,6 +82,10 @@ def get_pay_client(active_settings=Depends(get_settings)) -> PayClient:
     return build_pay_client(active_settings)
 
 
+def get_brevo_client(active_settings=Depends(get_settings)) -> BrevoClient:
+    return build_brevo_client(active_settings)
+
+
 def get_discord_oauth_client(active_settings=Depends(get_settings)) -> DiscordOAuthClient:
     return build_discord_oauth_client(active_settings)
 
@@ -90,8 +98,18 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
-    return build_auth_service(db)
+def get_email_service(
+    db: Session = Depends(get_db),
+    brevo_client: BrevoClient = Depends(get_brevo_client),
+) -> EmailService:
+    return build_email_service(db, brevo_client)
+
+
+def get_auth_service(
+    db: Session = Depends(get_db),
+    email_service: EmailService = Depends(get_email_service),
+) -> AuthService:
+    return build_auth_service(db, email_service)
 
 
 def get_profile_settings_service(

@@ -21,6 +21,7 @@ from app.db.repositories.auth_repository import (
     SessionDeviceRecord,
     TwoFactorSettingsRecord,
 )
+from app.services.email_service import EmailService
 
 
 @dataclass(slots=True)
@@ -164,6 +165,8 @@ class AuthService:
         repository: AuthRepository,
         db: Session,
         *,
+        email_service: EmailService | None = None,
+        frontend_base_url: str = "http://localhost:5173",
         session_ttl_hours: int = 24 * 30,
         email_verification_ttl_hours: int = 24,
         password_reset_ttl_hours: int = 2,
@@ -173,6 +176,8 @@ class AuthService:
     ) -> None:
         self._repository = repository
         self._db = db
+        self._email_service = email_service
+        self._frontend_base_url = frontend_base_url.rstrip("/")
         self._session_ttl = timedelta(hours=session_ttl_hours)
         self._email_verification_ttl = timedelta(hours=email_verification_ttl_hours)
         self._password_reset_ttl = timedelta(hours=password_reset_ttl_hours)
@@ -296,6 +301,13 @@ class AuthService:
             self._db.rollback()
             raise
 
+        self._send_signup_verification_email(
+            account_id=account.id,
+            email=account.email,
+            display_name=account.username,
+            verification_token=verification_token,
+        )
+
         return AuthMutationResult(
             session_token=session_token,
             context=self._build_context(
@@ -385,6 +397,9 @@ class AuthService:
         client_info: AuthClientInfo,
     ) -> None:
         token_record = self._get_verification_token_record(token)
+        account = self._repository.get_account_by_id(token_record.account_id)
+        if account is None:
+            raise EmailVerificationTokenInvalidError("invalid")
         now = datetime.now(timezone.utc)
 
         try:
@@ -410,6 +425,12 @@ class AuthService:
             self._db.rollback()
             raise
 
+        self._send_welcome_email(
+            account_id=account.id,
+            email=account.email,
+            display_name=account.username,
+        )
+
     def resend_email_verification(
         self,
         *,
@@ -420,10 +441,11 @@ class AuthService:
             return
 
         now = datetime.now(timezone.utc)
+        verification_token = self._generate_token()
         try:
             self._repository.create_email_verification_token(
                 account_id=context.account_id,
-                token_hash=self._hash_secret(self._generate_token()),
+                token_hash=self._hash_secret(verification_token),
                 expires_at=now + self._email_verification_ttl,
             )
             self._repository.record_auth_event(
@@ -437,6 +459,13 @@ class AuthService:
         except Exception:
             self._db.rollback()
             raise
+
+        self._send_resend_verification_email(
+            account_id=context.account_id,
+            email=context.email,
+            display_name=context.username,
+            verification_token=verification_token,
+        )
 
     def logout(
         self,
@@ -478,10 +507,11 @@ class AuthService:
             return
 
         now = datetime.now(timezone.utc)
+        reset_token = self._generate_token()
         try:
             self._repository.create_password_reset_token(
                 account_id=account.id,
-                token_hash=self._hash_secret(self._generate_token()),
+                token_hash=self._hash_secret(reset_token),
                 expires_at=now + self._password_reset_ttl,
             )
             self._repository.record_auth_event(
@@ -496,6 +526,13 @@ class AuthService:
             self._db.rollback()
             raise
 
+        self._send_password_reset_email(
+            account_id=account.id,
+            email=account.email,
+            display_name=account.username,
+            reset_token=reset_token,
+        )
+
     def reset_password(
         self,
         *,
@@ -504,6 +541,9 @@ class AuthService:
         client_info: AuthClientInfo,
     ) -> None:
         token_record = self._get_password_reset_token_record(token)
+        account = self._repository.get_account_by_id(token_record.account_id)
+        if account is None:
+            raise PasswordResetTokenInvalidError("invalid")
         now = datetime.now(timezone.utc)
 
         try:
@@ -530,6 +570,13 @@ class AuthService:
         except Exception:
             self._db.rollback()
             raise
+
+        self._send_account_details_changed_email(
+            account_id=account.id,
+            email=account.email,
+            display_name=account.username,
+            changed_at=now,
+        )
 
     def change_password(
         self,
@@ -880,6 +927,117 @@ class AuthService:
             conflicts.append("email")
         return conflicts
 
+    def _send_signup_verification_email(
+        self,
+        *,
+        account_id: UUID,
+        email: str,
+        display_name: str,
+        verification_token: str,
+    ) -> None:
+        if self._email_service is None:
+            return
+
+        verification_url = (
+            f"{self._frontend_base_url}/verify-email?token={quote(verification_token, safe='')}"
+        )
+        try:
+            self._email_service.send_signup_verification(
+                account_id=account_id,
+                to_email=email,
+                verification_url=verification_url,
+                display_name=display_name,
+            )
+        except Exception:
+            self._db.rollback()
+
+    def _send_resend_verification_email(
+        self,
+        *,
+        account_id: UUID,
+        email: str,
+        display_name: str,
+        verification_token: str,
+    ) -> None:
+        if self._email_service is None:
+            return
+
+        verification_url = (
+            f"{self._frontend_base_url}/verify-email?token={quote(verification_token, safe='')}"
+        )
+        try:
+            self._email_service.send_resend_verification(
+                account_id=account_id,
+                to_email=email,
+                verification_url=verification_url,
+                display_name=display_name,
+            )
+        except Exception:
+            self._db.rollback()
+
+    def _send_password_reset_email(
+        self,
+        *,
+        account_id: UUID,
+        email: str,
+        display_name: str,
+        reset_token: str,
+    ) -> None:
+        if self._email_service is None:
+            return
+
+        reset_url = f"{self._frontend_base_url}/reset-password?token={quote(reset_token, safe='')}"
+        try:
+            self._email_service.send_password_reset(
+                account_id=account_id,
+                to_email=email,
+                reset_url=reset_url,
+                display_name=display_name,
+            )
+        except Exception:
+            self._db.rollback()
+
+    def _send_welcome_email(
+        self,
+        *,
+        account_id: UUID,
+        email: str,
+        display_name: str,
+    ) -> None:
+        if self._email_service is None:
+            return
+
+        try:
+            self._email_service.send_welcome(
+                account_id=account_id,
+                to_email=email,
+                display_name=display_name,
+            )
+        except Exception:
+            self._db.rollback()
+
+    def _send_account_details_changed_email(
+        self,
+        *,
+        account_id: UUID,
+        email: str,
+        display_name: str,
+        changed_at: datetime,
+    ) -> None:
+        if self._email_service is None:
+            return
+
+        try:
+            self._email_service.send_account_details_changed(
+                account_id=account_id,
+                to_email=email,
+                display_name=display_name,
+                change_summary="Password updated",
+                changed_at=changed_at,
+            )
+        except Exception:
+            self._db.rollback()
+
     def _get_verification_token_record(self, token: str) -> EmailVerificationTokenRecord:
         token_record = self._repository.get_email_verification_token_record_by_token_hash(
             self._hash_secret(token)
@@ -1105,12 +1263,17 @@ class AuthService:
         return value.replace(tzinfo=timezone.utc)
 
 
-def build_auth_service(db: Session) -> AuthService:
+def build_auth_service(
+    db: Session,
+    email_service: EmailService | None = None,
+) -> AuthService:
     from app.core.config import settings
 
     return AuthService(
         AuthRepository(db),
         db,
+        email_service=email_service,
+        frontend_base_url=settings.frontend_base_url,
         session_ttl_hours=settings.auth_session_ttl_hours,
         email_verification_ttl_hours=settings.auth_email_verification_ttl_hours,
         password_reset_ttl_hours=settings.auth_password_reset_ttl_hours,

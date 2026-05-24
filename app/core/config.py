@@ -42,6 +42,35 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/zeptalytic_web_backend"
 
+    email_provider: str = "brevo"
+    brevo_api_base_url: str = "https://api.brevo.com/v3"
+    brevo_api_key: str | None = None
+    brevo_webhook_secret: str | None = None
+    brevo_request_timeout_seconds: int = 10
+
+    frontend_base_url: str = "http://localhost:5173"
+
+    email_from_address: str = "hello@zeptalytic.com"
+    email_from_name: str = "Zeptalytic"
+    email_reply_to_address: str = "support@zeptalytic.com"
+
+    email_support_from_address: str = "support@zeptalytic.com"
+    email_billing_from_address: str = "billing@zeptalytic.com"
+    email_alerts_from_address: str = "alerts@zeptalytic.com"
+    email_updates_from_address: str = "updates@zeptalytic.com"
+
+    brevo_template_welcome_id: int = 1
+    brevo_template_support_response_id: int = 2
+    brevo_template_order_confirmation_id: int = 3
+    brevo_template_news_updates_id: int = 4
+    brevo_template_failed_signup_id: int = 5
+    brevo_template_email_changed_id: int = 6
+    brevo_template_password_reset_id: int = 7
+    brevo_template_account_details_changed_id: int = 8
+    brevo_template_email_verification_id: int = 9
+    brevo_template_payment_failed_id: int = 10
+    brevo_template_subscription_expiring_id: int = 11
+
     pay_service_base_url: str = "http://localhost:8080"
     pay_service_internal_token: str | None = None
 

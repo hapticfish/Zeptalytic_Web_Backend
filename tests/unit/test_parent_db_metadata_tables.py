@@ -4,6 +4,8 @@ import app.db.bootstrap as bootstrap
 IDENTITY_AND_SECURITY_TABLES = {
     "accounts",
     "auth_sessions",
+    "email_delivery_events",
+    "email_send_attempts",
     "email_verification_tokens",
     "password_reset_tokens",
     "account_security_settings",

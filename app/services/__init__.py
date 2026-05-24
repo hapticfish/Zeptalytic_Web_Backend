@@ -45,6 +45,7 @@ from app.services.discord_integration_service import (
     DiscordIntegrationService,
     build_discord_integration_service,
 )
+from app.services.email_service import EmailSendResult, EmailService, build_email_service
 from app.services.profile_settings_service import (
     ProfileSettingsNotFoundError,
     ProfileSettingsService,
@@ -122,6 +123,8 @@ __all__ = [
     "DiscordIntegrationLinkNotFoundError",
     "DiscordIntegrationNotFoundError",
     "DiscordIntegrationService",
+    "EmailSendResult",
+    "EmailService",
     "InvalidCredentialsError",
     "LauncherService",
     "PasswordResetTokenInvalidError",
@@ -137,6 +140,7 @@ __all__ = [
     "build_communication_preference_service",
     "build_dashboard_service",
     "build_discord_integration_service",
+    "build_email_service",
     "build_launcher_service",
     "build_pay_projection_service",
     "ProfileSettingsService",

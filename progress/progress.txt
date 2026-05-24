@@ -3496,6 +3496,89 @@
   - The current worktree already includes prior planning and build artifacts; this run intentionally left those untouched and only refined the active spec plus appended progress.
 - Next command to run:
   - `./scripts/ralph-loop.sh plan 1`
+## 2026-05-24T15:35:21-05:00
+
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-010` - Add email and Brevo configuration
+- Repo search summary:
+  - `app/core/config.py` is the centralized `BaseSettings` surface and had no email/Brevo settings before this run.
+  - `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py` already implement signup, verify-email, resend-verification, forgot-password, and reset-password token flows without any email send path yet.
+  - `app/api/routers/v1/__init__.py` remains the canonical `/api/v1` router registration seam, and there is still no email webhook router or email service implementation in repo reality.
+  - `app/db/models/__init__.py` and `app/db/models/_json.py` remain the metadata-registration and JSON portability seams for later email persistence items.
+  - `app/integrations/pay_client.py` and `app/integrations/discord_oauth_client.py` remain the current `httpx.Client` integration references for later Brevo client work.
+  - Adjacent regression surfaces for this item were `tests/unit/test_config.py`, `tests/unit/test_auth_service.py`, `tests/unit/test_auth_api.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_openapi_runtime_surface.py`, and `tests/unit/test_router_registration.py`.
+- Files changed:
+  - `.env.example`
+  - `app/core/config.py`
+  - `tests/unit/test_config.py`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_config.py` failed in the host shell because `pytest` is not installed in `C:\Users\jquin\AppData\Local\Programs\Python\Python310\python.exe`.
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` failed before tests executed because the `migrate` container could not connect to PostgreSQL: `FATAL:  database "zeptalytic_web_backend_test" does not exist`.
+- Blockers:
+  - The authoritative Docker verification topology is currently unusable for this iteration because the test database is not created before migrations run.
+  - Per build rules, the spec item remains incomplete and was not marked `passes=true`.
+- Next recommended item:
+  - Fix the Docker test topology so `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` can create/connect to `zeptalytic_web_backend_test`, then rerun this same `email-010` iteration and verify the new config tests in-container.
+
+## 2026-05-24T15:35:21-05:00
+
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-010` - Add email and Brevo configuration
+- Repo search summary:
+  - `app/core/config.py` is the centralized `BaseSettings` surface and had no email/Brevo settings before this run.
+  - `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py` already implement signup, verify-email, resend-verification, forgot-password, and reset-password token flows without any email send path yet.
+  - `app/api/routers/v1/__init__.py` remains the canonical `/api/v1` router registration seam, and there is still no email webhook router or email service implementation in repo reality.
+  - `app/db/models/__init__.py` and `app/db/models/_json.py` remain the metadata-registration and JSON portability seams for later email persistence items.
+  - `app/integrations/pay_client.py` and `app/integrations/discord_oauth_client.py` remain the current `httpx.Client` integration references for later Brevo client work.
+  - Adjacent regression surfaces for this item were `tests/unit/test_config.py`, `tests/unit/test_auth_service.py`, `tests/unit/test_auth_api.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_openapi_runtime_surface.py`, and `tests/unit/test_router_registration.py`.
+- Files changed:
+  - `.env.example`
+  - `app/core/config.py`
+  - `tests/unit/test_config.py`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_config.py` failed in the host shell because `pytest` is not installed in `C:\Users\jquin\AppData\Local\Programs\Python\Python310\python.exe`.
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` failed before tests executed because the `migrate` container could not connect to PostgreSQL: `FATAL:  database "zeptalytic_web_backend_test" does not exist`.
+- Blockers:
+  - The authoritative Docker verification topology is currently unusable for this iteration because the test database is not created before migrations run.
+  - Per build rules, the spec item remains incomplete and was not marked `passes=true`.
+- Next recommended item:
+  - Fix the Docker test topology so `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` can create/connect to `zeptalytic_web_backend_test`, then rerun this same `email-010` iteration and verify the new config tests in-container.
+
+## 2026-05-24 Planning
+
+- Mode: `plan`
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Summary:
+  - Rehydrated `AGENTS.md`, `IMPLEMENTATION_PLAN.md`, `PROMPT.md`, the active transactional email spec, `specs/next_phase_spec_sequence.json`, and the required transactional-email architecture/control docs.
+  - Re-ran repo reality checks across settings, `.env.example`, auth routes/services, repository/model registration, router wiring, `httpx` integration patterns, OpenAPI/runtime coverage, and adjacent tests.
+  - Confirmed the active spec already matches current repo topology closely enough for build iterations; no spec or docs refinements were required in this planning pass.
+- Repo reality confirmed:
+  - Transactional email runtime code is still absent: no `EmailService`, no `BrevoClient`, no email webhook router, and no `email_send_attempts` / `email_delivery_events` models or repositories exist yet.
+  - Existing auth seams remain in `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py`, with hashed verification/reset token persistence and pending-verification restrictions already covered by tests.
+  - Settings/DI/integration seams remain centered in `app/core/config.py`, `app/api/deps.py`, `app/integrations/pay_client.py`, and `app/integrations/discord_oauth_client.py`.
+  - Model registration still runs through `app/db/models/__init__.py` plus `app/db/models/_json.py`, and route/runtime regressions still center on `tests/unit/test_openapi_runtime_surface.py` and `tests/unit/test_router_registration.py`.
+  - `.env.example` still lacks all email/Brevo placeholders, which correctly leaves `email-010` as the first build target.
+- Files changed:
+  - `progress/progress.txt`
+- Non-goals preserved:
+  - No frontend repo edits
+  - No Pay Service edits
+  - No runtime application code changes
+  - No database schema/model/router/service/repository/test implementation changes
+  - No invented billing/newsletter/support triggers
+  - No retry/outbox worker implementation
+- Risks/assumptions:
+  - `specs/next_phase_spec_sequence.json` remains a pre-existing unrelated dirty file and was not modified.
+  - `resend_email_verification()` still creates a new token without explicit old-token invalidation, so that remains an intentional build-time decision point already captured by the spec.
+- Next command to run:
+  - `./scripts/ralph-loop.sh build 1`
 
 - Date/time: 2026-04-19T17:28:00-05:00
 - Mode: plan
@@ -3657,3 +3740,541 @@
   - none
 - Next recommended item:
   - No next spec item remains in `specs/frontend_runtime_integration_readiness.json`; the active frontend runtime integration readiness spec is fully complete.
+2026-05-24 15:16:17 -05:00
+- Mode: `spec_author`
+- Selected workstream: transactional email service implementation using Brevo
+- Spec file created or refined:
+  - Created `specs/transactional_email_service_brevo.json`
+- Architecture docs used:
+  - `docs/architecture/Brevo_Google_Workspace_Email_Decision_Record.md`
+  - `docs/architecture/Transactional_Email_Service_Architecture.md`
+  - `docs/architecture/Auth_Email_Verification_Flow.md`
+  - `docs/architecture/Email_Delivery_Events_And_Webhooks.md`
+  - `docs/architecture/Email_Template_Catalog.md`
+  - `docs/architecture/Transactional_Email_Agent_Run_Guidance.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+  - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+- Repo search summary:
+  - `app/core/config.py` centralizes settings today and `.env.example` currently has no email/Brevo placeholders.
+  - `app/services/auth_service.py` and `app/db/repositories/auth_repository.py` already implement signup, verify-email, resend-verification, forgot-password, reset-password, hashed token persistence, and pending-verification gating.
+  - `app/api/routers/v1/__init__.py` is the canonical versioned router registration surface and currently has no email webhook router.
+  - `app/db/models/__init__.py` is the metadata import registry that future email models must join for Alembic/tests.
+  - `app/integrations/pay_client.py` and `app/integrations/discord_oauth_client.py` show the current `httpx.Client` integration pattern to mirror for Brevo.
+  - `tests/unit/test_auth_service.py`, `tests/unit/test_auth_api.py`, `tests/unit/test_openapi_runtime_surface.py`, `tests/unit/test_router_registration.py`, and metadata tests are the main adjacent regression surfaces.
+  - No runtime transactional-email implementation exists yet: no EmailService, no Brevo client, no email send-attempt/delivery-event models, and no `/api/v1/email/webhooks/brevo` route.
+- Files changed:
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - No frontend repo edits
+  - No Pay Service edits
+  - No runtime application code changes
+  - No invented billing/newsletter/support triggers
+  - No automatic retry/outbox worker
+  - No email-change workflow invention
+- Risks/assumptions:
+  - The existing resend-verification flow currently creates a new token without invalidating prior unused tokens; the implementation spec leaves that as an explicit decision point tied to safe repo reality.
+  - The existing reset-password flow is the only clearly confirmed account-change seam today, so `account_details_changed` remains conditional on a safe integration point rather than assumed.
+  - The repo currently contains a pre-existing unrelated modification in `specs/next_phase_spec_sequence.json`; it was left untouched.
+- Next command to run:
+  - `./scripts/ralph-loop.sh plan 1`
+2026-05-24 15:21:34 -05:00
+- Mode: `spec_author`
+- Selected workstream: transactional email service implementation using Brevo
+- Spec file created or refined:
+  - Refined `specs/transactional_email_service_brevo.json`
+- Architecture docs used:
+  - `docs/architecture/Brevo_Google_Workspace_Email_Decision_Record.md`
+  - `docs/architecture/Transactional_Email_Service_Architecture.md`
+  - `docs/architecture/Auth_Email_Verification_Flow.md`
+  - `docs/architecture/Email_Delivery_Events_And_Webhooks.md`
+  - `docs/architecture/Email_Template_Catalog.md`
+  - `docs/architecture/Transactional_Email_Agent_Run_Guidance.md`
+  - `docs/architecture/Auth_Session_and_Security_Flows.md`
+  - `docs/architecture/Parent_Backend_Application_Architecture.md`
+  - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+  - `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+  - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
+  - `docs/architecture/Security_Operational_Control_Guide.md`
+  - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
+  - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
+- Repo search summary:
+  - `app/core/config.py` remains the single settings surface and `.env.example` still only contains app/database/Pay placeholders, so all email/Brevo config remains new scope.
+  - `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py` already implement signup, verify-email, resend-verification, forgot-password, reset-password, pending-verification gating, and hashed verification/reset token persistence.
+  - `app/api/deps.py` is the existing dependency-injection seam for integration clients and services, which the spec now calls out as the expected Brevo client and EmailService wiring pattern.
+  - `app/db/models/__init__.py` plus `app/db/models/_json.py` are the current model-registration and JSONB portability seams, so the spec now points email models at those exact conventions.
+  - `app/api/routers/v1/__init__.py` is still the canonical `/api/v1` router registration surface and there is still no `/api/v1/email/webhooks/brevo` route in repo reality.
+  - `app/integrations/pay_client.py` and `app/integrations/discord_oauth_client.py` remain the concrete `httpx.Client` integration references for a future `BrevoClient`.
+  - Adjacent regression surfaces confirmed by search include `tests/unit/test_auth_service.py`, `tests/unit/test_auth_api.py`, `tests/unit/test_auth_models.py`, `tests/unit/test_config.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_openapi_runtime_surface.py`, `tests/unit/test_router_registration.py`, and `tests/integration/test_parent_db_round_trips.py`.
+- Files changed:
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Non-goals:
+  - No frontend repo edits
+  - No Pay Service edits
+  - No runtime application code changes
+  - No database/model/router/service/repository/test implementation changes
+  - No invented billing/newsletter/support triggers
+  - No automatic retry/outbox worker
+- Risks/assumptions:
+  - The existing spec was already materially complete; this run only refined it to better match current repo seams rather than expanding item scope.
+  - The existing resend-verification behavior still appears to create a new token without explicit old-token invalidation, so that remains a build-time decision point rather than a spec-authoring assumption.
+  - The working tree still contains a pre-existing unrelated modification in `specs/next_phase_spec_sequence.json`; it was left untouched again.
+- Next command to run:
+  - `./scripts/ralph-loop.sh plan 1`
+## 2026-05-24T15:35:21-05:00
+
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-010` - Add email and Brevo configuration
+- Repo search summary:
+  - `app/core/config.py` is the centralized `BaseSettings` surface and had no email/Brevo settings before this run.
+  - `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py` already implement signup, verify-email, resend-verification, forgot-password, and reset-password token flows without any email send path yet.
+  - `app/api/routers/v1/__init__.py` remains the canonical `/api/v1` router registration seam, and there is still no email webhook router or email service implementation in repo reality.
+  - `app/db/models/__init__.py` and `app/db/models/_json.py` remain the metadata-registration and JSON portability seams for later email persistence items.
+  - `app/integrations/pay_client.py` and `app/integrations/discord_oauth_client.py` remain the current `httpx.Client` integration references for later Brevo client work.
+  - Adjacent regression surfaces for this item were `tests/unit/test_config.py`, `tests/unit/test_auth_service.py`, `tests/unit/test_auth_api.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_openapi_runtime_surface.py`, and `tests/unit/test_router_registration.py`.
+- Files changed:
+  - `.env.example`
+  - `app/core/config.py`
+  - `tests/unit/test_config.py`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_config.py` failed in the host shell because `pytest` is not installed in `C:\Users\jquin\AppData\Local\Programs\Python\Python310\python.exe`.
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` failed before tests executed because the `migrate` container could not connect to PostgreSQL: `FATAL:  database "zeptalytic_web_backend_test" does not exist`.
+- Blockers:
+  - The authoritative Docker verification topology is currently unusable for this iteration because the test database is not created before migrations run.
+  - Per build rules, the spec item remains incomplete and was not marked `passes=true`.
+- Next recommended item:
+  - Fix the Docker test topology so `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` can create/connect to `zeptalytic_web_backend_test`, then rerun this same `email-010` iteration and verify the new config tests in-container.
+## 2026-05-24T15:43:30-05:00
+
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-010` - Add email and Brevo configuration
+- Repo search summary:
+  - `app/core/config.py` is the centralized `BaseSettings` surface and already contains the pending email/Brevo configuration fields for provider selection, sender addresses, template IDs, webhook secret, timeout, and `FRONTEND_BASE_URL`.
+  - `.env.example` already contains placeholder-only Brevo/email variables and no committed real secret values.
+  - `tests/unit/test_config.py` already covers the new config fields and `.env.example` placeholder contract.
+  - Auth/runtime seams remain unchanged in `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py`; there is still no email service, Brevo client, email webhook router, or email persistence implementation yet.
+- Files changed:
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` failed before tests executed because the `migrate` container could not connect to PostgreSQL: `FATAL: database "zeptalytic_web_backend_test" does not exist`.
+- Blockers:
+  - The authoritative Docker verification topology remains unusable because the compose stack does not create `zeptalytic_web_backend_test` before running Alembic migrations.
+  - Per build rules, `email-010` remains incomplete and was not marked `passes=true`.
+- Next recommended item:
+  - Fix the Docker test topology so the test database exists before the `migrate` service starts, then rerun the `email-010` iteration and complete verification for the existing config changes.
+## 2026-05-24T15:53:20.4305433-05:00
+
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-010` - Add email and Brevo configuration
+- Repo search summary:
+  - `app/core/config.py` is the centralized `BaseSettings` surface and now carries the Brevo/email provider selection, sender identities, reply-to addresses, `FRONTEND_BASE_URL`, timeout, webhook secret, and all 11 template ID settings.
+  - `.env.example` contains placeholder-only Brevo/email variables and no committed real secret values or token URLs.
+  - There is still no `app/services/email_service.py`, `app/integrations/brevo_client.py`, email webhook router, or email persistence model/repository implementation yet, so later spec items remain untouched.
+  - Existing DI/router/auth seams remain in `app/api/deps.py`, `app/api/routers/v1/__init__.py`, `app/api/routers/v1/auth.py`, `app/services/auth_service.py`, and `app/db/repositories/auth_repository.py`.
+- Files changed:
+  - `.env.example`
+  - `app/core/config.py`
+  - `tests/unit/test_config.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with `388 passed`.
+- Blockers:
+  - none
+- Next recommended item:
+  - `email-020` - Add template catalog and sender profile resolver
+## 2026-05-24T15:59:38.6001880-05:00
+
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-020` - Add template catalog and sender profile resolver
+- Repo search summary:
+  - `app/core/config.py` and `.env.example` already define the Brevo/email config surface introduced by `email-010`, including all 11 template IDs, sender addresses, reply-to defaults, timeout, and `FRONTEND_BASE_URL`.
+  - There was still no transactional-email runtime module before this pass: no `app/services/email_service.py`, no `app/integrations/brevo_client.py`, no email webhook router, and no email persistence models or repositories.
+  - Existing composition patterns remain centered in `app/api/deps.py`, `app/services/__init__.py`, `app/integrations/__init__.py`, and schema exports in `app/schemas/__init__.py`.
+  - Router and OpenAPI regression coverage continues to live in `tests/unit/test_router_registration.py` and `tests/unit/test_openapi_runtime_surface.py`; auth/token behavior remains in `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and the existing auth tests.
+- Files changed:
+  - `app/schemas/email.py`
+  - `app/schemas/__init__.py`
+  - `tests/unit/test_email_template_catalog.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` passed.
+  - `python -m pytest tests/unit/test_email_template_catalog.py tests/unit/test_config.py` could not run in the host shell because the available host Python environment did not have `pytest` installed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with `391 passed`.
+- Blockers:
+  - none
+- Next recommended item:
+  - `email-030` - Add BrevoClient abstraction
+## 2026-05-24T16:05:36.6430796-05:00
+
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-030` - Add BrevoClient abstraction
+- Repo search summary:
+  - Email/Brevo runtime config and template catalog already existed in `app/core/config.py`, `.env.example`, `app/schemas/email.py`, `tests/unit/test_config.py`, and `tests/unit/test_email_template_catalog.py`.
+  - There was still no provider client implementation in `app/integrations/`, while current integration patterns were defined by `app/integrations/pay_client.py`, `app/integrations/discord_oauth_client.py`, `app/integrations/__init__.py`, and dependency wiring in `app/api/deps.py`.
+  - Auth/signup/verification/reset behavior remains unchanged in `app/services/auth_service.py`, `app/api/routers/v1/auth.py`, and `app/db/repositories/auth_repository.py`; router registration remains centered in `app/api/routers/v1/__init__.py`.
+  - Model/import/migration structure remains unchanged in this pass; email persistence models, repositories, and migrations still do not exist, so later spec items remain untouched.
+- Files changed:
+  - `app/integrations/brevo_client.py`
+  - `app/integrations/__init__.py`
+  - `app/api/deps.py`
+  - `tests/unit/test_brevo_client.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` passed.
+  - `python -m pytest tests/unit/test_brevo_client.py tests/unit/test_application_layer_foundation.py -q` could not run in the host shell because the available host Python environment did not have `pytest` installed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with `396 passed`.
+- Blockers:
+  - none
+- Next recommended item:
+  - `email-040` - Add `email_send_attempts` model, repository, and migration
+## 2026-05-24T16:43:00.8963766-05:00
+- Active spec: `specs/transactional_email_service_brevo.json`
+- Selected item: `email-040` - Add `email_send_attempts` model, repository, and migration
+- Repo search summary:
+  - Existing config and transactional-email groundwork already lived in `app/core/config.py`, `.env.example`, `app/schemas/email.py`, `app/integrations/brevo_client.py`, `app/api/deps.py`, `tests/unit/test_config.py`, `tests/unit/test_email_template_catalog.py`, and `tests/unit/test_brevo_client.py`.
+  - Auth/signup/verification/reset behavior remains centered in `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py`; no auth behavior changed in this iteration.
+  - Router registration still runs through `app/api/routers/v1/__init__.py` and `app/main.py`; no router/OpenAPI changes were needed for this item.
+  - Model/import/migration structure is centralized in `app/db/models/__init__.py`, `app/db/repositories/__init__.py`, `app/db/models/_json.py`, and `alembic/versions/`; there was no preexisting `email_send_attempts` model, repository, or migration.
+  - Existing regression surfaces for metadata/layout/database patterns were in `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, and `tests/integration/test_parent_db_round_trips.py`.
+- Files changed:
+  - `app/db/models/email_send_attempts.py`
+  - `app/db/models/__init__.py`
+  - `app/db/repositories/email_send_attempt_repository.py`
+  - `app/db/repositories/__init__.py`
+  - `alembic/versions/20260524_1710_email010_send_attempts.py`
+  - `tests/unit/test_email_send_attempt_repository.py`
+  - `tests/integration/test_email_send_attempts_persistence.py`
+  - `tests/unit/test_model_metadata_registration.py`
+  - `tests/unit/test_model_module_layout.py`
+  - `tests/unit/test_parent_db_metadata_tables.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `.venv\Scripts\python.exe -m pytest tests/unit/test_email_send_attempt_repository.py tests/unit/test_model_metadata_registration.py tests/unit/test_model_module_layout.py tests/unit/test_parent_db_metadata_tables.py` passed (`20 passed`).
+  - `.venv\Scripts\python.exe -m pytest tests/integration/test_email_send_attempts_persistence.py` initially failed on mapper import order; after aligning the test with `import_models()`, the host-shell run still failed because the local Postgres at `127.0.0.1:5433` rejected the configured credentials.
+  - `.venv\Scripts\python.exe -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with `402 passed`; Alembic applied `20260416_0245 -> 20260524_1710` for the new `email_send_attempts` table during the suite.
+- Blockers:
+  - none
+- Next recommended item:
+  - `email-050` - Add `email_delivery_events` model, repository, and migration
+## 2026-05-24T16:49:44.0417242-05:00
+- Active spec: `specs/transactional_email_service_brevo.json`
+- Selected item: `email-050` - Add `email_delivery_events` model, repository, and migration
+- Repo search summary:
+  - Existing email foundation already lived in `app/core/config.py`, `app/schemas/email.py`, `app/integrations/brevo_client.py`, `app/api/deps.py`, `app/db/models/email_send_attempts.py`, `app/db/repositories/email_send_attempt_repository.py`, and their regression tests.
+  - Auth/signup/verification/reset flows remain centered in `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py`; this iteration did not change auth behavior.
+  - Router registration still runs through `app/api/routers/v1/__init__.py` and `app/main.py`; there was still no webhook route, so OpenAPI/router surfaces were unchanged for this item.
+  - Model/import/migration registration patterns are centralized in `app/db/models/__init__.py`, `app/db/repositories/__init__.py`, `app/db/models/_json.py`, and `alembic/versions/`; the new delivery-event slice mirrored the existing send-attempt conventions.
+  - Existing regression surfaces for metadata/layout/database patterns were `tests/unit/test_application_layer_foundation.py`, `tests/unit/test_model_metadata_registration.py`, `tests/unit/test_model_module_layout.py`, `tests/unit/test_parent_db_metadata_tables.py`, and the new/inherited email persistence tests.
+- Files changed:
+  - `app/db/models/email_delivery_events.py`
+  - `app/db/models/__init__.py`
+  - `app/db/repositories/email_delivery_event_repository.py`
+  - `app/db/repositories/__init__.py`
+  - `alembic/versions/20260524_1815_email050_delivery_events.py`
+  - `tests/unit/test_email_delivery_event_repository.py`
+  - `tests/integration/test_email_delivery_events_persistence.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `tests/unit/test_model_metadata_registration.py`
+  - `tests/unit/test_model_module_layout.py`
+  - `tests/unit/test_parent_db_metadata_tables.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` passed.
+  - `python -m pytest ...` could not run in the host shell because the available host Python environment did not have `pytest` installed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with `408 passed`; Alembic applied `20260524_1710 -> 20260524_1815` for the new `email_delivery_events` table during the suite.
+- Blockers:
+  - none
+- Next recommended item:
+  - `email-060` - Add provider-neutral `EmailService` with approved template method coverage
+## 2026-05-24T16:56:20.0752457-05:00
+- Active spec: `specs/transactional_email_service_brevo.json`
+- Selected item: `email-060` - Add provider-neutral `EmailService` with approved template method coverage
+- Repo search summary:
+  - Existing email foundations were already present in `app/core/config.py`, `app/schemas/email.py`, `app/integrations/brevo_client.py`, `app/db/models/email_send_attempts.py`, `app/db/repositories/email_send_attempt_repository.py`, `app/db/models/email_delivery_events.py`, and `app/db/repositories/email_delivery_event_repository.py`.
+  - Service/dependency patterns remain centered in `app/services/__init__.py`, `app/api/deps.py`, and builder helpers such as `build_discord_integration_service()` and `build_pay_projection_service()`, which established the right seam for adding `build_email_service()` plus DI without wiring auth yet.
+  - Auth/signup/verification/reset behavior remains in `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py`; those flows still generate hashed verification/reset tokens and were intentionally left unchanged for this item.
+  - Router registration and OpenAPI behavior remain centralized in `app/api/routers/v1/__init__.py`, `app/main.py`, and `tests/unit/test_openapi_runtime_surface.py`; no router changes were required for `email-060`.
+  - Existing adjacent test surfaces were `tests/unit/test_application_layer_foundation.py`, `tests/unit/test_brevo_client.py`, `tests/unit/test_email_template_catalog.py`, and `tests/unit/test_email_send_attempt_repository.py`; the new service tests followed those patterns.
+- Files changed:
+  - `app/services/email_service.py`
+  - `app/services/__init__.py`
+  - `app/api/deps.py`
+  - `tests/unit/test_email_service.py`
+  - `tests/unit/test_application_layer_foundation.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` passed.
+  - `.venv\Scripts\python.exe -m pytest tests/unit/test_email_service.py tests/unit/test_application_layer_foundation.py` passed (`17 passed`).
+  - `python -m pytest tests/unit/test_email_service.py tests/unit/test_application_layer_foundation.py` could not run in the host Python environment because `pytest` was not installed there.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with `412 passed`.
+- Blockers:
+  - none
+- Next recommended item:
+  - `email-070` - Wire signup verification email
+## 2026-05-24T17:03:25.3320882-05:00
+- Active spec: `specs/transactional_email_service_brevo.json`
+- Selected item: `email-070` - Wire signup verification email
+- Repo search summary:
+  - Existing transactional email foundations already lived in `app/services/email_service.py`, `app/integrations/brevo_client.py`, `app/db/models/email_send_attempts.py`, `app/db/repositories/email_send_attempt_repository.py`, `app/core/config.py`, `app/api/deps.py`, and their unit/integration tests.
+  - Signup, verification, resend, and password-reset auth flows remained centered in `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py`; `signup()` still generated a verification token but did not route it through `EmailService`.
+  - Router registration and OpenAPI behavior still run through `app/api/routers/v1/__init__.py`, `app/main.py`, and `tests/unit/test_openapi_runtime_surface.py`; no route surface changes were required for `email-070`.
+  - Service/repository conventions remain builder-based through `app/api/deps.py` and `build_*` helpers, with repositories remaining persistence-only and services owning transaction flow.
+  - Existing adjacent regression coverage was in `tests/unit/test_auth_service.py`, `tests/unit/test_auth_api.py`, `tests/unit/test_email_service.py`, and `tests/unit/test_application_layer_foundation.py`; the remaining gap was signup-to-email wiring plus proof that signup survives email-path failure and records a send attempt safely.
+- Files changed:
+  - `app/services/auth_service.py`
+  - `app/api/deps.py`
+  - `tests/unit/test_auth_service.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `.venv\Scripts\python.exe -m pytest tests/unit/test_auth_service.py tests/unit/test_application_layer_foundation.py -q` passed (`40 passed`).
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed with `414 passed`.
+- Blockers:
+  - none
+- Next recommended item:
+  - `email-080` - Wire resend verification email
+## 2026-05-24T17:10:38.8170870-05:00
+- Active spec: `specs/transactional_email_service_brevo.json`
+- Selected item: `email-080` - Wire resend verification email
+- Repo search summary:
+  - Existing transactional email runtime and DI seams were already present in `app/services/email_service.py`, `app/integrations/brevo_client.py`, `app/api/deps.py`, `app/db/models/email_send_attempts.py`, and `app/db/repositories/email_send_attempt_repository.py`.
+  - Resend flow logic still lived in `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, and `app/api/routers/v1/auth.py`; `resend_email_verification()` generated a hashed token and audit event but did not call `EmailService`.
+  - Router registration remained centralized in `app/api/routers/v1/__init__.py` and `app/main.py`, so no `/api/v1` route inventory changes were needed for this item.
+  - Model/import/migration structure already registered `email_send_attempts` and `email_delivery_events` through `app/db/models/__init__.py` and Alembic, so this iteration only needed auth/service and test changes.
+  - Existing adjacent regression coverage was concentrated in `tests/unit/test_auth_service.py` and `tests/unit/test_email_service.py`; the missing coverage was resend-to-email wiring, resend failure tolerance, and resend send-attempt metadata safety.
+- Files changed:
+  - `app/services/auth_service.py`
+  - `tests/unit/test_auth_service.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `.venv\Scripts\python.exe -m pytest tests/unit/test_auth_service.py tests/unit/test_email_service.py -q` passed (`33 passed`).
+  - `.venv\Scripts\python.exe -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed (`416 passed`).
+- Blockers:
+  - none
+- Notes:
+  - Resend verification now routes through `EmailService` and records send attempts through the existing email service path.
+  - Previous unused verification tokens are still retained because the current repository/model surface does not yet provide an explicit invalidation state beyond `used_at`; this iteration preserves existing token semantics honestly.
+- Next recommended item:
+  - `email-090` - Wire forgot-password password reset email
+## 2026-05-24T17:15:51.1394549-05:00
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-090` - Wire forgot-password password reset email
+- Repo search summary:
+  - Email foundations already existed in `app/services/email_service.py`, `app/integrations/brevo_client.py`, `app/api/deps.py`, `app/db/repositories/email_send_attempt_repository.py`, and `app/schemas/email.py`.
+  - Forgot/reset auth behavior lived in `app/services/auth_service.py`, `app/db/repositories/auth_repository.py`, `app/api/routers/v1/auth.py`, and `app/schemas/auth.py`; forgot-password still created only a hashed reset token and auth event, with no `EmailService` call.
+  - Router registration stayed centralized in `app/api/routers/v1/__init__.py` and `app/main.py`, so no `/api/v1` surface changes were required for this item.
+  - Model/import/migration registration for `email_send_attempts` was already in place through `app/db/models/__init__.py` and existing Alembic files, so this iteration only needed auth/service and auth regression updates.
+  - Existing adjacent regression coverage was already concentrated in `tests/unit/test_auth_service.py` and `tests/unit/test_email_service.py`; the missing gap was forgot-password email wiring, failure tolerance, and reset-link metadata safety.
+- Files changed:
+  - `app/services/auth_service.py`
+  - `tests/unit/test_auth_service.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed (`418 passed`).
+- Blockers:
+  - none
+- Notes:
+  - Forgot-password now generates a raw reset token only long enough to build the frontend reset URL, persists only the token hash, and sends `password_reset` through `EmailService` after the token/auth-event transaction commits.
+  - Provider or email-service send failures remain non-user-visible for forgot-password; the eligible account path still records auth state safely and does not expose account existence.
+- Next recommended item:
+  - `email-100` - Wire successful verification welcome email
+2026-05-24T17:22:31.2106513-05:00
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-100` - Wire successful verification welcome email
+- Repo search summary:
+  - `app/services/auth_service.py` already routed signup, resend verification, and forgot-password through `EmailService`, but `verify_email()` only marked the token/account verified and recorded `email_verification_completed`.
+  - `app/services/email_service.py` already exposed `send_welcome()` with template key `welcome`, hello sender resolution, and send-attempt persistence via `EmailSendAttemptRepository`.
+  - `app/db/repositories/auth_repository.py` remained the auth persistence seam; adding an account lookup there kept the welcome-email hook inside existing repository/service boundaries.
+  - Router registration stayed unchanged under `app/api/routers/v1/__init__.py`; `/api/v1/auth/verify-email` in `app/api/routers/v1/auth.py` already delegates entirely to `AuthService.verify_email()`.
+  - Adjacent regression coverage for this item centered on `tests/unit/test_auth_service.py` and existing send-attempt behavior already exercised through `EmailService`.
+- Files changed:
+  - `app/db/repositories/auth_repository.py`
+  - `app/services/auth_service.py`
+  - `tests/unit/test_auth_service.py`
+  - `specs/transactional_email_service_brevo.json`
+- Tests run and results:
+  - `.venv\Scripts\python.exe -m pytest tests/unit/test_auth_service.py` passed (`33 passed`).
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed (`420 passed in 8.56s`).
+- Blockers:
+  - none
+- Next recommended item:
+  - `email-110` - Wire account details changed notification where the existing flow safely supports it
+2026-05-24T17:27:59.9450001-05:00
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-110` - Wire account details changed notification where the existing flow safely supports it
+- Repo search summary:
+  - `app/services/auth_service.py` already sent signup, resend, forgot-password, and welcome emails through `EmailService`, but `reset_password()` stopped after the password/session/auth-event transaction and had no post-reset notification hook.
+  - `app/services/email_service.py` already exposed `send_account_details_changed()` with support-sender resolution, safe metadata (`flow` plus `change_summary_present`), and no token/password persistence.
+  - `app/db/repositories/auth_repository.py` already provided the account lookup and password reset persistence seam needed to trigger the notification without adding new repository methods or changing router behavior.
+  - Router/OpenAPI registration under `app/api/routers/v1/__init__.py` and `app/api/routers/v1/auth.py` was unchanged because this item is service-layer only.
+  - Existing adjacent regression coverage was already concentrated in `tests/unit/test_auth_service.py` and `tests/unit/test_email_service.py`; the missing gap was the successful reset notification path, failure non-rollback behavior, and send-attempt token-safety assertions for the post-reset email.
+- Files changed:
+  - `app/services/auth_service.py`
+  - `tests/unit/test_auth_service.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` passed.
+  - `python -m pytest tests/unit/test_auth_service.py tests/unit/test_email_service.py` could not run in the host interpreter because `pytest` is not installed in `C:\Users\jquin\AppData\Local\Programs\Python\Python310\python.exe`.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed (`422 passed in 8.93s`).
+- Blockers:
+  - none
+- Notes:
+  - Successful password reset now sends `account_details_changed` only after the password change, token-use mark, session revocation, and auth-event commit complete.
+  - Notification failures do not undo the completed reset.
+  - The notification send-attempt path stores no raw reset token, no full reset URL, and no password data.
+- Next recommended item:
+  - `email-120` - Add Brevo webhook route with secret validation
+[2026-05-24T17:33:06.8937577-05:00] Build iteration
+- Active spec: `specs/transactional_email_service_brevo.json`
+- Selected item: `email-120` - Add Brevo webhook route with secret validation
+- Repo search summary:
+  - `app/api/routers/v1/__init__.py` and `app/main.py` confirmed the existing `/api/v1` router registration seam and showed there was no email webhook router mounted yet.
+  - `app/api/deps.py` confirmed the standard DB dependency pattern; `app/db/repositories/email_delivery_event_repository.py` and `app/db/models/email_delivery_events.py` already provided the persistence seam needed for webhook ingestion without adding a new service layer.
+  - `app/schemas/email.py` already held the email catalog/sender definitions and was the right place for a small webhook response DTO.
+  - `tests/unit/test_router_registration.py` and `tests/unit/test_openapi_runtime_surface.py` already guarded route registration and OpenAPI surface, but had no webhook coverage.
+  - Existing email/auth work in `app/services/auth_service.py`, `app/services/email_service.py`, and the email repository/model files was unaffected; the selected gap was strictly the public webhook route and its secret-protected ingress behavior.
+- Files changed:
+  - `app/api/routers/v1/email_webhooks.py`
+  - `app/api/routers/v1/__init__.py`
+  - `app/schemas/email.py`
+  - `tests/unit/test_email_webhooks_api.py`
+  - `tests/unit/test_router_registration.py`
+  - `tests/unit/test_openapi_runtime_surface.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `poetry run python -m pytest tests/unit/test_email_webhooks_api.py tests/unit/test_router_registration.py tests/unit/test_openapi_runtime_surface.py` passed (`17 passed`).
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed (`430 passed in 9.03s`).
+- Blockers:
+  - none
+- Notes:
+  - Added `POST /api/v1/email/webhooks/brevo` as a public, session-free webhook route that validates `?secret=` against `BREVO_WEBHOOK_SECRET` before touching persistence.
+  - Valid payloads are stored through `EmailDeliveryEventRepository`; duplicates return success and no auth, billing, Pay, or support state is mutated.
+  - Malformed JSON and non-object payloads return controlled error responses with the standard error envelope.
+- Next recommended item:
+  - `email-130` - Add delivery event normalization and deduplication
+
+## 2026-05-24T17:36:44.5939098-05:00
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-130` - Add delivery event normalization and deduplication
+- Repo search summary:
+  - Confirmed existing email foundation files already in the working tree: `app/api/routers/v1/email_webhooks.py`, `app/db/repositories/email_delivery_event_repository.py`, `app/db/models/email_delivery_events.py`, `app/schemas/email.py`, and matching webhook/config/router/OpenAPI tests.
+  - Verified auth/signup/verification/reset behavior remains in `app/services/auth_service.py` and `app/db/repositories/auth_repository.py`, with router registration under `app/api/routers/v1/__init__.py` and `/api/v1` mounting in `app/main.py`.
+  - Verified model/import/migration patterns through `app/db/models/__init__.py`, `app/db/models/_json.py`, and the existing Alembic UUID/JSONB conventions.
+  - Identified the remaining gap for `email-130` as stable event normalization coverage plus stronger deterministic dedupe behavior beyond raw-payload hashing.
+- Files changed:
+  - `app/api/routers/v1/email_webhooks.py`
+  - `app/db/repositories/email_delivery_event_repository.py`
+  - `tests/unit/test_email_webhooks_api.py`
+  - `tests/unit/test_email_delivery_event_repository.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `poetry run pytest tests/unit/test_email_webhooks_api.py tests/unit/test_email_delivery_event_repository.py` passed (`14 passed`).
+  - `poetry run pytest tests/integration/test_email_delivery_events_persistence.py` failed locally because the host Postgres connection at `127.0.0.1:5433` rejected `postgres` credentials; this was not a blocker after the authoritative Docker suite passed.
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed (`434 passed in 8.83s`).
+- Blockers:
+  - none
+- Notes:
+  - Added deterministic dedupe key selection that prefers provider event ID, then message-scoped event identity, then a stable payload hash fallback.
+  - Expanded normalized event coverage tests for the full supported webhook event vocabulary and preserved controlled handling for malformed or non-object payloads.
+  - Kept webhook behavior telemetry-only; no auth, billing, Pay, or support state is mutated.
+- Next recommended item:
+  - `email-140` - Add tests for transactional email behavior
+
+## 2026-05-24T17:40:27.1823621-05:00
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-140` - Add tests for transactional email behavior
+- Repo search summary:
+  - Confirmed transactional email runtime is already present in `app/services/email_service.py`, `app/integrations/brevo_client.py`, `app/api/routers/v1/email_webhooks.py`, `app/db/models/email_send_attempts.py`, `app/db/models/email_delivery_events.py`, and the matching repository/DI wiring files.
+  - Verified auth email triggers live in `app/services/auth_service.py`, router registration stays centralized in `app/api/routers/v1/__init__.py`, `/api/v1` mounting stays in `app/main.py`, and model metadata registration remains in `app/db/models/__init__.py`.
+  - Verified existing coverage already spans config, catalog, Brevo client, email service, persistence, auth integration, webhook routing, router registration, and OpenAPI via `tests/unit/test_config.py`, `tests/unit/test_email_template_catalog.py`, `tests/unit/test_brevo_client.py`, `tests/unit/test_email_service.py`, `tests/unit/test_auth_service.py`, `tests/unit/test_email_webhooks_api.py`, `tests/unit/test_router_registration.py`, `tests/unit/test_openapi_runtime_surface.py`, `tests/integration/test_email_send_attempts_persistence.py`, and `tests/integration/test_email_delivery_events_persistence.py`.
+  - Identified the remaining gaps as explicit regression checks that future-scope templates stay unwired in auth flows and that invalid webhook secrets do not persist delivery-event payloads.
+- Files changed:
+  - `tests/unit/test_auth_service.py`
+  - `tests/unit/test_email_webhooks_api.py`
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m pytest tests/unit/test_auth_service.py tests/unit/test_email_webhooks_api.py -q` could not run locally because `pytest` is not installed in the host Python environment.
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed (`435 passed in 9.14s`).
+- Blockers:
+  - none
+- Notes:
+  - Added an auth-flow regression asserting only phase-one template keys are persisted across signup, resend verification, welcome, forgot-password, and reset-password notification paths.
+  - Added webhook regressions asserting missing and invalid secrets return `401` without storing any `email_delivery_events` rows.
+  - Left runtime application code unchanged; this iteration completed the test-spec item only.
+- Next recommended item:
+  - `email-999` - Run full backend verification
+
+## 2026-05-24T17:42:48.3368552-05:00
+- Active spec:
+  - `specs/transactional_email_service_brevo.json`
+- Selected item:
+  - `email-999` - Run full backend verification
+- Repo search summary:
+  - Confirmed transactional email runtime is wired through `app/core/config.py`, `app/api/deps.py`, `app/services/email_service.py`, `app/integrations/brevo_client.py`, `app/api/routers/v1/email_webhooks.py`, `app/db/models/email_send_attempts.py`, `app/db/models/email_delivery_events.py`, and the matching repository exports in `app/db/repositories/__init__.py`.
+  - Verified auth/signup/verification/password-reset behavior remains centered in `app/services/auth_service.py` and `app/api/routers/v1/auth.py`, with pending-verification protections still enforced across the authenticated API surface.
+  - Verified router registration stays centralized in `app/api/routers/v1/__init__.py` and mounted under `settings.api_v1_prefix` from `app/main.py`, while model metadata registration and Alembic discovery remain driven by `app/db/models/__init__.py` and `app/db/bootstrap.py`.
+  - Confirmed existing transactional email regression coverage spans config, template catalog, Brevo client, EmailService, webhook route, repository persistence, OpenAPI, and auth integration through `tests/unit/test_config.py`, `tests/unit/test_email_template_catalog.py`, `tests/unit/test_brevo_client.py`, `tests/unit/test_email_service.py`, `tests/unit/test_email_webhooks_api.py`, `tests/unit/test_auth_service.py`, `tests/unit/test_router_registration.py`, `tests/unit/test_openapi_runtime_surface.py`, `tests/integration/test_email_send_attempts_persistence.py`, and `tests/integration/test_email_delivery_events_persistence.py`.
+- Files changed:
+  - `specs/transactional_email_service_brevo.json`
+  - `progress/progress.txt`
+- Tests run and results:
+  - `python -m compileall app tests alembic` passed.
+  - `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test` passed (`435 passed in 9.20s`).
+- Blockers:
+  - none
+- Notes:
+  - The Docker command exited successfully from the `test` service as required; the `migrate` container showed exit code `137` only after Compose aborted remaining services because `--abort-on-container-exit` was used.
+  - No implementation changes were required during this verification pass.
+- Next recommended item:
+  - none; the active transactional email spec is fully complete

@@ -91,6 +91,9 @@ class AuthRepository:
     def __init__(self, db: Session) -> None:
         self._db = db
 
+    def get_account_by_id(self, account_id: UUID) -> Account | None:
+        return self._db.get(Account, account_id)
+
     def get_account_by_email(self, email: str) -> Account | None:
         return self._db.scalar(select(Account).where(Account.email == email))
 

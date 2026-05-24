@@ -12,6 +12,8 @@ from app.db.models.auth_events import AuthEvent
 from app.db.models.auth_sessions import AuthSession
 from app.db.models.communication_preferences import CommunicationPreference
 from app.db.models.discord_connection_history import DiscordConnectionHistory
+from app.db.models.email_delivery_events import EmailDeliveryEvent
+from app.db.models.email_send_attempts import EmailSendAttempt
 from app.db.models.email_verification_tokens import EmailVerificationToken
 from app.db.models.entitlement_summaries import EntitlementSummary
 from app.db.models.mfa_recovery_codes import MfaRecoveryCode
@@ -50,6 +52,8 @@ EXPECTED_MODEL_FILES = {
     "auth_sessions.py",
     "communication_preferences.py",
     "discord_connection_history.py",
+    "email_delivery_events.py",
+    "email_send_attempts.py",
     "email_verification_tokens.py",
     "entitlement_summaries.py",
     "mfa_recovery_codes.py",
@@ -93,6 +97,8 @@ EXPECTED_MODEL_MODULES = {
     "app.db.models.auth_sessions": AuthSession,
     "app.db.models.communication_preferences": CommunicationPreference,
     "app.db.models.discord_connection_history": DiscordConnectionHistory,
+    "app.db.models.email_delivery_events": EmailDeliveryEvent,
+    "app.db.models.email_send_attempts": EmailSendAttempt,
     "app.db.models.email_verification_tokens": EmailVerificationToken,
     "app.db.models.entitlement_summaries": EntitlementSummary,
     "app.db.models.mfa_recovery_codes": MfaRecoveryCode,

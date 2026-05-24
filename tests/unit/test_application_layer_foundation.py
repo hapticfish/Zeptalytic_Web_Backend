@@ -17,20 +17,36 @@ from app.schemas import (
     CursorPageResponse,
     DiscordIntegrationReadResponse,
     DiscordIntegrationSummary,
+    EmailSenderProfileKey,
+    EmailTemplateCatalogEntry,
+    EmailTemplateKey,
+    FUTURE_SCOPE_TEMPLATE_KEYS,
     MutationSuccessResponse,
+    PHASE_ONE_TRIGGER_TEMPLATE_KEYS,
     ProfileRouteContractResponse,
     ProfileSettingsSummary,
+    ResolvedEmailSenderProfile,
     ServiceStatusListResponse,
     SupportTicketCreateRequest,
     SupportTicketListResponse,
+    build_email_sender_profiles,
+    build_email_template_catalog,
+    resolve_email_sender_profile,
 )
 from app.api.deps import (
+    get_brevo_client,
     get_discord_integration_service,
     get_discord_oauth_client,
+    get_email_service,
     get_pay_client,
     get_pay_projection_service,
 )
 from app.integrations import (
+    BrevoClient,
+    BrevoClientConfigurationError,
+    BrevoSendEmailResult,
+    BrevoTemplateEmailRequest,
+    build_brevo_client,
     DiscordOAuthClient,
     DiscordOAuthConfigurationError,
     DiscordOAuthIdentity,
@@ -54,6 +70,8 @@ from app.services import (
     DiscordIntegrationLinkNotFoundError,
     DiscordIntegrationNotFoundError,
     DiscordIntegrationService,
+    EmailSendResult,
+    EmailService,
     SupportService,
     SupportTicketNotFoundError,
     SupportTicketValidationError,
@@ -79,6 +97,7 @@ from app.services import (
     build_communication_preference_service,
     build_dashboard_service,
     build_discord_integration_service,
+    build_email_service,
     build_launcher_service,
     build_pay_projection_service,
     build_profile_settings_service,
@@ -161,6 +180,7 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert build_communication_preference_service is not None
     assert build_dashboard_service is not None
     assert build_discord_integration_service is not None
+    assert build_email_service is not None
     assert build_launcher_service is not None
     assert build_pay_projection_service is not None
     assert build_profile_settings_service is not None
@@ -180,6 +200,8 @@ def test_service_package_exports_reward_service_builders() -> None:
     assert DiscordIntegrationService is not None
     assert DiscordIntegrationNotFoundError is not None
     assert DiscordIntegrationLinkNotFoundError is not None
+    assert EmailSendResult is not None
+    assert EmailService is not None
     assert LauncherService is not None
     assert PayProjectionSubscriptionSummary is not None
     assert PayProjectionEntitlementSummary is not None
@@ -201,6 +223,13 @@ def test_service_package_exports_reward_service_builders() -> None:
 
 
 def test_pay_integration_package_exports_client_boundary() -> None:
+    assert BrevoClient is not None
+    assert BrevoClientConfigurationError is not None
+    assert BrevoSendEmailResult is not None
+    assert BrevoTemplateEmailRequest is not None
+    assert build_brevo_client is not None
+    assert get_brevo_client is not None
+    assert get_email_service is not None
     assert DiscordOAuthClient is not None
     assert DiscordOAuthIdentity is not None
     assert build_discord_oauth_client is not None
@@ -217,6 +246,18 @@ def test_pay_integration_package_exports_client_boundary() -> None:
     assert PayClientInvalidResponseError is not None
     assert get_pay_client is not None
     assert get_pay_projection_service is not None
+
+
+def test_email_schema_package_exports_template_contract_boundary() -> None:
+    assert EmailSenderProfileKey is not None
+    assert EmailTemplateCatalogEntry is not None
+    assert EmailTemplateKey is not None
+    assert FUTURE_SCOPE_TEMPLATE_KEYS is not None
+    assert PHASE_ONE_TRIGGER_TEMPLATE_KEYS is not None
+    assert ResolvedEmailSenderProfile is not None
+    assert build_email_sender_profiles is not None
+    assert build_email_template_catalog is not None
+    assert resolve_email_sender_profile is not None
 
 
 def test_reward_router_modules_do_not_import_repositories_directly() -> None:
