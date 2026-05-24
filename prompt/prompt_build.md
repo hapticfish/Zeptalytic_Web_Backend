@@ -14,12 +14,12 @@ ITERATION_BLOCKED
 
 ## 0) Current mission
 
-The active backend workstream is frontend runtime integration readiness.
+The active backend workstream is transactional email service implementation using Brevo.
 
 The intended active spec is:
 
 ```text
-specs/frontend_runtime_integration_readiness.json
+specs/transactional_email_service_brevo.json
 ```
 
 This build pass must implement exactly one incomplete item from the active spec.
@@ -28,9 +28,13 @@ The work must remain backend-only.
 
 Do not edit the frontend repo.
 
+Do not edit the Pay Service repo.
+
 Do not create frontend API clients.
 
 Do not modify React/Vite files.
+
+Do not redesign frontend pages.
 
 ## 1) Rehydrate context mandatory
 
@@ -43,16 +47,22 @@ Read:
 5. Determine the ACTIVE SPEC from the `Active spec:` line in `IMPLEMENTATION_PLAN.md`
 6. Read the ACTIVE SPEC file
 7. Read `specs/next_phase_spec_sequence.json` if present
-8. Read `docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md`
-9. Read `docs/architecture/Frontend_Backend_Contract_Map.md` if present
-10. Read `docs/architecture/Auth_Session_and_Security_Flows.md` if present
-11. Read `docs/architecture/Parent_Backend_Application_Architecture.md` if present
-12. Read `docs/architecture/Parent_Backend_API_Contract_Standards.md` if present
-13. Read `docs/architecture/Security_Operational_Control_Guide.md` if present
-14. Read `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md` if present
-15. Read `docs/architecture/Spec_Authoring_and_Harness_Workflow.md` if present
-16. Run `git status`
-17. Run `git log -5 --oneline`
+8. Read `docs/architecture/Brevo_Google_Workspace_Email_Decision_Record.md`
+9. Read `docs/architecture/Transactional_Email_Service_Architecture.md`
+10. Read `docs/architecture/Auth_Email_Verification_Flow.md`
+11. Read `docs/architecture/Email_Delivery_Events_And_Webhooks.md`
+12. Read `docs/architecture/Email_Template_Catalog.md`
+13. Read `docs/architecture/Transactional_Email_Agent_Run_Guidance.md`
+14. Read `docs/architecture/Auth_Session_and_Security_Flows.md` if present
+15. Read `docs/architecture/Parent_Backend_Application_Architecture.md` if present
+16. Read `docs/architecture/Parent_Backend_API_Contract_Standards.md` if present
+17. Read `docs/architecture/Parent_Backend_Repository_Layer_Design.md` if present
+18. Read `docs/architecture/Parent_Backend_Service_Layer_Design.md` if present
+19. Read `docs/architecture/Security_Operational_Control_Guide.md` if present
+20. Read `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md` if present
+21. Read `docs/architecture/Spec_Authoring_and_Harness_Workflow.md` if present
+22. Run `git status`
+23. Run `git log -5 --oneline`
 
 If the active spec file does not exist, append a blocker entry to `progress/progress.txt`, do not modify implementation files, print exactly `ITERATION_BLOCKED`, and stop.
 
@@ -87,9 +97,11 @@ Before changing anything, summarize what you found:
 - file paths
 - key functions/classes/models/schemas/repositories/services involved
 - current config/settings structure
-- current middleware/app startup structure
 - current router registration
-- current session cookie behavior
+- current auth/signup/verification/password reset behavior
+- current model/import/migration structure
+- current repository/service patterns
+- current provider integration patterns
 - current OpenAPI behavior
 - existing tests that already cover the target area
 - gaps the selected spec item should address
@@ -97,14 +109,20 @@ Before changing anything, summarize what you found:
 Use relevant commands such as:
 
 ```bash
-git grep -n "CORSMiddleware\|allow_origins\|allow_credentials\|CORS" app tests docs || true
-git grep -n "api_v1_prefix\|include_router\|APIRouter" app tests docs || true
-git grep -n "zeptalytic_session\|session" app tests docs || true
-git grep -n "set_cookie\|delete_cookie\|httponly\|samesite\|secure" app tests docs || true
+git grep -n "EmailService\|email_service\|Brevo\|brevo\|Sendinblue\|sendinblue" app tests docs specs || true
+git grep -n "EMAIL_PROVIDER\|BREVO_\|FRONTEND_BASE_URL\|EMAIL_FROM\|EMAIL_SUPPORT\|EMAIL_BILLING\|EMAIL_ALERTS\|EMAIL_UPDATES" app tests docs .env.example || true
+git grep -n "EmailVerificationToken\|email verification\|verify_email\|resend_email_verification" app tests docs || true
+git grep -n "forgot_password\|reset_password\|PasswordReset\|password reset" app tests docs || true
+git grep -n "signup\|create_account\|pending_verification\|email_verification_required" app tests docs || true
+git grep -n "APIRouter\|include_router\|api_v1_prefix" app tests docs || true
+git grep -n "Base\|declarative_base\|metadata\|import_models\|models" app/db app tests alembic || true
+git grep -n "repository\|Repository\|Repo" app tests docs || true
+git grep -n "JSONB\|UUID\|created_at\|updated_at" app/db app tests alembic || true
+git grep -n "httpx\|requests\|AsyncClient\|Client" app tests pyproject.toml poetry.lock || true
 git grep -n "openapi\|app.openapi\|include_in_schema" app tests docs || true
-git grep -n "localhost:5173\|127.0.0.1:5173\|Vite" app tests docs || true
 find app -maxdepth 5 -type f | sort
 find tests -maxdepth 5 -type f | sort
+find alembic -maxdepth 3 -type f | sort || true
 ```
 
 Do not assume something is missing until you search for it.
@@ -121,29 +139,52 @@ Do not assume something is missing until you search for it.
 - Do not implement future spec work early.
 - Do not duplicate existing patterns without searching first.
 - Do not edit the frontend repo.
+- Do not edit the Pay Service repo.
 - Do not create frontend API clients.
 - Do not modify React/Vite files.
 - Do not redesign stable frontend pages.
 
-## 5) Backend runtime-readiness guardrails
+## 5) Transactional email guardrails
 
 - Follow the ACTIVE SPEC exactly.
 - Preserve `/api/v1` API versioning.
 - Preserve HTTP-only cookie auth.
-- Frontend browser requests must be able to use `credentials: "include"`.
-- Backend must not return raw session tokens to browser-readable payloads.
-- Allowed local frontend origins must be explicit:
-  - `http://localhost:5173`
-  - `http://127.0.0.1:5173`
-- Credentialed CORS must not use wildcard origins.
-- CORS configuration should live in the backend settings/config layer when practical.
+- Preserve pending-verification access restrictions.
+- Use Brevo as the transactional email provider.
+- Use Google Workspace only as mailbox/alias/reply-handling context.
+- Use real reply-capable senders.
+- Do not use `no-reply@zeptalytic.com`.
+- Do not commit real Brevo API keys.
+- Do not commit real webhook secrets.
+- Do not place real secrets in `.env.example`, docs, specs, progress logs, `docker-compose.yml`, `fly.toml`, tests, fixtures, OpenAPI examples, or source defaults.
+- Route email sends through `EmailService`; do not call Brevo directly from `AuthService`.
+- Keep Brevo-specific HTTP logic isolated in `BrevoClient`.
+- Store backend send attempts in `email_send_attempts`.
+- Store Brevo delivery webhook events in `email_delivery_events`.
+- Store raw Brevo webhook payloads as JSONB.
+- Do not expose raw webhook payloads through public APIs.
+- Do not store rendered email bodies.
+- Do not store raw verification tokens.
+- Do not store raw password reset tokens.
+- Do not store full verification/reset URLs with tokens in send-attempt metadata.
+- Signup must succeed even if verification email sending fails.
+- Forgot-password must remain account-enumeration safe.
+- Welcome email must be sent after successful email verification, not before.
+- Welcome email failure must not undo verification.
+- Do not verify accounts based on Brevo sent/delivered/opened/clicked events.
+- Do not mutate billing/payment/Pay state from email delivery events.
+- Do not mutate support-ticket state from email delivery events.
+- Do not invent billing/order/payment email triggers.
+- Do not invent newsletter/update email triggers.
+- Do not invent support workflow email triggers.
+- Do not invent an email-change workflow if it does not already exist.
+- Do not implement automatic retry/outbox worker in this phase.
 - Do not duplicate Pay commercial business rules in parent.
 - Do not store sensitive payment data in parent.
 - Do not implement admin dashboards unless explicitly scoped.
 - Do not make Discord linkage affect rewards or product access unless explicitly scoped.
 - Do not allow frontend APIs to directly award points/rewards/badges.
 - Do not implement unrelated routers/services/repositories outside the ACTIVE SPEC.
-- Do not modify database schema unless the ACTIVE SPEC explicitly scopes it.
 - Do not return raw ORM objects from routers.
 - Use explicit safe DTOs for API responses.
 
@@ -155,11 +196,15 @@ For structural refactors, add regression tests that prove the intended layout an
 
 Expected test areas by item:
 
-- CORS settings: config/settings tests where present, or app/middleware tests.
-- CORSMiddleware wiring: preflight/request tests for allowed origins and credential headers.
-- Cookie auth contract: tests proving HTTP-only cookie behavior and session endpoint behavior.
-- Route inventory docs: docs consistency checks if repo has docs tests, otherwise clear doc update.
-- OpenAPI surface: tests that inspect `app.openapi()` for frontend-critical routes.
+- Config/settings: email provider, Brevo base URL, timeout, webhook secret, frontend base URL, senders, template IDs, `.env.example` placeholders.
+- Template catalog/sender resolver: all 11 template keys, correct sender profiles, no no-reply sender, future-scope templates not accidentally triggered.
+- BrevoClient: correct endpoint/payload, success response, provider message ID, timeout/HTTP/unexpected response failure mapping, no secret logging.
+- EmailService: send attempt creation/update, success/failure status, template key/provider template ID/sender/reply-to stored, raw tokens not stored.
+- Send-attempt persistence: model/repository/migration fields, statuses, JSONB metadata, no rendered body/token storage.
+- Delivery-event persistence: model/repository/migration fields, raw payload JSONB, unique dedupe key.
+- Auth integration: signup verification, resend verification, forgot-password, successful verification welcome email, account-details-changed notification if safely wired.
+- Webhook route: missing/invalid secret rejected, valid event stored, duplicate event returns success, unknown event stored as unknown, malformed payload handled safely.
+- OpenAPI surface: webhook route included or intentionally excluded according to project convention.
 - Full verification item: no code behavior change required, but required commands must pass.
 
 If tests fail, fix them in this same iteration; do not move on while tests are failing.
@@ -227,6 +272,8 @@ The progress entry must include:
 - tests run and results
 - blockers if any
 - next recommended item
+
+Do not include secrets, raw tokens, or full token URLs in progress entries.
 
 ## 9) Completion marker
 

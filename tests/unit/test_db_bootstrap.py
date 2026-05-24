@@ -1,4 +1,5 @@
 from sqlalchemy import MetaData
+from sqlalchemy.orm import configure_mappers
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 
@@ -46,6 +47,7 @@ def test_model_registry_imports_split_modules_directly() -> None:
     assert "app.db.models.payment_method_summaries" in model_registry.MODEL_MODULES
     assert "app.db.models.payment_summaries" in model_registry.MODEL_MODULES
     assert "app.db.models.product_access_states" in model_registry.MODEL_MODULES
+    assert "app.db.models.oauth_connections" in model_registry.MODEL_MODULES
     assert "app.db.models.rewards.account_badges" in model_registry.MODEL_MODULES
     assert "app.db.models.rewards.account_objective_progress" in model_registry.MODEL_MODULES
     assert "app.db.models.rewards.badge_definitions" in model_registry.MODEL_MODULES
@@ -111,6 +113,12 @@ def test_get_target_metadata_registers_split_model_tables() -> None:
         "reward_notifications",
         "reward_tier_definitions",
     }.issubset(set(metadata.tables))
+
+
+def test_get_target_metadata_configures_all_split_model_relationships() -> None:
+    bootstrap.get_target_metadata()
+
+    configure_mappers()
 
 
 def test_get_target_metadata_registers_exact_rewards_table_surface() -> None:

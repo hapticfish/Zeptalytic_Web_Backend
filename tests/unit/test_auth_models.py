@@ -160,6 +160,33 @@ def test_profiles_include_active_discord_linkage_columns() -> None:
     assert profiles_table.c.discord_integration_status.server_default is not None
 
 
+def test_profile_signup_default_discord_integration_status_is_explicitly_persisted() -> None:
+    session, _ = _create_in_memory_schema()
+    account = Account(
+        id=uuid4(),
+        username="profile-signup-default-owner",
+        email="profile-signup-default-owner@example.com",
+        password_hash="hashed-password",
+        status="pending_verification",
+        role="user",
+    )
+    session.add(account)
+    session.commit()
+
+    profile = Profile(
+        account_id=account.id,
+        display_name="profile-signup-default-owner",
+        discord_integration_status="pending",
+    )
+    session.add(profile)
+    session.commit()
+
+    persisted_profile = session.scalar(select(Profile).where(Profile.account_id == account.id))
+
+    assert persisted_profile is not None
+    assert persisted_profile.discord_integration_status == "pending"
+
+
 def test_addresses_have_expected_defaults_and_indexes() -> None:
     addresses_table = Address.__table__
     address_indexes = {index.name for index in addresses_table.indexes}

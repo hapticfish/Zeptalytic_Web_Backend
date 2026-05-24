@@ -2,11 +2,21 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.exception_handlers import register_exception_handlers
-from app.api.routers import api_router
 from app.core.config import settings
+from app.db.models import import_models
 from app.utils import register_request_id_middleware
 
+
+# Import all ORM model modules before route/service code starts using mapped classes.
+# This prevents SQLAlchemy relationship string resolution failures such as:
+# Account.oauth_connections -> "OAuthConnection" not being registered yet.
+import_models()
+
+from app.api.routers import api_router  # noqa: E402
+
+
 app = FastAPI(title=settings.app_name)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.cors_allowed_origins),
@@ -14,6 +24,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 register_request_id_middleware(app)
 register_exception_handlers(app)
 app.include_router(api_router, prefix=settings.api_v1_prefix)

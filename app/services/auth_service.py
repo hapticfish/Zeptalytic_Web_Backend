@@ -285,10 +285,13 @@ class AuthService:
             self._db.commit()
         except IntegrityError as exc:
             self._db.rollback()
-            raise DuplicateAccountError(
-                self._get_signup_conflicts(username=normalized_username, email=normalized_email)
-                or ["email_or_username"]
-            ) from exc
+            conflicts = self._get_signup_conflicts(
+                username=normalized_username,
+                email=normalized_email,
+            )
+            if conflicts:
+                raise DuplicateAccountError(conflicts) from exc
+            raise
         except Exception:
             self._db.rollback()
             raise

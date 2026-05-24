@@ -5,11 +5,31 @@ class Settings(BaseSettings):
     app_env: str = "dev"
     app_name: str = "Zeptalytic Web Backend"
     api_v1_prefix: str = "/api/v1"
+
+    # Browser/runtime integration contract for local React/Vite frontend.
+    # Keep these explicit. Do not use wildcard origins with credentialed CORS.
     cors_allowed_origins: tuple[str, ...] = (
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     )
     cors_allow_credentials: bool = True
+    cors_allow_methods: tuple[str, ...] = (
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    )
+    cors_allow_headers: tuple[str, ...] = (
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "X-Request-ID",
+    )
+
     auth_session_cookie_name: str = "zeptalytic_session"
     auth_session_ttl_hours: int = 24 * 30
     auth_email_verification_ttl_hours: int = 24
@@ -19,15 +39,19 @@ class Settings(BaseSettings):
     auth_session_cookie_path: str = "/"
     auth_session_cookie_samesite: str = "lax"
     auth_session_cookie_secure: bool = False
+
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/zeptalytic_web_backend"
+
     pay_service_base_url: str = "http://localhost:8080"
     pay_service_internal_token: str | None = None
+
     discord_oauth_base_url: str = "https://discord.com"
     discord_oauth_client_id: str | None = None
     discord_oauth_client_secret: str | None = None
     discord_oauth_redirect_uri: str | None = None
     discord_oauth_state_secret: str = "dev-discord-oauth-state-secret"
     discord_oauth_state_ttl_seconds: int = 600
+
     security_rate_limit_auth_window_seconds: int = 300
     security_rate_limit_auth_max_attempts: int = 5
     security_rate_limit_discord_callback_window_seconds: int = 300

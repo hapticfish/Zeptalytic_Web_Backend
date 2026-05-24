@@ -151,7 +151,11 @@ class AuthRepository:
         return account
 
     def create_profile(self, *, account_id: UUID, display_name: str) -> Profile:
-        profile = Profile(account_id=account_id, display_name=display_name)
+        profile = Profile(
+            account_id=account_id,
+            display_name=display_name,
+            discord_integration_status="pending",
+        )
         self._db.add(profile)
         self._db.flush()
         return profile

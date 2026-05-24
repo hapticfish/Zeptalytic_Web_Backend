@@ -12,30 +12,45 @@ This service owns:
 - browser-facing aggregation for dashboard / launcher / billing
 - parent-side integration contracts to the Zeptalytic Pay service
 - parent account identity and product-facing account state
+- parent-side transactional email orchestration and delivery telemetry
 
 This service does not own commercial payment truth.
 
+This service does not own mailbox hosting or human reply handling.
+
 ## Current backend workstream
 
-The current backend workstream is frontend runtime integration readiness.
+The current backend workstream is transactional email service implementation using Brevo.
 
 The target active spec is:
 
 ```text
-specs/frontend_runtime_integration_readiness.json
+specs/transactional_email_service_brevo.json
 ```
 
-This workstream prepares the FastAPI parent backend to be safely called by the React/Vite frontend during local browser-based integration.
+This workstream prepares the FastAPI parent backend to send transactional email through Brevo, persist email send attempts, ingest Brevo delivery events, and wire approved auth/account email flows.
 
-It is limited to backend-side readiness:
+It is limited to backend-side transactional email infrastructure and approved auth integrations:
 
-- explicit credentialed CORS for local Vite origins
-- HTTP-only cookie auth browser contract verification/documentation
-- frontend-facing backend route inventory
-- OpenAPI/runtime route surface regression coverage
+- email/Brevo runtime configuration
+- template catalog and sender profile resolver
+- Brevo API client abstraction
+- provider-neutral `EmailService`
+- `email_send_attempts` model/table/repository/migration
+- `email_delivery_events` model/table/repository/migration
+- Brevo webhook route with secret validation
+- delivery event normalization and deduplication
+- auth integration for signup verification, resend verification, forgot-password, and post-verification welcome email
+- account-details-changed notification only where the existing reset/account flow safely supports it
 - backend compile/test verification
 
 This workstream must not edit the frontend repo.
+
+This workstream must not edit the Zeptalytic Pay Service repo.
+
+This workstream must not invent billing, newsletter, or support workflow email triggers.
+
+This workstream must not implement automatic email retry/outbox workers unless explicitly scoped by the active spec.
 
 ## Non-negotiable rules always
 
@@ -55,9 +70,13 @@ This workstream must not edit the frontend repo.
 - Keep progress append-only.
 - Append progress entries to the absolute end of `progress/progress.txt`.
 - Do not edit the frontend repo.
+- Do not edit the Pay Service repo.
 - Do not create frontend API clients.
 - Do not modify React/Vite files.
 - Do not redesign stable frontend pages.
+- Do not commit real secrets.
+- Do not commit raw tokens.
+- Do not put secrets, raw tokens, or full token URLs in docs, specs, progress logs, tests, fixtures, OpenAPI examples, source defaults, `docker-compose.yml`, `fly.toml`, or GitHub Actions workflow bodies.
 
 ## Locked architecture boundaries
 
@@ -69,6 +88,33 @@ This workstream must not edit the frontend repo.
 - Discord current active linkage is modeled on `profiles`, with preserved historical connection state tracked separately.
 - Discord linkage does not affect rewards or product access in phase 1.
 - The docs under `docs/architecture/` are durable reference material; do not contradict them without updating the relevant decision record first.
+
+## Transactional email boundaries
+
+- Brevo is the transactional email provider.
+- Google Workspace owns mailboxes, aliases, and human reply handling.
+- The backend sends transactional emails through Brevo.
+- Brevo does not log into Google Workspace.
+- Use real reply-capable senders.
+- Do not use `no-reply@zeptalytic.com`.
+- Auth/account/security emails use `Zeptalytic Support <support@zeptalytic.com>` with `support@zeptalytic.com` reply-to.
+- General product/account emails use `Zeptalytic <hello@zeptalytic.com>` with `support@zeptalytic.com` reply-to.
+- Support response emails use `Zeptalytic Support <support@zeptalytic.com>` with `support@zeptalytic.com` reply-to.
+- Billing/order/payment emails use `Zeptalytic Billing <billing@zeptalytic.com>` with `billing@zeptalytic.com` reply-to.
+- Updates/news/newsletter emails use `Zeptalytic Updates <updates@zeptalytic.com>` with `support@zeptalytic.com` reply-to.
+- System/operational alerts use `Zeptalytic Alerts <alerts@zeptalytic.com>` with `support@zeptalytic.com` reply-to.
+- Signup must succeed even if verification email sending fails.
+- Forgot-password must remain account-enumeration safe.
+- Welcome email is sent only after successful email verification.
+- Account-details-changed notifications may be wired only where the existing reset/account flow safely supports them.
+- Email delivery webhooks are telemetry and must not verify accounts, reset passwords, mutate billing state, mutate Pay state, or mutate support state.
+- Billing/order/payment email triggers are future scope until a Pay/billing spec defines them.
+- Newsletter/update email triggers are future scope until a communications/newsletter spec defines them.
+- Support workflow email triggers are future scope until a support spec defines them.
+- Automatic retry/outbox worker is future scope.
+- Do not store raw verification tokens, raw password reset tokens, full token URLs, rendered email bodies, Brevo API keys, or webhook secrets in operational metadata or committed files.
+- Send-attempt records may store safe operational metadata only.
+- Delivery-event records may store raw provider webhook payloads as JSONB, but raw payloads must not be exposed through public APIs.
 
 ## Frontend runtime integration boundaries
 
@@ -100,13 +146,19 @@ Read these first:
 
 ## Required architecture references for this workstream
 
-Read these when relevant to frontend runtime integration readiness:
+Read these when relevant to transactional email service implementation:
 
-- `docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md`
-- `docs/architecture/Frontend_Backend_Contract_Map.md`
+- `docs/architecture/Brevo_Google_Workspace_Email_Decision_Record.md`
+- `docs/architecture/Transactional_Email_Service_Architecture.md`
+- `docs/architecture/Auth_Email_Verification_Flow.md`
+- `docs/architecture/Email_Delivery_Events_And_Webhooks.md`
+- `docs/architecture/Email_Template_Catalog.md`
+- `docs/architecture/Transactional_Email_Agent_Run_Guidance.md`
 - `docs/architecture/Auth_Session_and_Security_Flows.md`
 - `docs/architecture/Parent_Backend_Application_Architecture.md`
 - `docs/architecture/Parent_Backend_API_Contract_Standards.md`
+- `docs/architecture/Parent_Backend_Repository_Layer_Design.md`
+- `docs/architecture/Parent_Backend_Service_Layer_Design.md`
 - `docs/architecture/Security_Operational_Control_Guide.md`
 - `docs/architecture/Agent_Non_Goals_and_Implementation_Guardrails.md`
 - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
@@ -132,7 +184,7 @@ Read these when relevant to parent DB, domain vocabulary, Discord schema placeme
 
 ## Next-phase architecture references
 
-Read these when relevant to application-layer, API, service, repository, integration, dashboard, billing, support, rewards, Discord, worker, security, or frontend-contract work:
+Read these when relevant to application-layer, API, service, repository, integration, dashboard, billing, support, rewards, Discord, worker, security, frontend-contract, or transactional-email-adjacent work:
 
 - `docs/architecture/Spec_Authoring_and_Harness_Workflow.md`
 - `docs/architecture/Parent_Backend_Application_Architecture.md`
@@ -141,6 +193,7 @@ Read these when relevant to application-layer, API, service, repository, integra
 - `docs/architecture/Parent_Backend_Service_Layer_Design.md`
 - `docs/architecture/Parent_Pay_Integration_and_Projection_Strategy.md`
 - `docs/architecture/Frontend_Backend_Contract_Map.md`
+- `docs/architecture/Frontend_Backend_Runtime_Integration_Guide.md`
 - `docs/architecture/Auth_Session_and_Security_Flows.md`
 - `docs/architecture/Dashboard_Launcher_Billing_Aggregation_Design.md`
 - `docs/architecture/Support_Announcements_and_Status_Design.md`
@@ -169,12 +222,14 @@ The spec-authoring run may create or update exactly one spec JSON file and must 
 For the current phase, the expected spec is:
 
 ```text
-specs/frontend_runtime_integration_readiness.json
+specs/transactional_email_service_brevo.json
 ```
 
 The spec-authoring run must not implement runtime application code.
 
-The spec-authoring run must not modify database models, Alembic migrations, routers, services, repositories, schemas, workers, integrations, tests, or frontend files unless explicitly instructed.
+The spec-authoring run must not modify database models, Alembic migrations, routers, services, repositories, schemas, workers, integrations, tests, frontend files, or Pay Service files unless explicitly instructed.
+
+The spec-authoring run must not commit real secrets, raw tokens, or full token URLs.
 
 The spec-authoring run must end with:
 
@@ -202,6 +257,10 @@ Planning mode must not implement runtime application code.
 
 Planning mode must not edit the frontend repo.
 
+Planning mode must not edit the Pay Service repo.
+
+Planning mode must not commit real secrets, raw tokens, or full token URLs.
+
 Planning mode must end with:
 
 ```text
@@ -228,6 +287,10 @@ Build mode must search before editing, keep changes scoped, add/update tests, ru
 
 Build mode must not edit the frontend repo.
 
+Build mode must not edit the Pay Service repo.
+
+Build mode must not commit real secrets, raw tokens, or full token URLs.
+
 Build mode must end with one of:
 
 ```text
@@ -241,15 +304,22 @@ ITERATION_BLOCKED
 Before changing code, search the repo for:
 
 - existing config/settings patterns
-- existing middleware patterns
-- existing router registration patterns
+- existing provider integration/client patterns
 - existing service patterns
 - existing repository patterns
 - existing schema/DTO patterns
-- existing session/cookie behavior
+- existing SQLAlchemy model patterns
+- existing Alembic migration patterns
+- existing model import registration patterns
+- existing auth/signup/email verification behavior
+- existing resend-verification behavior
+- existing forgot-password/reset-password behavior
+- existing router registration patterns
+- existing public webhook route patterns
 - existing OpenAPI behavior
 - existing tests that already cover the same surface
-- existing documentation for frontend/backend contracts
+- existing documentation for auth, security, provider integrations, and transactional email
+- existing frontend/backend contract documentation where auth browser behavior is relevant
 
 Use tools such as:
 
@@ -285,10 +355,39 @@ When a run is successful:
 - do not mark incomplete work complete
 - do not introduce unrelated dirty files
 - do not introduce frontend repo changes
+- do not introduce Pay Service repo changes
+- do not introduce real secrets, raw tokens, or full token URLs
+
+## Transactional email workstream strategy
+
+Use this sequence for the transactional email service spec:
+
+1. email/Brevo runtime configuration
+2. template catalog and sender profile resolver
+3. BrevoClient abstraction
+4. `email_send_attempts` model/repository/migration
+5. `email_delivery_events` model/repository/migration
+6. provider-neutral `EmailService`
+7. auth integration for signup verification
+8. auth integration for resend verification
+9. auth integration for forgot-password
+10. post-verification welcome email
+11. account-details-changed notification only where existing flow safely supports it
+12. Brevo webhook route with secret validation
+13. delivery event normalization and deduplication
+14. full tests and backend verification
+
+Do not create one giant implementation item.
+
+Do not perform frontend wiring in this repo.
+
+Do not edit the Pay Service repo.
+
+Do not move on to billing, newsletter, support email workflows, retry workers, or production deployment until this transactional email service spec is complete or John explicitly directs otherwise.
 
 ## Frontend runtime readiness workstream strategy
 
-Use this sequence for the backend readiness spec:
+Use this sequence for any future backend readiness spec if John explicitly reactivates that workstream:
 
 1. CORS runtime settings
 2. FastAPI CORSMiddleware wiring
@@ -322,3 +421,21 @@ Do not implement these unless the active spec explicitly requires them:
 - broad unused repositories/services unrelated to the active spec
 - database schema changes outside the active spec
 - new dependencies without John’s approval
+- billing/order/payment email triggers
+- newsletter/update email triggers
+- support workflow email triggers
+- automatic email retry/outbox worker
+- email admin dashboard
+- Brevo contact list synchronization
+- communication preference mutation from Brevo unsubscribe events
+- account verification from Brevo sent/delivered/opened/clicked events
+- billing/payment/Pay state mutation from email delivery events
+- support-ticket state mutation from email delivery events
+- frontend email pages/routes
+- Pay Service email integration
+- real secrets in committed files
+- raw verification token storage
+- raw password reset token storage
+- full token URL storage in operational metadata
+- rendered email body storage
+```
