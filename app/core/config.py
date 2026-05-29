@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,7 +46,17 @@ class Settings(BaseSettings):
 
     email_provider: str = "brevo"
     brevo_api_base_url: str = "https://api.brevo.com/v3"
+
+    # Optional direct override. Kept for compatibility with .env.example and older config docs.
+    # If set, this wins over BREVO_DEV_API_KEY / BREVO_PROD_API_KEY.
     brevo_api_key: str | None = None
+
+    # Preferred local/prod key split.
+    # Use BREVO_API_KEY_PROFILE=dev locally and BREVO_API_KEY_PROFILE=prod in production.
+    brevo_dev_api_key: str | None = None
+    brevo_prod_api_key: str | None = None
+    brevo_api_key_profile: Literal["dev", "prod"] = "dev"
+
     brevo_webhook_secret: str | None = None
     brevo_request_timeout_seconds: int = 10
 
@@ -89,6 +101,33 @@ class Settings(BaseSettings):
     security_rate_limit_billing_action_max_attempts: int = 10
     security_rate_limit_support_ticket_window_seconds: int = 3600
     security_rate_limit_support_ticket_max_attempts: int = 5
+
+    @staticmethod
+    def _normalize_optional_secret(value: str | None) -> str | None:
+        if value is None:
+            return None
+
+        normalized = value.strip()
+        return normalized or None
+
+    @property
+    def active_brevo_api_key(self) -> str | None:
+        """Return the Brevo key selected for the active runtime profile.
+
+        Resolution order:
+        1. BREVO_API_KEY, if explicitly set.
+        2. BREVO_PROD_API_KEY when BREVO_API_KEY_PROFILE=prod.
+        3. BREVO_DEV_API_KEY when BREVO_API_KEY_PROFILE=dev.
+        """
+
+        direct_key = self._normalize_optional_secret(self.brevo_api_key)
+        if direct_key:
+            return direct_key
+
+        if self.brevo_api_key_profile == "prod":
+            return self._normalize_optional_secret(self.brevo_prod_api_key)
+
+        return self._normalize_optional_secret(self.brevo_dev_api_key)
 
     model_config = SettingsConfigDict(
         env_file=".env",

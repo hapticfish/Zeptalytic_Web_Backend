@@ -1,29 +1,50 @@
 Zeptalytic_Web_Backend/
-├── alembic/
-│   ├── versions/
-│   │   ├── 20260413_1830_pdb035_profile_settings_tables.py
-│   │   ├── 20260413_1835_pdb020_auth_tables.py
-│   │   ├── 20260413_1910_pdb025_security_tables.py
-│   │   ├── 20260413_1918_pdb030_profiles_table.py
-│   │   ├── 20260413_2040_pdb040_addresses_table.py
-│   │   ├── 20260413_2055_pdb055_support_attachment_tables.py
-│   │   ├── 20260413_2105_pdb050_support_tables.py
-│   │   ├── 20260413_2108_pdb060_announcement_status_tables.py
-│   │   ├── 20260413_2115_pdb070_subscription_entitlement_tables.py
-│   │   └── 20260413_2128_pdb075_access_payment_summary_tables.py
-│   ├── env.py
-│   └── script.py.mako
 ├── app/
 │   ├── api/
 │   │   ├── routers/
-│   │   │   └── __init__.py
+│   │   │   ├── v1/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── addresses.py
+│   │   │   │   ├── announcements.py
+│   │   │   │   ├── auth.py
+│   │   │   │   ├── billing.py
+│   │   │   │   ├── communication_preferences.py
+│   │   │   │   ├── dashboard.py
+│   │   │   │   ├── email_webhooks.py
+│   │   │   │   ├── integrations.py
+│   │   │   │   ├── launcher.py
+│   │   │   │   ├── profiles.py
+│   │   │   │   ├── rewards.py
+│   │   │   │   ├── service_status.py
+│   │   │   │   └── support.py
+│   │   │   ├── __init__.py
+│   │   │   ├── reward_badges.py
+│   │   │   ├── reward_notifications.py
+│   │   │   ├── reward_objectives.py
+│   │   │   └── rewards_summary.py
 │   │   ├── __init__.py
-│   │   └── deps.py
+│   │   ├── deps.py
+│   │   ├── errors.py
+│   │   └── exception_handlers.py
 │   ├── core/
 │   │   ├── __init__.py
 │   │   └── config.py
 │   ├── db/
 │   │   ├── models/
+│   │   │   ├── rewards/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── account_badges.py
+│   │   │   │   ├── account_objective_progress.py
+│   │   │   │   ├── badge_definitions.py
+│   │   │   │   ├── objective_definitions.py
+│   │   │   │   ├── objective_reward_links.py
+│   │   │   │   ├── reward_accounts.py
+│   │   │   │   ├── reward_definitions.py
+│   │   │   │   ├── reward_events.py
+│   │   │   │   ├── reward_grants.py
+│   │   │   │   ├── reward_milestones.py
+│   │   │   │   ├── reward_notifications.py
+│   │   │   │   └── reward_tier_definitions.py
 │   │   │   ├── __init__.py
 │   │   │   ├── _json.py
 │   │   │   ├── account_security_settings.py
@@ -34,6 +55,9 @@ Zeptalytic_Web_Backend/
 │   │   │   ├── auth_events.py
 │   │   │   ├── auth_sessions.py
 │   │   │   ├── communication_preferences.py
+│   │   │   ├── discord_connection_history.py
+│   │   │   ├── email_delivery_events.py
+│   │   │   ├── email_send_attempts.py
 │   │   │   ├── email_verification_tokens.py
 │   │   │   ├── entitlement_summaries.py
 │   │   │   ├── mfa_recovery_codes.py
@@ -51,31 +75,116 @@ Zeptalytic_Web_Backend/
 │   │   │   ├── support_tickets.py
 │   │   │   └── testimonials.py
 │   │   ├── repositories/
-│   │   │   └── __init__.py
+│   │   │   ├── __init__.py
+│   │   │   ├── address_repository.py
+│   │   │   ├── announcement_repository.py
+│   │   │   ├── auth_repository.py
+│   │   │   ├── communication_preference_repository.py
+│   │   │   ├── discord_integration_repository.py
+│   │   │   ├── email_delivery_event_repository.py
+│   │   │   ├── email_send_attempt_repository.py
+│   │   │   ├── pay_projection_repository.py
+│   │   │   ├── profile_settings_repository.py
+│   │   │   ├── reward_badge_repository.py
+│   │   │   ├── reward_notification_repository.py
+│   │   │   ├── reward_objective_repository.py
+│   │   │   ├── reward_progression_repository.py
+│   │   │   ├── reward_summary_repository.py
+│   │   │   ├── service_status_repository.py
+│   │   │   └── support_repository.py
 │   │   ├── __init__.py
 │   │   ├── base.py
 │   │   ├── bootstrap.py
 │   │   ├── session.py
 │   │   └── vocabularies.py
 │   ├── integrations/
-│   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   ├── brevo_client.py
+│   │   ├── discord_oauth_client.py
+│   │   └── pay_client.py
 │   ├── schemas/
-│   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   ├── addresses.py
+│   │   ├── announcements.py
+│   │   ├── auth.py
+│   │   ├── billing.py
+│   │   ├── common.py
+│   │   ├── communication_preferences.py
+│   │   ├── dashboard.py
+│   │   ├── email.py
+│   │   ├── integrations.py
+│   │   ├── launcher.py
+│   │   ├── profiles.py
+│   │   ├── reward_badges.py
+│   │   ├── reward_notifications.py
+│   │   ├── reward_objectives.py
+│   │   ├── reward_summary.py
+│   │   ├── service_status.py
+│   │   └── support.py
 │   ├── services/
-│   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   ├── address_service.py
+│   │   ├── announcement_service.py
+│   │   ├── auth_service.py
+│   │   ├── billing_summary_service.py
+│   │   ├── communication_preference_service.py
+│   │   ├── dashboard_service.py
+│   │   ├── discord_integration_service.py
+│   │   ├── email_service.py
+│   │   ├── launcher_service.py
+│   │   ├── pay_projection_service.py
+│   │   ├── profile_settings_service.py
+│   │   ├── reward_badge_service.py
+│   │   ├── reward_event_ingestion_service.py
+│   │   ├── reward_notification_service.py
+│   │   ├── reward_objective_service.py
+│   │   ├── reward_progression_service.py
+│   │   ├── reward_summary_service.py
+│   │   ├── service_status_service.py
+│   │   └── support_service.py
 │   ├── utils/
-│   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   ├── audit.py
+│   │   ├── rate_limits.py
+│   │   └── request_id.py
 │   ├── workers/
-│   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   ├── pay_projection_worker.py
+│   │   ├── reward_event_worker.py
+│   │   └── session_cleanup_worker.py
 │   ├── __init__.py
 │   └── main.py
 ├── docs/
 │   ├── architecture/
+│       ├── Agent_Non_Goals_and_Implementation_Guardrails.md
+│       ├── Auth_Email_Verification_Flow.md
+│       ├── Auth_Session_and_Security_Flows.md
+│       ├── Background_Jobs_Sync_and_Event_Processing.md
+│       ├── Brevo_Google_Workspace_Email_Decision_Record.md
+│       ├── Dashboard_Launcher_Billing_Aggregation_Design.md
+│       ├── Discord_Integration_Application_Flow.md
 │       ├── Discord_Integration_Decision_Record.md
 │       ├── Discord_Rewards_Workstream_Sequence.md
+│       ├── Email_Delivery_Events_And_Webhooks.md
+│       ├── Email_Template_Catalog.md
+│       ├── Frontend_Backend_Contract_Inventory.md
+│       ├── Frontend_Backend_Contract_Map.md
+│       ├── Frontend_Backend_Runtime_Integration_Guide.md
+│       ├── Parent_Backend_API_Contract_Standards.md
+│       ├── Parent_Backend_Application_Architecture.md
+│       ├── Parent_Backend_Repository_Layer_Design.md
+│       ├── Parent_Backend_Service_Layer_Design.md
+│       ├── Parent_Pay_Integration_and_Projection_Strategy.md
+│       ├── Rewards_API_Application_Inventory.md
+│       ├── Rewards_Application_and_Notification_Flows.md
 │       ├── Rewards_Objectives_Badges_Data_Model_Reference.md
 │       ├── Rewards_Objectives_Badges_Domain_Decision_Record.md
 │       ├── Rewards_Objectives_Badges_UI_Interaction_Reference.md
+│       ├── Security_Operational_Control_Guide.md
+│       ├── Spec_Authoring_and_Harness_Workflow.md
+│       ├── Support_Announcements_and_Status_Design.md
+│       ├── Transactional_Email_Agent_Run_Guidance.md
+│       ├── Transactional_Email_Service_Architecture.md
 │       ├── Zeptalytic_Agent_Harness_Development_Strategy.md
 │       ├── Zeptalytic_Domain_Vocabulary_Decision_Record.md
 │       ├── Zeptalytic_Feature_Ownership_Register.md
@@ -83,39 +192,113 @@ Zeptalytic_Web_Backend/
 │       ├── Zeptalytic_Parent_vs_Pay_Data_Ownership_Matrix.md
 │       └── Zeptalytic_Website_Implementation_Control_Plan.md
 ├── progress/
+│   ├── README_progress_append_rule.md
 │   └── progress.txt
 ├── prompt/
 │   ├── prompt_build.md
-│   └── prompt_plan.md
+│   ├── prompt_plan.md
+│   └── prompt_spec_author.md
 ├── scripts/
 │   ├── bootstrap_repo_structure.sh
 │   └── ralph-loop.sh
 ├── specs/
+│   ├── _template_next_phase_spec.json
+│   ├── application_layer_foundation.json
+│   ├── auth_session_account_security.json
+│   ├── background_jobs_and_security_hardening.json
+│   ├── dashboard_launcher_billing_aggregation_api.json
 │   ├── discord_identity_schema_correction.json
+│   ├── discord_integration_application_flow.json
+│   ├── frontend_backend_contract_alignment.json
+│   ├── frontend_runtime_integration_readiness.json
 │   ├── model_file_separation_refactor.json
+│   ├── next_phase_spec_sequence.json
 │   ├── parent_db_foundation.json
 │   ├── parent_db_verification_and_regression.json
+│   ├── parent_pay_integration_and_projection_foundation.json
+│   ├── profile_settings_addresses_preferences_api.json
 │   ├── rewards_api_application_layer.json
 │   ├── rewards_domain_db_schema.json
-│   └── rewards_verification_and_regression.json
+│   ├── rewards_objectives_badges_application_api.json
+│   ├── rewards_verification_and_regression.json
+│   ├── support_announcements_service_status_api.json
+│   └── transactional_email_service_brevo.json
 ├── tests/
 │   ├── integration/
 │   │   ├── __init__.py
+│   │   ├── test_email_delivery_events_persistence.py
+│   │   ├── test_email_send_attempts_persistence.py
 │   │   ├── test_parent_db_bootstrap.py
 │   │   ├── test_parent_db_constraints.py
 │   │   └── test_parent_db_round_trips.py
 │   ├── unit/
 │   │   ├── __init__.py
+│   │   ├── assertions.py
+│   │   ├── test_address_service.py
+│   │   ├── test_addresses_api.py
+│   │   ├── test_announcement_api.py
+│   │   ├── test_announcement_service.py
+│   │   ├── test_api_error_contract.py
+│   │   ├── test_application_layer_foundation.py
+│   │   ├── test_auth_api.py
 │   │   ├── test_auth_models.py
+│   │   ├── test_auth_service.py
+│   │   ├── test_billing_api.py
+│   │   ├── test_billing_summary_service.py
+│   │   ├── test_brevo_client.py
+│   │   ├── test_communication_preference_service.py
+│   │   ├── test_communication_preferences_api.py
 │   │   ├── test_config.py
+│   │   ├── test_cors_runtime_integration.py
+│   │   ├── test_dashboard_api.py
+│   │   ├── test_dashboard_launcher_billing_schemas.py
+│   │   ├── test_dashboard_service.py
 │   │   ├── test_db_bootstrap.py
+│   │   ├── test_discord_integration_api.py
+│   │   ├── test_discord_integration_service.py
+│   │   ├── test_discord_oauth_client.py
 │   │   ├── test_domain_vocabulary_decision_record.py
+│   │   ├── test_email_delivery_event_repository.py
+│   │   ├── test_email_send_attempt_repository.py
+│   │   ├── test_email_service.py
+│   │   ├── test_email_template_catalog.py
+│   │   ├── test_email_webhooks_api.py
+│   │   ├── test_frontend_contract_inventory.py
+│   │   ├── test_frontend_contract_regression.py
 │   │   ├── test_health.py
+│   │   ├── test_launcher_api.py
+│   │   ├── test_launcher_service.py
 │   │   ├── test_model_metadata_registration.py
 │   │   ├── test_model_module_layout.py
+│   │   ├── test_openapi_runtime_surface.py
 │   │   ├── test_parent_db_metadata_tables.py
 │   │   ├── test_parent_domain_vocabularies.py
-│   │   └── test_test_topology_contract.py
+│   │   ├── test_pay_client.py
+│   │   ├── test_pay_projection_repository.py
+│   │   ├── test_pay_projection_service.py
+│   │   ├── test_profile_settings_service.py
+│   │   ├── test_profiles_api.py
+│   │   ├── test_rate_limit_controls.py
+│   │   ├── test_request_id_middleware.py
+│   │   ├── test_reward_badge_service.py
+│   │   ├── test_reward_badges_api.py
+│   │   ├── test_reward_event_ingestion_service.py
+│   │   ├── test_reward_notification_service.py
+│   │   ├── test_reward_notifications_api.py
+│   │   ├── test_reward_objectives_api.py
+│   │   ├── test_reward_progression_repository.py
+│   │   ├── test_reward_progression_service.py
+│   │   ├── test_rewards_api_inventory.py
+│   │   ├── test_rewards_summary_api.py
+│   │   ├── test_rewards_verification_inventory.py
+│   │   ├── test_router_registration.py
+│   │   ├── test_service_status_api.py
+│   │   ├── test_service_status_service.py
+│   │   ├── test_support_announcements_status_schemas.py
+│   │   ├── test_support_api.py
+│   │   ├── test_support_service.py
+│   │   ├── test_test_topology_contract.py
+│   │   └── test_worker_foundation.py
 │   ├── __init__.py
 │   └── conftest.py
 ├── AGENTS.md
@@ -123,8 +306,11 @@ Zeptalytic_Web_Backend/
 ├── IMPLEMENTATION_PLAN.md
 ├── PROMPT.md
 ├── README.md
-├── alembic.ini
+├── README_Zeptalytic_Backend_Next_Phase.md
+├── README_progress_append_rule.md
+├── directory-tree.txt
 ├── docker-compose.test.yml
 ├── docker-compose.yml
 ├── main.py
+├── poetry.lock
 └── pyproject.toml

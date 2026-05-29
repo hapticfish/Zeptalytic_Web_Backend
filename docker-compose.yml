@@ -11,13 +11,15 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - "5433:5432"
+      - "15433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   api:
     build:
       context: .
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
@@ -34,6 +36,8 @@ services:
   migrate:
     build:
       context: .
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy

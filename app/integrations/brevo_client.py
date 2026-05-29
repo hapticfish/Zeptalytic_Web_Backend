@@ -157,7 +157,7 @@ def build_brevo_client(
     active_settings = app_settings or settings
     return BrevoClient(
         base_url=active_settings.brevo_api_base_url,
-        api_key=active_settings.brevo_api_key or "",
+        api_key=active_settings.active_brevo_api_key or "",
         timeout_seconds=active_settings.brevo_request_timeout_seconds,
         transport=transport,
     )
