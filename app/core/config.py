@@ -84,7 +84,18 @@ class Settings(BaseSettings):
     brevo_template_subscription_expiring_id: int = 11
 
     pay_service_base_url: str = "http://localhost:8080"
+
+    # Legacy fallback. Account-scoped Pay routes should use scoped internal JWT auth.
     pay_service_internal_token: str | None = None
+
+    # Parent -> Pay scoped internal JWT settings.
+    # These must align with the Pay service INTERNAL_JWT_* settings.
+    pay_service_internal_jwt_issuer: str = "https://auth.example.test/"
+    pay_service_internal_jwt_audience: str = "zeptalytic-pay-service"
+    pay_service_internal_jwt_caller: str = "zeptalytic_web"
+    pay_service_internal_jwt_algorithm: str = "RS256"
+    pay_service_internal_jwt_private_key: str | None = None
+    pay_service_internal_jwt_ttl_seconds: int = 300
 
     discord_oauth_base_url: str = "https://discord.com"
     discord_oauth_client_id: str | None = None
@@ -128,6 +139,19 @@ class Settings(BaseSettings):
             return self._normalize_optional_secret(self.brevo_prod_api_key)
 
         return self._normalize_optional_secret(self.brevo_dev_api_key)
+
+    @property
+    def normalized_pay_service_internal_jwt_private_key(self) -> str | None:
+        """Return the Pay JWT private key with escaped newlines normalized.
+
+        Local .env files often store PEM keys as a single line with literal \\n
+        sequences. PyJWT expects real PEM newlines.
+        """
+
+        key = self._normalize_optional_secret(self.pay_service_internal_jwt_private_key)
+        if key is None:
+            return None
+        return key.replace("\\n", "\n")
 
     model_config = SettingsConfigDict(
         env_file=".env",

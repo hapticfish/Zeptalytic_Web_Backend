@@ -134,7 +134,7 @@ def test_settings_default_frontend_runtime_cors_contract() -> None:
 
 
 def test_settings_default_email_brevo_contract() -> None:
-    settings = Settings()
+    settings = Settings(_env_file=None)
 
     assert settings.email_provider == "brevo"
     assert settings.brevo_api_base_url == "https://api.brevo.com/v3"
