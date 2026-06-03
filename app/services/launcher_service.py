@@ -16,11 +16,26 @@ from app.services.pay_projection_service import (
     PayProjectionSnapshot,
 )
 
-PRODUCT_DISPLAY_METADATA = {
-    "altra": {"product_name": "ALTRA", "display_tag": "AI Trading"},
-    "zardbot": {"product_name": "ZardBot", "display_tag": "Automation"},
-    "zepta": {"product_name": "Zepta", "display_tag": "Analytics"},
+PRODUCT_CODE_ALIASES = {
+    "altra": "ALTRA",
+    "zardbot": "ZARDBOT",
+    "zard_bot": "ZARDBOT",
+    "zepta": "ZEPTA",
 }
+
+PRODUCT_DISPLAY_METADATA = {
+    "ALTRA": {"product_name": "ALTRA", "display_tag": "Digital Experience"},
+    "ZARDBOT": {"product_name": "ZardBot", "display_tag": "Crypto Intelligence"},
+    "ZEPTA": {"product_name": "Zepta", "display_tag": "Trading Bot"},
+}
+
+PRODUCT_DISPLAY_ORDER = {
+    "ZEPTA": 10,
+    "ZARDBOT": 20,
+    "ALTRA": 30,
+}
+
+ACTIVE_ENTITLEMENT_STATUSES = {"active", "granted", "on"}
 
 
 @dataclass(slots=True)
@@ -48,21 +63,16 @@ class LauncherService:
         context: AuthenticatedSessionContext,
         snapshot: PayProjectionSnapshot,
     ) -> LauncherProductsResponse:
-        entitlements_by_product = {
-            summary.product_code: summary for summary in snapshot.entitlements
-        }
-        subscriptions_by_product = {
-            summary.product_code: summary for summary in snapshot.subscriptions
-        }
-        access_states_by_product = {
-            summary.product_code: summary for summary in snapshot.product_access_states
-        }
+        entitlements_by_product = self._index_by_canonical_product(snapshot.entitlements)
+        subscriptions_by_product = self._index_by_canonical_product(snapshot.subscriptions)
+        access_states_by_product = self._index_by_canonical_product(snapshot.product_access_states)
 
         product_codes = sorted(
             set(PRODUCT_DISPLAY_METADATA)
             | set(entitlements_by_product)
             | set(subscriptions_by_product)
-            | set(access_states_by_product)
+            | set(access_states_by_product),
+            key=self._product_sort_key,
         )
         products = [
             self._build_product_summary(
@@ -91,10 +101,7 @@ class LauncherService:
         subscription,
         access_state: PayProjectionProductAccessState | None,
     ) -> LauncherProductSummary:
-        metadata = PRODUCT_DISPLAY_METADATA.get(
-            product_code,
-            {"product_name": product_code.replace("-", " ").title(), "display_tag": None},
-        )
+        metadata = self._product_metadata(product_code)
         decision = self._decide_access(
             context=context,
             pay_status=pay_status,
@@ -205,7 +212,8 @@ class LauncherService:
                 status_message="Pay-derived entitlement state is unavailable.",
             )
 
-        if entitlement is None or entitlement.status not in {"active", "granted", "on"}:
+        entitlement_status = "" if entitlement is None else entitlement.status.lower()
+        if entitlement is None or entitlement_status not in ACTIVE_ENTITLEMENT_STATUSES:
             return LauncherProductDecision(
                 access_state="blocked",
                 can_launch=False,
@@ -260,6 +268,47 @@ class LauncherService:
             blocked_reason=None,
             status_message="Ready to launch.",
         )
+
+    @staticmethod
+    def _index_by_canonical_product(items):  # noqa: ANN001
+        indexed = {}
+        for item in items:
+            product_code = canonical_product_code(item.product_code)
+            if not product_code:
+                continue
+
+            existing = indexed.get(product_code)
+            if existing is None or item.product_code == product_code:
+                indexed[product_code] = item
+
+        return indexed
+
+    @staticmethod
+    def _product_metadata(product_code: str) -> dict[str, str | None]:
+        metadata = PRODUCT_DISPLAY_METADATA.get(product_code)
+        if metadata is not None:
+            return metadata
+
+        return {
+            "product_name": product_code.replace("_", " ").replace("-", " ").title(),
+            "display_tag": None,
+        }
+
+    @staticmethod
+    def _product_sort_key(product_code: str) -> tuple[int, str]:
+        return (PRODUCT_DISPLAY_ORDER.get(product_code, 999), product_code)
+
+
+def canonical_product_code(product_code: str | None) -> str:
+    if product_code is None:
+        return ""
+
+    normalized = product_code.strip()
+    if not normalized:
+        return ""
+
+    alias_key = normalized.lower().replace("-", "_")
+    return PRODUCT_CODE_ALIASES.get(alias_key, normalized.upper().replace("-", "_"))
 
 
 def build_launcher_service(pay_projection_service: PayProjectionService) -> LauncherService:

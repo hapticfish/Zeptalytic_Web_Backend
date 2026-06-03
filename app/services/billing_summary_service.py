@@ -7,9 +7,9 @@ from app.integrations import PayClient, PayClientInvalidResponseError, PayClient
 from app.schemas.billing import (
     BillingActionInitiationResponse,
     BillingActionResult,
-    BillingCheckoutInitiationRequest,
     BillingAddressBookSummary,
     BillingAddressSummary,
+    BillingCheckoutInitiationRequest,
     BillingPaymentMethodSummary,
     BillingPaymentMethodsResponse,
     BillingPromoCodeRequest,
@@ -26,10 +26,17 @@ from app.schemas.billing import (
 from app.schemas.common import CursorPageInfo
 from app.services.pay_projection_service import PayProjectionService
 
-PRODUCT_NAMES = {
+PRODUCT_CODE_ALIASES = {
     "altra": "ALTRA",
-    "zardbot": "ZardBot",
-    "zepta": "Zepta",
+    "zardbot": "ZARDBOT",
+    "zard_bot": "ZARDBOT",
+    "zepta": "ZEPTA",
+}
+
+PRODUCT_NAMES = {
+    "ALTRA": "ALTRA",
+    "ZARDBOT": "ZardBot",
+    "ZEPTA": "Zepta",
 }
 
 
@@ -98,15 +105,7 @@ class BillingSummaryService:
     ) -> BillingTransactionsResponse:
         snapshot = self._pay_projection_service.refresh_account_snapshot(account_id)
         transactions = [
-            BillingTransactionSummary(
-                source="pay_projection",
-                occurred_at=payment.paid_at or payment.updated_at,
-                description=self._build_transaction_description(payment.product_code, payment.payment_rail),
-                amount_cents=payment.amount_cents,
-                currency=payment.currency,
-                status=payment.normalized_status,
-                product_code=payment.product_code,
-            )
+            self._build_transaction_summary(payment)
             for payment in snapshot.payments[:limit]
         ]
         next_cursor = None
@@ -221,32 +220,34 @@ class BillingSummaryService:
     def _build_subscription_summaries(subscriptions, payments):  # noqa: ANN001
         latest_payment_by_product = {}
         for payment in payments:
-            if payment.product_code is None or payment.product_code in latest_payment_by_product:
+            product_code = canonical_product_code(payment.product_code)
+            if not product_code or product_code in latest_payment_by_product:
                 continue
-            latest_payment_by_product[payment.product_code] = payment
+            latest_payment_by_product[product_code] = payment
 
-        return [
-            BillingSubscriptionSummary(
-                source="pay_projection",
-                product_code=subscription.product_code,
-                product_name=PRODUCT_NAMES.get(
-                    subscription.product_code,
-                    subscription.product_code.replace("-", " ").title(),
-                ),
-                plan_code=subscription.plan_code,
-                subscription_status=subscription.normalized_status,
-                billing_interval=subscription.billing_interval,
-                current_charge_amount_cents=None
-                if latest_payment_by_product.get(subscription.product_code) is None
-                else latest_payment_by_product[subscription.product_code].amount_cents,
-                currency=None
-                if latest_payment_by_product.get(subscription.product_code) is None
-                else latest_payment_by_product[subscription.product_code].currency,
-                next_payment_at=subscription.next_billing_at,
-                cancel_at_period_end=subscription.cancel_at_period_end,
+        summaries = []
+        for subscription in subscriptions:
+            product_code = canonical_product_code(subscription.product_code)
+            latest_payment = latest_payment_by_product.get(product_code)
+
+            summaries.append(
+                BillingSubscriptionSummary(
+                    source="pay_projection",
+                    product_code=product_code,
+                    product_name=display_product_name(product_code),
+                    plan_code=subscription.plan_code,
+                    subscription_status=subscription.normalized_status,
+                    billing_interval=subscription.billing_interval,
+                    current_charge_amount_cents=None
+                    if latest_payment is None
+                    else latest_payment.amount_cents,
+                    currency=None if latest_payment is None else latest_payment.currency,
+                    next_payment_at=subscription.next_billing_at,
+                    cancel_at_period_end=subscription.cancel_at_period_end,
+                )
             )
-            for subscription in subscriptions
-        ]
+
+        return summaries
 
     @staticmethod
     def _build_payment_method_summaries(payment_methods) -> list[BillingPaymentMethodSummary]:  # noqa: ANN001
@@ -269,10 +270,25 @@ class BillingSummaryService:
         ]
 
     @staticmethod
+    def _build_transaction_summary(payment) -> BillingTransactionSummary:  # noqa: ANN001
+        product_code = canonical_product_code(payment.product_code)
+        return BillingTransactionSummary(
+            source="pay_projection",
+            occurred_at=payment.paid_at or payment.updated_at,
+            description=BillingSummaryService._build_transaction_description(
+                product_code,
+                payment.payment_rail,
+            ),
+            amount_cents=payment.amount_cents,
+            currency=payment.currency,
+            status=payment.normalized_status,
+            product_code=product_code or None,
+        )
+
+    @staticmethod
     def _build_transaction_description(product_code: str | None, payment_rail: str) -> str:
         if product_code:
-            product_name = PRODUCT_NAMES.get(product_code, product_code.replace("-", " ").title())
-            return f"{product_name} payment via {payment_rail}"
+            return f"{display_product_name(product_code)} payment via {payment_rail}"
         return f"Payment via {payment_rail}"
 
     def _initiate_action(
@@ -326,6 +342,29 @@ class BillingSummaryService:
             return None
 
         return BillingActionResult(**safe_string_fields)
+
+
+def canonical_product_code(product_code: str | None) -> str:
+    if product_code is None:
+        return ""
+
+    normalized = product_code.strip()
+    if not normalized:
+        return ""
+
+    alias_key = normalized.lower().replace("-", "_")
+    return PRODUCT_CODE_ALIASES.get(alias_key, normalized.upper().replace("-", "_"))
+
+
+def display_product_name(product_code: str | None) -> str:
+    canonical_code = canonical_product_code(product_code)
+    if not canonical_code:
+        return "Unknown Product"
+
+    return PRODUCT_NAMES.get(
+        canonical_code,
+        canonical_code.replace("_", " ").replace("-", " ").title(),
+    )
 
 
 def build_billing_summary_service(

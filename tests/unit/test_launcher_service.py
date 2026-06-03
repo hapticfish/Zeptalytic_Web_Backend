@@ -100,7 +100,7 @@ def test_launcher_service_returns_launchable_product_when_context_and_projection
     response = service.get_products(context)
 
     assert response.pay_integration_status == "available"
-    zardbot = next(product for product in response.products if product.product_code == "zardbot")
+    zardbot = next(product for product in response.products if product.product_code == "ZARDBOT")
     assert zardbot.can_launch is True
     assert zardbot.launch_url == "https://launcher.example.com/zardbot"
     assert zardbot.blocked_reason is None
@@ -114,7 +114,7 @@ def test_launcher_service_blocks_when_email_is_not_verified() -> None:
 
     response = service.get_products(context)
 
-    zardbot = next(product for product in response.products if product.product_code == "zardbot")
+    zardbot = next(product for product in response.products if product.product_code == "ZARDBOT")
     assert zardbot.can_launch is False
     assert zardbot.blocked_reason is not None
     assert zardbot.blocked_reason.code == "email_verification_required"
@@ -128,7 +128,7 @@ def test_launcher_service_blocks_when_account_is_suspended() -> None:
 
     response = service.get_products(context)
 
-    zardbot = next(product for product in response.products if product.product_code == "zardbot")
+    zardbot = next(product for product in response.products if product.product_code == "ZARDBOT")
     assert zardbot.can_launch is False
     assert zardbot.blocked_reason is not None
     assert zardbot.blocked_reason.code == "account_suspended"
@@ -142,7 +142,7 @@ def test_launcher_service_blocks_when_pay_projection_is_unavailable() -> None:
 
     response = service.get_products(context)
 
-    zardbot = next(product for product in response.products if product.product_code == "zardbot")
+    zardbot = next(product for product in response.products if product.product_code == "ZARDBOT")
     assert response.pay_integration_status == "unavailable"
     assert zardbot.can_launch is False
     assert zardbot.blocked_reason is not None
@@ -157,7 +157,7 @@ def test_launcher_service_returns_pending_state_when_provisioning_is_not_finishe
 
     response = service.get_products(context)
 
-    zardbot = next(product for product in response.products if product.product_code == "zardbot")
+    zardbot = next(product for product in response.products if product.product_code == "ZARDBOT")
     assert zardbot.access_state == "provision_pending"
     assert zardbot.can_launch is False
     assert zardbot.blocked_reason is not None

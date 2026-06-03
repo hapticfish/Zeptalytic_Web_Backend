@@ -22,6 +22,13 @@ from app.integrations import (
     PayClientUnavailableError,
 )
 
+PRODUCT_CODE_ALIASES = {
+    "altra": "ALTRA",
+    "zardbot": "ZARDBOT",
+    "zard_bot": "ZARDBOT",
+    "zepta": "ZEPTA",
+}
+
 
 @dataclass(slots=True)
 class PayProjectionSyncMetadata:
@@ -149,7 +156,7 @@ class PayProjectionService:
         for subscription in payload["subscriptions"]:
             self._repository.upsert_subscription_summary(
                 account_id,
-                product_code=str(subscription["product_code"]),
+                product_code=canonical_product_code(str(subscription["product_code"])),
                 summary_data={
                     "plan_code": str(subscription["plan_code"]),
                     "billing_interval": str(subscription["billing_interval"]),
@@ -165,15 +172,21 @@ class PayProjectionService:
             )
 
         for entitlement in payload["entitlements"]:
+            entitlement_metadata = entitlement.get("entitlement_metadata", {})
+            if not isinstance(entitlement_metadata, Mapping):
+                raise PayClientInvalidResponseError(
+                    "Pay entitlement metadata must be an object when provided."
+                )
+
             self._repository.upsert_entitlement_summary(
                 account_id,
-                product_code=str(entitlement["product_code"]),
+                product_code=canonical_product_code(str(entitlement["product_code"])),
                 summary_data={
                     "plan_code": str(entitlement["plan_code"]),
                     "status": str(entitlement["status"]),
                     "starts_at": entitlement["starts_at"],
                     "ends_at": entitlement["ends_at"],
-                    "entitlement_metadata": dict(entitlement["entitlement_metadata"]),
+                    "entitlement_metadata": dict(entitlement_metadata),
                     "last_synced_at": entitlement["last_synced_at"],
                 },
             )
@@ -182,14 +195,14 @@ class PayProjectionService:
             self._repository.upsert_payment_summary(
                 account_id,
                 summary_data={
-                    "product_code": payment["product_code"],
+                    "product_code": canonical_product_code_or_none(payment.get("product_code")),
                     "payment_rail": str(payment["payment_rail"]),
                     "normalized_status": str(payment["normalized_status"]),
-                    "provider_status_raw": payment["provider_status_raw"],
+                    "provider_status_raw": payment.get("provider_status_raw"),
                     "amount_cents": int(payment["amount_cents"]),
                     "currency": str(payment["currency"]),
                     "paid_at": payment["paid_at"],
-                    "provider_payment_reference": payment["provider_payment_reference"],
+                    "provider_payment_reference": payment.get("provider_payment_reference"),
                 },
             )
 
@@ -199,13 +212,13 @@ class PayProjectionService:
                 provider=str(payment_method["provider"]),
                 provider_payment_method_id=str(payment_method["provider_payment_method_id"]),
                 summary_data={
-                    "provider_customer_id": str(payment_method["provider_customer_id"]),
+                    "provider_customer_id": str(payment_method.get("provider_customer_id") or ""),
                     "brand": str(payment_method["brand"]),
                     "last4": str(payment_method["last4"]),
                     "exp_month": int(payment_method["exp_month"]),
                     "exp_year": int(payment_method["exp_year"]),
-                    "billing_name": payment_method["billing_name"],
-                    "billing_country": payment_method["billing_country"],
+                    "billing_name": optional_str(payment_method.get("billing_name")),
+                    "billing_country": optional_str(payment_method.get("billing_country")),
                     "is_default": bool(payment_method["is_default"]),
                     "status": str(payment_method["status"]),
                     "last_synced_at": payment_method["last_synced_at"],
@@ -215,12 +228,14 @@ class PayProjectionService:
         for product_access_state in payload["product_access_states"]:
             self._repository.upsert_product_access_state(
                 account_id,
-                product_code=str(product_access_state["product_code"]),
+                product_code=canonical_product_code(str(product_access_state["product_code"])),
                 state_data={
                     "access_state": str(product_access_state["access_state"]),
-                    "launch_url": product_access_state["launch_url"],
-                    "disabled_reason": product_access_state["disabled_reason"],
-                    "external_account_reference": product_access_state["external_account_reference"],
+                    "launch_url": optional_str(product_access_state.get("launch_url")),
+                    "disabled_reason": optional_str(product_access_state.get("disabled_reason")),
+                    "external_account_reference": optional_str(
+                        product_access_state.get("external_account_reference")
+                    ),
                 },
             )
 
@@ -299,7 +314,7 @@ class PayProjectionService:
         summary: SubscriptionSummaryRecord,
     ) -> PayProjectionSubscriptionSummary:
         return PayProjectionSubscriptionSummary(
-            product_code=summary.product_code,
+            product_code=canonical_product_code(summary.product_code),
             plan_code=summary.plan_code,
             billing_interval=summary.billing_interval,
             normalized_status=summary.normalized_status,
@@ -317,7 +332,7 @@ class PayProjectionService:
         summary: EntitlementSummaryRecord,
     ) -> PayProjectionEntitlementSummary:
         return PayProjectionEntitlementSummary(
-            product_code=summary.product_code,
+            product_code=canonical_product_code(summary.product_code),
             plan_code=summary.plan_code,
             status=summary.status,
             starts_at=summary.starts_at,
@@ -328,7 +343,7 @@ class PayProjectionService:
     @staticmethod
     def _to_payment_summary(summary: PaymentSummaryRecord) -> PayProjectionPaymentSummary:
         return PayProjectionPaymentSummary(
-            product_code=summary.product_code,
+            product_code=canonical_product_code_or_none(summary.product_code),
             payment_rail=summary.payment_rail,
             normalized_status=summary.normalized_status,
             amount_cents=summary.amount_cents,
@@ -359,12 +374,40 @@ class PayProjectionService:
         summary: ProductAccessStateRecord,
     ) -> PayProjectionProductAccessState:
         return PayProjectionProductAccessState(
-            product_code=summary.product_code,
+            product_code=canonical_product_code(summary.product_code),
             access_state=summary.access_state,
             launch_url=summary.launch_url,
             disabled_reason=summary.disabled_reason,
             updated_at=summary.updated_at,
         )
+
+
+def canonical_product_code(product_code: str | None) -> str:
+    if product_code is None:
+        return ""
+
+    normalized = product_code.strip()
+    if not normalized:
+        return ""
+
+    alias_key = normalized.lower().replace("-", "_")
+    return PRODUCT_CODE_ALIASES.get(alias_key, normalized.upper().replace("-", "_"))
+
+
+def canonical_product_code_or_none(product_code: object) -> str | None:
+    if product_code is None:
+        return None
+
+    normalized = canonical_product_code(str(product_code))
+    return normalized or None
+
+
+def optional_str(value: object) -> str | None:
+    if value is None:
+        return None
+
+    normalized = str(value).strip()
+    return normalized or None
 
 
 def build_pay_projection_service(db: Session, pay_client: PayClient) -> PayProjectionService:

@@ -12,6 +12,14 @@ from app.db.models.payment_method_summaries import PaymentMethodSummary
 from app.db.models.payment_summaries import PaymentSummary
 from app.db.models.product_access_states import ProductAccessState
 from app.db.models.subscription_summaries import SubscriptionSummary
+from app.db.models.oauth_connections import OAuthConnection  # noqa: F401
+
+PRODUCT_CODE_ALIASES = {
+    "altra": "ALTRA",
+    "zardbot": "ZARDBOT",
+    "zard_bot": "ZARDBOT",
+    "zepta": "ZEPTA",
+}
 
 
 @dataclass(slots=True)
@@ -105,9 +113,13 @@ class PayProjectionRepository:
         rows = self._db.scalars(
             select(SubscriptionSummary)
             .where(SubscriptionSummary.account_id == account_id)
-            .order_by(SubscriptionSummary.product_code.asc(), SubscriptionSummary.id.asc())
+            .order_by(
+                SubscriptionSummary.product_code.asc(),
+                SubscriptionSummary.last_synced_at.desc(),
+                SubscriptionSummary.id.desc(),
+            )
         ).all()
-        return [self._to_subscription_record(row) for row in rows]
+        return self._dedupe_product_records([self._to_subscription_record(row) for row in rows])
 
     def upsert_subscription_summary(
         self,
@@ -116,16 +128,22 @@ class PayProjectionRepository:
         product_code: str,
         summary_data: dict[str, object],
     ) -> SubscriptionSummaryRecord:
-        summary = self._get_current_subscription_summary(account_id, product_code)
+        canonical_code = canonical_product_code(product_code)
+        summary = self._get_current_subscription_summary(account_id, canonical_code)
         if summary is None:
-            summary = SubscriptionSummary(account_id=account_id, product_code=product_code, **summary_data)
+            summary = SubscriptionSummary(
+                account_id=account_id,
+                product_code=canonical_code,
+                **summary_data,
+            )
             self._db.add(summary)
             self._db.flush()
             return self._to_subscription_record(summary)
 
+        summary.product_code = canonical_code
         self._apply_updates(summary, summary_data)
         self._db.flush()
-        self._delete_duplicate_subscription_summaries(account_id, product_code, keep_id=summary.id)
+        self._delete_duplicate_subscription_summaries(account_id, canonical_code, keep_id=summary.id)
         self._db.flush()
         return self._to_subscription_record(summary)
 
@@ -135,9 +153,13 @@ class PayProjectionRepository:
         rows = self._db.scalars(
             select(EntitlementSummary)
             .where(EntitlementSummary.account_id == account_id)
-            .order_by(EntitlementSummary.product_code.asc(), EntitlementSummary.id.asc())
+            .order_by(
+                EntitlementSummary.product_code.asc(),
+                EntitlementSummary.last_synced_at.desc(),
+                EntitlementSummary.id.desc(),
+            )
         ).all()
-        return [self._to_entitlement_record(row) for row in rows]
+        return self._dedupe_product_records([self._to_entitlement_record(row) for row in rows])
 
     def upsert_entitlement_summary(
         self,
@@ -146,16 +168,22 @@ class PayProjectionRepository:
         product_code: str,
         summary_data: dict[str, object],
     ) -> EntitlementSummaryRecord:
-        summary = self._get_current_entitlement_summary(account_id, product_code)
+        canonical_code = canonical_product_code(product_code)
+        summary = self._get_current_entitlement_summary(account_id, canonical_code)
         if summary is None:
-            summary = EntitlementSummary(account_id=account_id, product_code=product_code, **summary_data)
+            summary = EntitlementSummary(
+                account_id=account_id,
+                product_code=canonical_code,
+                **summary_data,
+            )
             self._db.add(summary)
             self._db.flush()
             return self._to_entitlement_record(summary)
 
+        summary.product_code = canonical_code
         self._apply_updates(summary, summary_data)
         self._db.flush()
-        self._delete_duplicate_entitlement_summaries(account_id, product_code, keep_id=summary.id)
+        self._delete_duplicate_entitlement_summaries(account_id, canonical_code, keep_id=summary.id)
         self._db.flush()
         return self._to_entitlement_record(summary)
 
@@ -177,14 +205,19 @@ class PayProjectionRepository:
         *,
         summary_data: dict[str, object],
     ) -> PaymentSummaryRecord:
-        summary = self._get_current_payment_summary(account_id, summary_data)
+        normalized_summary_data = dict(summary_data)
+        normalized_summary_data["product_code"] = canonical_product_code_or_none(
+            normalized_summary_data.get("product_code")
+        )
+
+        summary = self._get_current_payment_summary(account_id, normalized_summary_data)
         if summary is None:
-            summary = PaymentSummary(account_id=account_id, **summary_data)
+            summary = PaymentSummary(account_id=account_id, **normalized_summary_data)
             self._db.add(summary)
             self._db.flush()
             return self._to_payment_record(summary)
 
-        self._apply_updates(summary, summary_data)
+        self._apply_updates(summary, normalized_summary_data)
         self._db.flush()
         return self._to_payment_record(summary)
 
@@ -250,9 +283,13 @@ class PayProjectionRepository:
         rows = self._db.scalars(
             select(ProductAccessState)
             .where(ProductAccessState.account_id == account_id)
-            .order_by(ProductAccessState.product_code.asc(), ProductAccessState.id.asc())
+            .order_by(
+                ProductAccessState.product_code.asc(),
+                ProductAccessState.updated_at.desc(),
+                ProductAccessState.id.desc(),
+            )
         ).all()
-        return [self._to_product_access_record(row) for row in rows]
+        return self._dedupe_product_records([self._to_product_access_record(row) for row in rows])
 
     def upsert_product_access_state(
         self,
@@ -261,16 +298,22 @@ class PayProjectionRepository:
         product_code: str,
         state_data: dict[str, object],
     ) -> ProductAccessStateRecord:
-        state = self._get_current_product_access_state(account_id, product_code)
+        canonical_code = canonical_product_code(product_code)
+        state = self._get_current_product_access_state(account_id, canonical_code)
         if state is None:
-            state = ProductAccessState(account_id=account_id, product_code=product_code, **state_data)
+            state = ProductAccessState(
+                account_id=account_id,
+                product_code=canonical_code,
+                **state_data,
+            )
             self._db.add(state)
             self._db.flush()
             return self._to_product_access_record(state)
 
+        state.product_code = canonical_code
         self._apply_updates(state, state_data)
         self._db.flush()
-        self._delete_duplicate_product_access_states(account_id, product_code, keep_id=state.id)
+        self._delete_duplicate_product_access_states(account_id, canonical_code, keep_id=state.id)
         self._db.flush()
         return self._to_product_access_record(state)
 
@@ -281,7 +324,7 @@ class PayProjectionRepository:
             select(SubscriptionSummary)
             .where(
                 SubscriptionSummary.account_id == account_id,
-                SubscriptionSummary.product_code == product_code,
+                SubscriptionSummary.product_code.in_(candidate_product_codes(product_code)),
             )
             .order_by(SubscriptionSummary.last_synced_at.desc(), SubscriptionSummary.id.desc())
             .limit(1)
@@ -294,7 +337,7 @@ class PayProjectionRepository:
             select(EntitlementSummary)
             .where(
                 EntitlementSummary.account_id == account_id,
-                EntitlementSummary.product_code == product_code,
+                EntitlementSummary.product_code.in_(candidate_product_codes(product_code)),
             )
             .order_by(EntitlementSummary.last_synced_at.desc(), EntitlementSummary.id.desc())
             .limit(1)
@@ -314,11 +357,19 @@ class PayProjectionRepository:
                 )
             )
 
+        product_code = summary_data.get("product_code")
+        if product_code is None:
+            product_code_clause = PaymentSummary.product_code.is_(None)
+        else:
+            product_code_clause = PaymentSummary.product_code.in_(
+                candidate_product_codes(str(product_code))
+            )
+
         return self._db.scalar(
             select(PaymentSummary)
             .where(
                 PaymentSummary.account_id == account_id,
-                PaymentSummary.product_code == summary_data.get("product_code"),
+                product_code_clause,
                 PaymentSummary.payment_rail == summary_data["payment_rail"],
             )
             .order_by(
@@ -336,7 +387,7 @@ class PayProjectionRepository:
             select(ProductAccessState)
             .where(
                 ProductAccessState.account_id == account_id,
-                ProductAccessState.product_code == product_code,
+                ProductAccessState.product_code.in_(candidate_product_codes(product_code)),
             )
             .order_by(ProductAccessState.updated_at.desc(), ProductAccessState.id.desc())
             .limit(1)
@@ -348,7 +399,7 @@ class PayProjectionRepository:
         self._db.execute(
             delete(SubscriptionSummary).where(
                 SubscriptionSummary.account_id == account_id,
-                SubscriptionSummary.product_code == product_code,
+                SubscriptionSummary.product_code.in_(candidate_product_codes(product_code)),
                 SubscriptionSummary.id != keep_id,
             )
         )
@@ -359,7 +410,7 @@ class PayProjectionRepository:
         self._db.execute(
             delete(EntitlementSummary).where(
                 EntitlementSummary.account_id == account_id,
-                EntitlementSummary.product_code == product_code,
+                EntitlementSummary.product_code.in_(candidate_product_codes(product_code)),
                 EntitlementSummary.id != keep_id,
             )
         )
@@ -370,7 +421,7 @@ class PayProjectionRepository:
         self._db.execute(
             delete(ProductAccessState).where(
                 ProductAccessState.account_id == account_id,
-                ProductAccessState.product_code == product_code,
+                ProductAccessState.product_code.in_(candidate_product_codes(product_code)),
                 ProductAccessState.id != keep_id,
             )
         )
@@ -381,11 +432,26 @@ class PayProjectionRepository:
             setattr(model, field_name, value)
 
     @staticmethod
+    def _dedupe_product_records(records):  # noqa: ANN001
+        deduped = []
+        seen_product_codes = set()
+
+        for record in records:
+            product_code = canonical_product_code(record.product_code)
+            if product_code in seen_product_codes:
+                continue
+
+            seen_product_codes.add(product_code)
+            deduped.append(record)
+
+        return deduped
+
+    @staticmethod
     def _to_subscription_record(summary: SubscriptionSummary) -> SubscriptionSummaryRecord:
         return SubscriptionSummaryRecord(
             summary_id=summary.id,
             account_id=summary.account_id,
-            product_code=summary.product_code,
+            product_code=canonical_product_code(summary.product_code),
             plan_code=summary.plan_code,
             billing_interval=summary.billing_interval,
             normalized_status=summary.normalized_status,
@@ -403,7 +469,7 @@ class PayProjectionRepository:
         return EntitlementSummaryRecord(
             summary_id=summary.id,
             account_id=summary.account_id,
-            product_code=summary.product_code,
+            product_code=canonical_product_code(summary.product_code),
             plan_code=summary.plan_code,
             status=summary.status,
             starts_at=summary.starts_at,
@@ -417,7 +483,7 @@ class PayProjectionRepository:
         return PaymentSummaryRecord(
             summary_id=summary.id,
             account_id=summary.account_id,
-            product_code=summary.product_code,
+            product_code=canonical_product_code_or_none(summary.product_code),
             payment_rail=summary.payment_rail,
             normalized_status=summary.normalized_status,
             provider_status_raw=summary.provider_status_raw,
@@ -454,10 +520,50 @@ class PayProjectionRepository:
         return ProductAccessStateRecord(
             state_id=state.id,
             account_id=state.account_id,
-            product_code=state.product_code,
+            product_code=canonical_product_code(state.product_code),
             access_state=state.access_state,
             launch_url=state.launch_url,
             disabled_reason=state.disabled_reason,
             external_account_reference=state.external_account_reference,
             updated_at=state.updated_at,
         )
+
+
+def canonical_product_code(product_code: str | None) -> str:
+    if product_code is None:
+        return ""
+
+    normalized = product_code.strip()
+    if not normalized:
+        return ""
+
+    alias_key = normalized.lower().replace("-", "_")
+    return PRODUCT_CODE_ALIASES.get(alias_key, normalized.upper().replace("-", "_"))
+
+
+def canonical_product_code_or_none(product_code: object) -> str | None:
+    if product_code is None:
+        return None
+
+    normalized = canonical_product_code(str(product_code))
+    return normalized or None
+
+
+def candidate_product_codes(product_code: str | None) -> tuple[str, ...]:
+    canonical_code = canonical_product_code(product_code)
+    if not canonical_code:
+        return ("",)
+
+    candidates = {
+        canonical_code,
+        canonical_code.lower(),
+        canonical_code.replace("_", "-"),
+        canonical_code.lower().replace("_", "-"),
+    }
+
+    for alias, alias_canonical_code in PRODUCT_CODE_ALIASES.items():
+        if alias_canonical_code == canonical_code:
+            candidates.add(alias)
+            candidates.add(alias.replace("_", "-"))
+
+    return tuple(sorted(candidates))

@@ -65,11 +65,7 @@ def test_brevo_client_posts_template_email_to_smtp_endpoint() -> None:
 def test_build_brevo_client_requires_api_key() -> None:
     with pytest.raises(BrevoClientConfigurationError):
         build_brevo_client(
-            Settings(
-                brevo_api_base_url="https://brevo.test/v3",
-                brevo_api_key=None,
-            )
-        )
+            Settings(_env_file=None))
 
 
 def test_brevo_client_maps_timeout_to_provider_timeout() -> None:
