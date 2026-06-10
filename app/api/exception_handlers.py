@@ -28,6 +28,7 @@ from app.services.auth_service import (
 )
 from app.services.billing_summary_service import (
     BillingActionInvalidResponseError,
+    BillingActionRejectedError,
     BillingActionUnavailableError,
 )
 from app.services.reward_notification_service import (
@@ -95,6 +96,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         BillingActionUnavailableError,
         billing_action_unavailable_handler,
+    )
+    app.add_exception_handler(
+        BillingActionRejectedError,
+        billing_action_rejected_handler,
     )
     app.add_exception_handler(
         BillingActionInvalidResponseError,
@@ -212,6 +217,19 @@ async def billing_action_unavailable_handler(
         code="billing_action_unavailable",
         message="Billing action is temporarily unavailable.",
         details={"action": exc.action},
+        request_id=_request_id(request),
+    )
+
+
+async def billing_action_rejected_handler(
+    request: Request,
+    exc: BillingActionRejectedError,
+) -> JSONResponse:
+    return build_error_response(
+        status_code=exc.status_code,
+        code=exc.code,
+        message=exc.message,
+        details=exc.details,
         request_id=_request_id(request),
     )
 

@@ -266,7 +266,9 @@ class AuthService:
             self._repository.create_profile(account_id=account.id, display_name=account.username)
             self._repository.create_profile_preferences(account_id=account.id)
             self._repository.create_communication_preferences(account_id=account.id)
-            security_settings = self._repository.create_account_security_settings(account_id=account.id)
+            security_settings = self._repository.create_account_security_settings(
+                account_id=account.id
+            )
             self._repository.create_email_verification_token(
                 account_id=account.id,
                 token_hash=self._hash_secret(verification_token),
@@ -322,12 +324,12 @@ class AuthService:
     def login(
         self,
         *,
-        email: str,
+        username: str,
         password: str,
         client_info: AuthClientInfo,
     ) -> AuthMutationResult:
-        normalized_email = email.strip().lower()
-        account = self._repository.get_account_by_email(normalized_email)
+        normalized_username = username.strip()
+        account = self._repository.get_account_by_username(normalized_username)
         if account is None:
             raise InvalidCredentialsError("Invalid credentials.")
 
@@ -383,9 +385,9 @@ class AuthService:
                 self._repository.build_session_account_record(
                     account=account,
                     auth_session=auth_session,
-                    security_settings=None if security_settings is None else account_security_settings_record_to_model(
-                        security_settings
-                    ),
+                    security_settings=None
+                    if security_settings is None
+                    else account_security_settings_record_to_model(security_settings),
                 )
             ),
         )
@@ -411,7 +413,8 @@ class AuthService:
                 self._repository.mark_account_email_verified(
                     account_id=token_record.account_id,
                     verified_at=now,
-                    activate_pending_account=token_record.account_status == "pending_verification",
+                    activate_pending_account=token_record.account_status
+                    == "pending_verification",
                 )
             self._repository.record_auth_event(
                 account_id=token_record.account_id,
@@ -586,7 +589,7 @@ class AuthService:
         new_password: str,
         client_info: AuthClientInfo,
     ) -> AuthMutationResult:
-        account = self._repository.get_account_by_email(context.email)
+        account = self._repository.get_account_by_id(context.account_id)
         if account is None or not self._verify_password(current_password, account.password_hash):
             raise CurrentPasswordInvalidError("Current password is invalid.")
 
@@ -627,9 +630,9 @@ class AuthService:
                 self._repository.build_session_account_record(
                     account=account,
                     auth_session=auth_session,
-                    security_settings=None if security_settings is None else account_security_settings_record_to_model(
-                        security_settings
-                    ),
+                    security_settings=None
+                    if security_settings is None
+                    else account_security_settings_record_to_model(security_settings),
                 )
             ),
         )
@@ -741,7 +744,10 @@ class AuthService:
         try:
             self._repository.replace_recovery_codes(
                 account_id=context.account_id,
-                code_hashes=[self._hash_secret(recovery_code_value) for recovery_code_value in recovery_codes],
+                code_hashes=[
+                    self._hash_secret(recovery_code_value)
+                    for recovery_code_value in recovery_codes
+                ],
             )
             self._repository.set_two_factor_state(
                 account_id=context.account_id,
@@ -1155,7 +1161,10 @@ class AuthService:
         secret = self._derive_totp_secret(account_id)
         current_counter = int(datetime.now(timezone.utc).timestamp() // 30)
         for offset in (-1, 0, 1):
-            if self._generate_totp_code(secret=secret, counter=current_counter + offset) == normalized_code:
+            if (
+                self._generate_totp_code(secret=secret, counter=current_counter + offset)
+                == normalized_code
+            ):
                 return True
         return False
 
@@ -1172,7 +1181,11 @@ class AuthService:
     @staticmethod
     def _generate_recovery_codes(count: int = 8) -> list[str]:
         return [
-            f"{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}"
+            (
+                f"{secrets.token_hex(2).upper()}-"
+                f"{secrets.token_hex(2).upper()}-"
+                f"{secrets.token_hex(2).upper()}"
+            )
             for _ in range(count)
         ]
 
@@ -1243,9 +1256,15 @@ class AuthService:
             status=session_record.status,
             role=session_record.role,
             email_verified_at=AuthService._ensure_aware_utc(session_record.email_verified_at),
-            session_created_at=AuthService._ensure_aware_utc(session_record.session_created_at),
-            session_expires_at=AuthService._ensure_aware_utc(session_record.session_expires_at),
-            session_revoked_at=AuthService._ensure_aware_utc(session_record.session_revoked_at),
+            session_created_at=AuthService._ensure_aware_utc(
+                session_record.session_created_at
+            ),
+            session_expires_at=AuthService._ensure_aware_utc(
+                session_record.session_expires_at
+            ),
+            session_revoked_at=AuthService._ensure_aware_utc(
+                session_record.session_revoked_at
+            ),
             ip_address=session_record.ip_address,
             user_agent=session_record.user_agent,
             two_factor_enabled=session_record.two_factor_enabled,

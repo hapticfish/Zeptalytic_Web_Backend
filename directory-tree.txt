@@ -1,4 +1,27 @@
 Zeptalytic_Web_Backend/
+├── alembic/
+│   ├── versions/
+│   │   ├── 20260413_1830_pdb035_profile_settings_tables.py
+│   │   ├── 20260413_1835_pdb020_auth_tables.py
+│   │   ├── 20260413_1910_pdb025_security_tables.py
+│   │   ├── 20260413_1918_pdb030_profiles_table.py
+│   │   ├── 20260413_2040_pdb040_addresses_table.py
+│   │   ├── 20260413_2055_pdb055_support_attachment_tables.py
+│   │   ├── 20260413_2105_pdb050_support_tables.py
+│   │   ├── 20260413_2108_pdb060_announcement_status_tables.py
+│   │   ├── 20260413_2115_pdb070_subscription_entitlement_tables.py
+│   │   ├── 20260413_2128_pdb075_access_payment_summary_tables.py
+│   │   ├── 20260415_2315_disc010_profile_discord_fields.py
+│   │   ├── 20260415_2345_disc020_discord_history_table.py
+│   │   ├── 20260415_2355_rdb010_reward_foundation_tables.py
+│   │   ├── 20260416_0010_rdb020_reward_tiers_and_milestones.py
+│   │   ├── 20260416_0105_rdb030_objective_definition_and_progress_tables.py
+│   │   ├── 20260416_0215_rdb040_reward_badge_and_grant_tables.py
+│   │   ├── 20260416_0245_rdb050_reward_notifications.py
+│   │   ├── 20260524_1710_email010_send_attempts.py
+│   │   └── 20260524_1815_email050_delivery_events.py
+│   ├── env.py
+│   └── script.py.mako
 ├── app/
 │   ├── api/
 │   │   ├── routers/
@@ -244,6 +267,7 @@ Zeptalytic_Web_Backend/
 │   │   ├── test_auth_models.py
 │   │   ├── test_auth_service.py
 │   │   ├── test_billing_api.py
+│   │   ├── test_billing_router.py
 │   │   ├── test_billing_summary_service.py
 │   │   ├── test_brevo_client.py
 │   │   ├── test_communication_preference_service.py
@@ -308,6 +332,7 @@ Zeptalytic_Web_Backend/
 ├── README.md
 ├── README_Zeptalytic_Backend_Next_Phase.md
 ├── README_progress_append_rule.md
+├── alembic.ini
 ├── directory-tree.txt
 ├── docker-compose.test.yml
 ├── docker-compose.yml

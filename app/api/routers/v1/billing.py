@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from typing import NoReturn
-
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import (
     get_audit_hook,
@@ -44,35 +42,6 @@ def _enforce_billing_rate_limit(
         action=action,
         key=build_authenticated_rate_limit_key(request, account_id=context.account_id),
         policy=build_billing_action_rate_limit_policy(settings),
-    )
-
-
-def _raise_unsupported_billing_action(
-    *,
-    audit_hook: AuditHook,
-    request: Request,
-    account_id,
-    audit_action: str,
-    action: str,
-    metadata: dict[str, object | None],
-) -> NoReturn:
-    emit_audit_event(
-        audit_hook,
-        request=request,
-        action=audit_action,
-        outcome="unsupported",
-        account_id=account_id,
-        metadata=metadata,
-    )
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail={
-            "code": "billing_action_not_supported",
-            "action": action,
-            "message": (
-                f"Billing action '{action}' is not supported by the Pay service yet."
-            ),
-        },
     )
 
 
@@ -125,31 +94,33 @@ def initiate_billing_checkout(
         rate_limiter=rate_limiter,
         action="billing_checkout",
     )
+
+    metadata = {
+        "product_code": payload.product_code,
+        "plan_code": payload.plan_code,
+        "billing_interval": payload.billing_interval,
+    }
+
     emit_audit_event(
         audit_hook,
         request=request,
         action="billing.checkout",
         outcome="attempt",
         account_id=context.account_id,
-        metadata={
-            "product_code": payload.product_code,
-            "plan_code": payload.plan_code,
-            "billing_interval": payload.billing_interval,
-        },
+        metadata=metadata,
     )
+
     result = service.initiate_checkout(context.account_id, payload)
+
     emit_audit_event(
         audit_hook,
         request=request,
         action="billing.checkout",
         outcome="success",
         account_id=context.account_id,
-        metadata={
-            "product_code": payload.product_code,
-            "plan_code": payload.plan_code,
-            "billing_interval": payload.billing_interval,
-        },
+        metadata=metadata,
     )
+
     return result
 
 
@@ -158,6 +129,7 @@ def initiate_billing_subscription_change(
     payload: BillingSubscriptionChangeRequest,
     request: Request,
     context: AuthenticatedSessionContext = Depends(require_authenticated_session_context),
+    service: BillingSummaryService = Depends(get_billing_summary_service),
     rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
     audit_hook: AuditHook = Depends(get_audit_hook),
 ) -> BillingActionInitiationResponse:
@@ -167,11 +139,13 @@ def initiate_billing_subscription_change(
         rate_limiter=rate_limiter,
         action="billing_subscription_change",
     )
+
     metadata = {
         "product_code": payload.product_code,
         "target_plan_code": payload.target_plan_code,
         "target_billing_interval": payload.target_billing_interval,
     }
+
     emit_audit_event(
         audit_hook,
         request=request,
@@ -180,14 +154,19 @@ def initiate_billing_subscription_change(
         account_id=context.account_id,
         metadata=metadata,
     )
-    _raise_unsupported_billing_action(
-        audit_hook=audit_hook,
+
+    result = service.initiate_subscription_change(context.account_id, payload)
+
+    emit_audit_event(
+        audit_hook,
         request=request,
+        action="billing.subscription_change",
+        outcome="success",
         account_id=context.account_id,
-        audit_action="billing.subscription_change",
-        action="subscription_change",
         metadata=metadata,
     )
+
+    return result
 
 
 @router.post("/subscription-cancel", response_model=BillingActionInitiationResponse)
@@ -195,6 +174,7 @@ def initiate_billing_subscription_cancel(
     payload: BillingSubscriptionLifecycleRequest,
     request: Request,
     context: AuthenticatedSessionContext = Depends(require_authenticated_session_context),
+    service: BillingSummaryService = Depends(get_billing_summary_service),
     rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
     audit_hook: AuditHook = Depends(get_audit_hook),
 ) -> BillingActionInitiationResponse:
@@ -204,10 +184,12 @@ def initiate_billing_subscription_cancel(
         rate_limiter=rate_limiter,
         action="billing_subscription_cancel",
     )
+
     metadata = {
         "product_code": payload.product_code,
         "reason_provided": payload.reason is not None,
     }
+
     emit_audit_event(
         audit_hook,
         request=request,
@@ -216,14 +198,19 @@ def initiate_billing_subscription_cancel(
         account_id=context.account_id,
         metadata=metadata,
     )
-    _raise_unsupported_billing_action(
-        audit_hook=audit_hook,
+
+    result = service.initiate_subscription_cancel(context.account_id, payload)
+
+    emit_audit_event(
+        audit_hook,
         request=request,
+        action="billing.subscription_cancel",
+        outcome="success",
         account_id=context.account_id,
-        audit_action="billing.subscription_cancel",
-        action="subscription_cancel",
         metadata=metadata,
     )
+
+    return result
 
 
 @router.post("/subscription-restart", response_model=BillingActionInitiationResponse)
@@ -231,6 +218,7 @@ def initiate_billing_subscription_restart(
     payload: BillingSubscriptionLifecycleRequest,
     request: Request,
     context: AuthenticatedSessionContext = Depends(require_authenticated_session_context),
+    service: BillingSummaryService = Depends(get_billing_summary_service),
     rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
     audit_hook: AuditHook = Depends(get_audit_hook),
 ) -> BillingActionInitiationResponse:
@@ -240,10 +228,12 @@ def initiate_billing_subscription_restart(
         rate_limiter=rate_limiter,
         action="billing_subscription_restart",
     )
+
     metadata = {
         "product_code": payload.product_code,
         "reason_provided": payload.reason is not None,
     }
+
     emit_audit_event(
         audit_hook,
         request=request,
@@ -252,14 +242,19 @@ def initiate_billing_subscription_restart(
         account_id=context.account_id,
         metadata=metadata,
     )
-    _raise_unsupported_billing_action(
-        audit_hook=audit_hook,
+
+    result = service.initiate_subscription_restart(context.account_id, payload)
+
+    emit_audit_event(
+        audit_hook,
         request=request,
+        action="billing.subscription_restart",
+        outcome="success",
         account_id=context.account_id,
-        audit_action="billing.subscription_restart",
-        action="subscription_restart",
         metadata=metadata,
     )
+
+    return result
 
 
 @router.post("/promo-code/validate", response_model=BillingActionInitiationResponse)
@@ -267,6 +262,7 @@ def validate_billing_promo_code(
     payload: BillingPromoCodeRequest,
     request: Request,
     context: AuthenticatedSessionContext = Depends(require_authenticated_session_context),
+    service: BillingSummaryService = Depends(get_billing_summary_service),
     rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
     audit_hook: AuditHook = Depends(get_audit_hook),
 ) -> BillingActionInitiationResponse:
@@ -276,10 +272,12 @@ def validate_billing_promo_code(
         rate_limiter=rate_limiter,
         action="billing_promo_validate",
     )
+
     metadata = {
         "product_code": payload.product_code,
         "plan_code": payload.plan_code,
     }
+
     emit_audit_event(
         audit_hook,
         request=request,
@@ -288,14 +286,19 @@ def validate_billing_promo_code(
         account_id=context.account_id,
         metadata=metadata,
     )
-    _raise_unsupported_billing_action(
-        audit_hook=audit_hook,
+
+    result = service.validate_promo_code(context.account_id, payload)
+
+    emit_audit_event(
+        audit_hook,
         request=request,
+        action="billing.promo_validate",
+        outcome="success",
         account_id=context.account_id,
-        audit_action="billing.promo_validate",
-        action="promo_code_validation",
         metadata=metadata,
     )
+
+    return result
 
 
 @router.post("/promo-code/apply", response_model=BillingActionInitiationResponse)
@@ -303,6 +306,7 @@ def apply_billing_promo_code(
     payload: BillingPromoCodeRequest,
     request: Request,
     context: AuthenticatedSessionContext = Depends(require_authenticated_session_context),
+    service: BillingSummaryService = Depends(get_billing_summary_service),
     rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
     audit_hook: AuditHook = Depends(get_audit_hook),
 ) -> BillingActionInitiationResponse:
@@ -312,10 +316,12 @@ def apply_billing_promo_code(
         rate_limiter=rate_limiter,
         action="billing_promo_apply",
     )
+
     metadata = {
         "product_code": payload.product_code,
         "plan_code": payload.plan_code,
     }
+
     emit_audit_event(
         audit_hook,
         request=request,
@@ -324,11 +330,16 @@ def apply_billing_promo_code(
         account_id=context.account_id,
         metadata=metadata,
     )
-    _raise_unsupported_billing_action(
-        audit_hook=audit_hook,
+
+    result = service.apply_promo_code(context.account_id, payload)
+
+    emit_audit_event(
+        audit_hook,
         request=request,
+        action="billing.promo_apply",
+        outcome="success",
         account_id=context.account_id,
-        audit_action="billing.promo_apply",
-        action="promo_code_apply",
         metadata=metadata,
     )
+
+    return result

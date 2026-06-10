@@ -206,7 +206,7 @@ def login(
     )
     emit_audit_event(audit_hook, request=request, action="auth.login", outcome="attempt")
     result = auth_service.login(
-        email=payload.email,
+        username=payload.username,
         password=payload.password,
         client_info=_build_client_info(request),
     )

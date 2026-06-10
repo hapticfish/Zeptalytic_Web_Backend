@@ -5,7 +5,12 @@ from uuid import uuid4
 
 from app.db.repositories.address_repository import AddressRecord
 from app.integrations import PayClientInvalidResponseError, PayClientUnavailableError
-from app.schemas.billing import BillingCheckoutInitiationRequest
+from app.schemas.billing import (
+    BillingCheckoutInitiationRequest,
+    BillingPromoCodeRequest,
+    BillingSubscriptionChangeRequest,
+    BillingSubscriptionLifecycleRequest,
+)
 from app.services.billing_summary_service import (
     BillingActionInvalidResponseError,
     BillingActionUnavailableError,
@@ -181,8 +186,17 @@ def test_billing_summary_service_initiates_checkout_through_pay_client() -> None
     account_id = snapshot.account_id
     pay_client = StubPayClient(
         payload={
-            "pay_redirect_url": "https://pay.example/checkout/session_123",
-            "pay_session_id": "session_123",
+            "action": "checkout",
+            "status": "checkout_required",
+            "message": "Checkout initiated.",
+            "product_code": "zardbot",
+            "plan_code": "starter-monthly",
+            "billing_interval": "MONTHLY",
+            "payment_rail": "STRIPE",
+            "pay_result": {
+                "pay_redirect_url": "https://pay.example/checkout/session_123",
+                "pay_session_id": "session_123",
+            },
         }
     )
     service = BillingSummaryService(
@@ -197,6 +211,7 @@ def test_billing_summary_service_initiates_checkout_through_pay_client() -> None
             product_code="zardbot",
             plan_code="starter-monthly",
             billing_interval="monthly",
+            payment_rail="stripe",
             success_url="https://app.example/success",
             cancel_url="https://app.example/cancel",
         ),
@@ -205,6 +220,11 @@ def test_billing_summary_service_initiates_checkout_through_pay_client() -> None
     assert response.action == "checkout"
     assert response.message == "Checkout initiated."
     assert response.pay_result is not None
+    assert response.pay_result.status == "checkout_required"
+    assert response.pay_result.product_code == "zardbot"
+    assert response.pay_result.plan_code == "starter-monthly"
+    assert response.pay_result.billing_interval == "MONTHLY"
+    assert response.pay_result.payment_rail == "STRIPE"
     assert response.pay_result.pay_redirect_url == "https://pay.example/checkout/session_123"
     assert response.pay_result.pay_session_id == "session_123"
     assert pay_client.calls == [
@@ -212,11 +232,336 @@ def test_billing_summary_service_initiates_checkout_through_pay_client() -> None
             "method": "POST",
             "path": f"/internal/accounts/{account_id}/billing/checkout",
             "json_body": {
+                "purchase_type": "product",
+                "billing_interval": "MONTHLY",
+                "payment_rail": "STRIPE",
                 "product_code": "zardbot",
                 "plan_code": "starter-monthly",
-                "billing_interval": "monthly",
                 "success_url": "https://app.example/success",
                 "cancel_url": "https://app.example/cancel",
+            },
+            "expected_status_codes": {200, 201, 202},
+        }
+    ]
+
+
+def test_billing_summary_service_initiates_bundle_checkout_through_pay_client() -> None:
+    snapshot = _build_snapshot()
+    account_id = snapshot.account_id
+    pay_client = StubPayClient(
+        payload={
+            "action": "checkout",
+            "status": "checkout_required",
+            "message": "Bundle checkout initiated.",
+            "bundle_code": "pro_bundle",
+            "billing_interval": "MONTHLY",
+            "payment_rail": "STRIPE",
+            "pay_result": {
+                "pay_redirect_url": "https://pay.example/checkout/bundle_session_123",
+                "pay_session_id": "bundle_session_123",
+            },
+        }
+    )
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+        pay_client,
+    )
+
+    response = service.initiate_checkout(
+        account_id,
+        BillingCheckoutInitiationRequest(
+            purchase_type="bundle",
+            bundle_code="pro_bundle",
+            billing_interval="month",
+            payment_rail="STRIPE",
+            success_url="https://app.example/success",
+            cancel_url="https://app.example/cancel",
+        ),
+    )
+
+    assert response.action == "checkout"
+    assert response.message == "Bundle checkout initiated."
+    assert response.pay_result is not None
+    assert response.pay_result.status == "checkout_required"
+    assert response.pay_result.bundle_code == "pro_bundle"
+    assert response.pay_result.pay_session_id == "bundle_session_123"
+    assert pay_client.calls == [
+        {
+            "method": "POST",
+            "path": f"/internal/accounts/{account_id}/billing/checkout",
+            "json_body": {
+                "purchase_type": "bundle",
+                "billing_interval": "MONTHLY",
+                "payment_rail": "STRIPE",
+                "bundle_code": "pro_bundle",
+                "success_url": "https://app.example/success",
+                "cancel_url": "https://app.example/cancel",
+            },
+            "expected_status_codes": {200, 201, 202},
+        }
+    ]
+
+
+def test_billing_summary_service_delegates_subscription_change_to_pay_client() -> None:
+    snapshot = _build_snapshot()
+    account_id = snapshot.account_id
+    pay_client = StubPayClient(
+        payload={
+            "action": "subscription_change",
+            "status": "checkout_required",
+            "message": "Subscription upgrade requires checkout.",
+            "product_code": "zardbot",
+            "plan_code": "pro-monthly",
+            "billing_interval": "MONTHLY",
+            "payment_rail": "STRIPE",
+            "pay_result": {
+                "pay_redirect_url": "https://pay.example/checkout/upgrade_123",
+                "pay_session_id": "upgrade_123",
+            },
+        }
+    )
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+        pay_client,
+    )
+
+    response = service.initiate_subscription_change(
+        account_id,
+        BillingSubscriptionChangeRequest(
+            product_code="zardbot",
+            target_plan_code="pro-monthly",
+            target_billing_interval="monthly",
+            payment_rail="stripe",
+            success_url="https://app.example/success",
+            cancel_url="https://app.example/cancel",
+            promo_code="SAVE20",
+        ),
+    )
+
+    assert response.action == "subscription_change"
+    assert response.message == "Subscription upgrade requires checkout."
+    assert response.pay_result is not None
+    assert response.pay_result.status == "checkout_required"
+    assert response.pay_result.pay_redirect_url == "https://pay.example/checkout/upgrade_123"
+    assert pay_client.calls == [
+        {
+            "method": "POST",
+            "path": f"/internal/accounts/{account_id}/billing/subscription-change",
+            "json_body": {
+                "target_billing_interval": "MONTHLY",
+                "product_code": "zardbot",
+                "target_plan_code": "pro-monthly",
+                "payment_rail": "STRIPE",
+                "success_url": "https://app.example/success",
+                "cancel_url": "https://app.example/cancel",
+                "promo_code": "SAVE20",
+            },
+            "expected_status_codes": {200, 201, 202},
+        }
+    ]
+
+
+def test_billing_summary_service_delegates_subscription_cancel_to_pay_client() -> None:
+    snapshot = _build_snapshot()
+    account_id = snapshot.account_id
+    pay_client = StubPayClient(
+        payload={
+            "action": "subscription_cancel",
+            "status": "scheduled",
+            "message": "Subscription cancellation scheduled.",
+            "product_code": "zardbot",
+            "effective_at": "2026-07-01T00:00:00Z",
+        }
+    )
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+        pay_client,
+    )
+
+    response = service.initiate_subscription_cancel(
+        account_id,
+        BillingSubscriptionLifecycleRequest(
+            product_code="zardbot",
+            reason="Too expensive",
+            idempotency_key="cancel-123",
+        ),
+    )
+
+    assert response.action == "subscription_cancel"
+    assert response.message == "Subscription cancellation scheduled."
+    assert response.pay_result is not None
+    assert response.pay_result.status == "scheduled"
+    assert response.pay_result.product_code == "zardbot"
+    assert response.pay_result.effective_at is not None
+    assert pay_client.calls == [
+        {
+            "method": "POST",
+            "path": f"/internal/accounts/{account_id}/billing/subscription-cancel",
+            "json_body": {
+                "product_code": "zardbot",
+                "reason": "Too expensive",
+                "idempotency_key": "cancel-123",
+            },
+            "expected_status_codes": {200, 201, 202},
+        }
+    ]
+
+
+def test_billing_summary_service_delegates_subscription_restart_to_pay_client() -> None:
+    snapshot = _build_snapshot()
+    account_id = snapshot.account_id
+    pay_client = StubPayClient(
+        payload={
+            "action": "subscription_restart",
+            "status": "restarted",
+            "message": "Subscription restarted.",
+            "product_code": "zardbot",
+        }
+    )
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+        pay_client,
+    )
+
+    response = service.initiate_subscription_restart(
+        account_id,
+        BillingSubscriptionLifecycleRequest(
+            product_code="zardbot",
+            reason="Restarting service",
+        ),
+    )
+
+    assert response.action == "subscription_restart"
+    assert response.message == "Subscription restarted."
+    assert response.pay_result is not None
+    assert response.pay_result.status == "restarted"
+    assert response.pay_result.product_code == "zardbot"
+    assert pay_client.calls == [
+        {
+            "method": "POST",
+            "path": f"/internal/accounts/{account_id}/billing/subscription-restart",
+            "json_body": {
+                "product_code": "zardbot",
+                "reason": "Restarting service",
+            },
+            "expected_status_codes": {200, 201, 202},
+        }
+    ]
+
+
+def test_billing_summary_service_delegates_promo_validate_to_pay_client() -> None:
+    snapshot = _build_snapshot()
+    account_id = snapshot.account_id
+    pay_client = StubPayClient(
+        payload={
+            "valid": True,
+            "promo_code": "save20",
+            "normalized_code": "SAVE20",
+            "message": "Promo code validated.",
+            "product_code": "zardbot",
+            "plan_code": "starter-monthly",
+            "billing_interval": "MONTHLY",
+            "payment_rail": "STRIPE",
+            "discount_type": "PERCENT",
+            "discount_percent": 20,
+            "currency": "USD",
+        }
+    )
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+        pay_client,
+    )
+
+    response = service.validate_promo_code(
+        account_id,
+        BillingPromoCodeRequest(
+            promo_code="SAVE20",
+            product_code="zardbot",
+            plan_code="starter-monthly",
+            billing_interval="month",
+            payment_rail="stripe",
+        ),
+    )
+
+    assert response.action == "promo_code_validation"
+    assert response.message == "Promo code validated."
+    assert response.pay_result is not None
+    assert response.pay_result.valid is True
+    assert response.pay_result.normalized_code == "SAVE20"
+    assert response.pay_result.discount_type == "PERCENT"
+    assert response.pay_result.discount_percent == 20
+    assert pay_client.calls == [
+        {
+            "method": "POST",
+            "path": f"/internal/accounts/{account_id}/billing/promo-code/validate",
+            "json_body": {
+                "promo_code": "SAVE20",
+                "apply_mode": "CHECKOUT",
+                "product_code": "zardbot",
+                "plan_code": "starter-monthly",
+                "billing_interval": "MONTHLY",
+                "payment_rail": "STRIPE",
+            },
+            "expected_status_codes": {200, 201, 202},
+        }
+    ]
+
+
+def test_billing_summary_service_delegates_promo_apply_to_pay_client() -> None:
+    snapshot = _build_snapshot()
+    account_id = snapshot.account_id
+    pay_client = StubPayClient(
+        payload={
+            "action": "promo_code_apply",
+            "status": "applied",
+            "message": "Promo code applied.",
+            "product_code": "zardbot",
+            "plan_code": "starter-monthly",
+            "billing_interval": "MONTHLY",
+            "payment_rail": "STRIPE",
+        }
+    )
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+        pay_client,
+    )
+
+    response = service.apply_promo_code(
+        account_id,
+        BillingPromoCodeRequest(
+            promo_code="SAVE20",
+            product_code="zardbot",
+            plan_code="starter-monthly",
+            billing_interval="month",
+            payment_rail="stripe",
+            apply_mode="existing_subscription",
+            idempotency_key="promo-123",
+        ),
+    )
+
+    assert response.action == "promo_code_apply"
+    assert response.message == "Promo code applied."
+    assert response.pay_result is not None
+    assert response.pay_result.status == "applied"
+    assert response.pay_result.product_code == "zardbot"
+    assert pay_client.calls == [
+        {
+            "method": "POST",
+            "path": f"/internal/accounts/{account_id}/billing/promo-code/apply",
+            "json_body": {
+                "promo_code": "SAVE20",
+                "apply_mode": "EXISTING_SUBSCRIPTION",
+                "product_code": "zardbot",
+                "plan_code": "starter-monthly",
+                "billing_interval": "MONTHLY",
+                "payment_rail": "STRIPE",
+                "idempotency_key": "promo-123",
             },
             "expected_status_codes": {200, 201, 202},
         }
@@ -238,6 +583,7 @@ def test_billing_summary_service_raises_unavailable_error_when_pay_action_cannot
                 product_code="zardbot",
                 plan_code="starter-monthly",
                 billing_interval="monthly",
+                payment_rail="STRIPE",
                 success_url="https://app.example/success",
                 cancel_url="https://app.example/cancel",
             ),
@@ -263,6 +609,39 @@ def test_billing_summary_service_rejects_invalid_pay_action_payload() -> None:
                 product_code="zardbot",
                 plan_code="starter-monthly",
                 billing_interval="monthly",
+                payment_rail="STRIPE",
+                success_url="https://app.example/success",
+                cancel_url="https://app.example/cancel",
+            ),
+        )
+    except BillingActionInvalidResponseError as exc:
+        assert exc.action == "checkout"
+    else:
+        raise AssertionError("Expected BillingActionInvalidResponseError")
+
+
+def test_billing_summary_service_rejects_non_mapping_nested_pay_result() -> None:
+    snapshot = _build_snapshot()
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+        StubPayClient(
+            payload={
+                "action": "checkout",
+                "status": "checkout_required",
+                "pay_result": "not-an-object",
+            }
+        ),
+    )
+
+    try:
+        service.initiate_checkout(
+            snapshot.account_id,
+            BillingCheckoutInitiationRequest(
+                product_code="zardbot",
+                plan_code="starter-monthly",
+                billing_interval="monthly",
+                payment_rail="STRIPE",
                 success_url="https://app.example/success",
                 cancel_url="https://app.example/cancel",
             ),

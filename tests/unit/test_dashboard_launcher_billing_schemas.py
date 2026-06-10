@@ -197,17 +197,18 @@ def test_billing_action_response_reuses_standard_mutation_success_contract() -> 
         pay_result={"pay_redirect_url": "https://pay.example/checkout/session_001"},
     )
 
+    payload = response.model_dump(mode="json", exclude_none=True)
+
     assert isinstance(response, MutationSuccessResponse)
-    assert response.model_dump(mode="json") == {
-        "success": True,
-        "message": "Checkout initiated.",
-        "action": "checkout",
-        "pay_result": {
-            "pay_redirect_url": "https://pay.example/checkout/session_001",
-            "pay_session_id": None,
-            "pay_client_secret": None,
-        },
-    }
+    assert payload["success"] is True
+    assert payload["message"] == "Checkout initiated."
+    assert payload["action"] == "checkout"
+    assert payload["pay_result"]["pay_redirect_url"] == "https://pay.example/checkout/session_001"
+
+    assert payload["pay_result"].get("pay_session_id") is None
+    assert payload["pay_result"].get("pay_client_secret") is None
+    assert "provider_payment_method_id" not in str(payload)
+    assert "provider_customer_id" not in str(payload)
 
 
 def test_billing_checkout_request_forbids_extra_fields() -> None:

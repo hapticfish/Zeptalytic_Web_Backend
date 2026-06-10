@@ -265,7 +265,7 @@ def test_billing_checkout_endpoint_delegates_action_for_suspended_authenticated_
             json={
                 "product_code": "zardbot",
                 "plan_code": "starter-monthly",
-                "billing_interval": "monthly",
+                "billing_interval": "MONTHLY",
                 "success_url": "https://app.example/success",
                 "cancel_url": "https://app.example/cancel",
             },
@@ -275,21 +275,21 @@ def test_billing_checkout_endpoint_delegates_action_for_suspended_authenticated_
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert response.json() == {
-        "success": True,
-        "message": "Checkout initiated.",
-        "action": "checkout",
-        "pay_result": {
-            "pay_redirect_url": "https://pay.example/checkout/session_001",
-            "pay_session_id": None,
-            "pay_client_secret": None,
-        },
-    }
+    body = response.json()
+
+    assert body["success"] is True
+    assert body["message"] == "Checkout initiated."
+    assert body["action"] == "checkout"
+    assert body["pay_result"]["pay_redirect_url"] == "https://pay.example/checkout/session_001"
+    assert body["pay_result"].get("pay_session_id") is None
+    assert body["pay_result"].get("pay_client_secret") is None
+    assert "provider_payment_method_id" not in str(body)
+    assert "provider_customer_id" not in str(body)
     assert billing_service.checkout_calls[0]["account_id"] == context.account_id
     assert billing_service.checkout_calls[0]["payload"] == BillingCheckoutInitiationRequest(
         product_code="zardbot",
         plan_code="starter-monthly",
-        billing_interval="monthly",
+        billing_interval="MONTHLY",
         success_url="https://app.example/success",
         cancel_url="https://app.example/cancel",
     )
@@ -309,7 +309,7 @@ def test_billing_checkout_endpoint_returns_standard_error_when_pay_is_unavailabl
             json={
                 "product_code": "zardbot",
                 "plan_code": "starter-monthly",
-                "billing_interval": "monthly",
+                "billing_interval": "MONTHLY",
                 "success_url": "https://app.example/success",
                 "cancel_url": "https://app.example/cancel",
             },

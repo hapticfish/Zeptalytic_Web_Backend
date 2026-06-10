@@ -28,7 +28,7 @@ services:
       APP_NAME: Zeptalytic Web Backend
       API_V1_PREFIX: /api/v1
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/zeptalytic_web_backend
-      PAY_SERVICE_BASE_URL: http://pay:8080
+      PAY_SERVICE_BASE_URL: http://host.docker.internal:8001
       PAY_SERVICE_INTERNAL_TOKEN: replace-me
     ports:
       - "8000:8000"
@@ -46,7 +46,7 @@ services:
       APP_NAME: Zeptalytic Web Backend
       API_V1_PREFIX: /api/v1
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/zeptalytic_web_backend
-      PAY_SERVICE_BASE_URL: http://pay:8080
+      PAY_SERVICE_BASE_URL: http://host.docker.internal:8001
       PAY_SERVICE_INTERNAL_TOKEN: replace-me
     command: ["alembic", "upgrade", "head"]
 

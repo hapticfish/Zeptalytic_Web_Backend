@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.db.repositories.address_repository import AddressRepository
@@ -39,6 +42,8 @@ PRODUCT_NAMES = {
     "ZEPTA": "Zepta",
 }
 
+_PAY_DOMAIN_ERROR_STATUS_CODES = {400, 404, 409, 422}
+
 
 class BillingActionUnavailableError(Exception):
     """Raised when a delegated billing action cannot reach Pay."""
@@ -46,6 +51,26 @@ class BillingActionUnavailableError(Exception):
     def __init__(self, action: str) -> None:
         self.action = action
         super().__init__(f"Billing action '{action}' is unavailable.")
+
+
+class BillingActionRejectedError(Exception):
+    """Raised when Pay cleanly rejects a delegated billing action request."""
+
+    def __init__(
+        self,
+        action: str,
+        *,
+        status_code: int,
+        code: str,
+        message: str,
+        details: Mapping[str, object] | None = None,
+    ) -> None:
+        self.action = action
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+        self.details = dict(details or {})
+        super().__init__(message)
 
 
 class BillingActionInvalidResponseError(Exception):
@@ -129,8 +154,8 @@ class BillingSummaryService:
             account_id=account_id,
             action="checkout",
             path=f"/internal/accounts/{account_id}/billing/checkout",
-            payload=payload.model_dump(mode="json", exclude_none=True),
-            message="Checkout initiated.",
+            payload=self._build_checkout_payload(payload),
+            default_message="Checkout initiated.",
         )
 
     def initiate_subscription_change(
@@ -142,8 +167,8 @@ class BillingSummaryService:
             account_id=account_id,
             action="subscription_change",
             path=f"/internal/accounts/{account_id}/billing/subscription-change",
-            payload=payload.model_dump(mode="json", exclude_none=True),
-            message="Subscription change initiated.",
+            payload=self._build_subscription_change_payload(payload),
+            default_message="Subscription change initiated.",
         )
 
     def initiate_subscription_cancel(
@@ -155,8 +180,8 @@ class BillingSummaryService:
             account_id=account_id,
             action="subscription_cancel",
             path=f"/internal/accounts/{account_id}/billing/subscription-cancel",
-            payload=payload.model_dump(mode="json", exclude_none=True),
-            message="Subscription cancellation initiated.",
+            payload=self._build_subscription_lifecycle_payload(payload),
+            default_message="Subscription cancellation initiated.",
         )
 
     def initiate_subscription_restart(
@@ -168,8 +193,8 @@ class BillingSummaryService:
             account_id=account_id,
             action="subscription_restart",
             path=f"/internal/accounts/{account_id}/billing/subscription-restart",
-            payload=payload.model_dump(mode="json", exclude_none=True),
-            message="Subscription restart initiated.",
+            payload=self._build_subscription_lifecycle_payload(payload),
+            default_message="Subscription restart initiated.",
         )
 
     def validate_promo_code(
@@ -181,8 +206,8 @@ class BillingSummaryService:
             account_id=account_id,
             action="promo_code_validation",
             path=f"/internal/accounts/{account_id}/billing/promo-code/validate",
-            payload=payload.model_dump(mode="json", exclude_none=True),
-            message="Promo code validated.",
+            payload=self._build_promo_validate_payload(payload),
+            default_message="Promo code validated.",
         )
 
     def apply_promo_code(
@@ -194,8 +219,8 @@ class BillingSummaryService:
             account_id=account_id,
             action="promo_code_apply",
             path=f"/internal/accounts/{account_id}/billing/promo-code/apply",
-            payload=payload.model_dump(mode="json", exclude_none=True),
-            message="Promo code applied.",
+            payload=self._build_promo_apply_payload(payload),
+            default_message="Promo code applied.",
         )
 
     def _build_address_book(self, account_id) -> BillingAddressBookSummary:  # noqa: ANN001
@@ -298,7 +323,7 @@ class BillingSummaryService:
         action: str,
         path: str,
         payload: dict[str, object],
-        message: str,
+        default_message: str,
     ) -> BillingActionInitiationResponse:
         del account_id
 
@@ -315,6 +340,8 @@ class BillingSummaryService:
         except PayClientUnavailableError as exc:
             raise BillingActionUnavailableError(action) from exc
         except PayClientInvalidResponseError as exc:
+            if exc.status_code in _PAY_DOMAIN_ERROR_STATUS_CODES:
+                raise self._build_action_rejected_error(action, exc) from exc
             raise BillingActionInvalidResponseError(action) from exc
 
         if not isinstance(response_payload, dict):
@@ -322,26 +349,181 @@ class BillingSummaryService:
 
         pay_result = self._build_action_result(action, response_payload)
         return BillingActionInitiationResponse(
-            message=message,
+            message=self._build_action_message(response_payload, default_message),
             action=action,
             pay_result=pay_result,
         )
 
     @staticmethod
-    def _build_action_result(action: str, payload: dict[str, object]) -> BillingActionResult | None:
-        safe_string_fields = {
-            key: value
-            for key in ("pay_redirect_url", "pay_session_id", "pay_client_secret")
-            if (value := payload.get(key)) is not None
+    def _build_checkout_payload(payload: BillingCheckoutInitiationRequest) -> dict[str, object]:
+        purchase_type = payload.purchase_type or ("bundle" if payload.bundle_code else "product")
+        result: dict[str, object] = {
+            "purchase_type": purchase_type,
+            "billing_interval": payload.billing_interval,
+            "payment_rail": payload.payment_rail,
         }
-        for value in safe_string_fields.values():
-            if not isinstance(value, str):
-                raise BillingActionInvalidResponseError(action)
 
-        if not safe_string_fields:
+        if purchase_type == "bundle":
+            BillingSummaryService._copy_optional(result, "bundle_code", payload.bundle_code)
+        else:
+            BillingSummaryService._copy_optional(result, "product_code", payload.product_code)
+            BillingSummaryService._copy_optional(result, "plan_code", payload.plan_code)
+
+        BillingSummaryService._copy_optional(result, "success_url", payload.success_url)
+        BillingSummaryService._copy_optional(result, "cancel_url", payload.cancel_url)
+        BillingSummaryService._copy_optional(result, "promo_code", payload.promo_code)
+        BillingSummaryService._copy_optional(result, "idempotency_key", payload.idempotency_key)
+
+        return result
+
+    @staticmethod
+    def _build_subscription_change_payload(payload: BillingSubscriptionChangeRequest) -> dict[str, object]:
+        result: dict[str, object] = {
+            "target_billing_interval": payload.target_billing_interval,
+        }
+
+        BillingSummaryService._copy_optional(result, "product_code", payload.product_code)
+        BillingSummaryService._copy_optional(result, "bundle_code", payload.bundle_code)
+        BillingSummaryService._copy_optional(result, "target_plan_code", payload.target_plan_code)
+        BillingSummaryService._copy_optional(result, "target_bundle_code", payload.target_bundle_code)
+        BillingSummaryService._copy_optional(result, "payment_rail", payload.payment_rail)
+        BillingSummaryService._copy_optional(result, "success_url", payload.success_url)
+        BillingSummaryService._copy_optional(result, "cancel_url", payload.cancel_url)
+        BillingSummaryService._copy_optional(result, "promo_code", payload.promo_code)
+        BillingSummaryService._copy_optional(result, "idempotency_key", payload.idempotency_key)
+
+        return result
+
+    @staticmethod
+    def _build_subscription_lifecycle_payload(payload: BillingSubscriptionLifecycleRequest) -> dict[str, object]:
+        result: dict[str, object] = {}
+
+        BillingSummaryService._copy_optional(result, "product_code", payload.product_code)
+        BillingSummaryService._copy_optional(result, "bundle_code", payload.bundle_code)
+        BillingSummaryService._copy_optional(result, "reason", payload.reason)
+        BillingSummaryService._copy_optional(result, "idempotency_key", payload.idempotency_key)
+
+        return result
+
+    @staticmethod
+    def _build_promo_validate_payload(payload: BillingPromoCodeRequest) -> dict[str, object]:
+        result: dict[str, object] = {
+            "promo_code": payload.promo_code,
+            "apply_mode": payload.apply_mode,
+        }
+
+        BillingSummaryService._copy_optional(result, "product_code", payload.product_code)
+        BillingSummaryService._copy_optional(result, "bundle_code", payload.bundle_code)
+        BillingSummaryService._copy_optional(result, "plan_code", payload.plan_code)
+        BillingSummaryService._copy_optional(result, "billing_interval", payload.billing_interval)
+        BillingSummaryService._copy_optional(result, "payment_rail", payload.payment_rail)
+
+        return result
+
+    @staticmethod
+    def _build_promo_apply_payload(payload: BillingPromoCodeRequest) -> dict[str, object]:
+        result = BillingSummaryService._build_promo_validate_payload(payload)
+        BillingSummaryService._copy_optional(result, "idempotency_key", payload.idempotency_key)
+        return result
+
+    @staticmethod
+    def _copy_optional(result: dict[str, object], key: str, value: object | None) -> None:
+        if value is not None:
+            result[key] = value
+
+    @staticmethod
+    def _build_action_message(payload: dict[str, object], default_message: str) -> str:
+        message = payload.get("message")
+        return message if isinstance(message, str) and message.strip() else default_message
+
+    @staticmethod
+    def _build_action_result(action: str, payload: dict[str, object]) -> BillingActionResult | None:
+        nested_pay_result = payload.get("pay_result")
+        sources: list[Mapping[str, object]] = [payload]
+
+        if nested_pay_result is not None:
+            if not isinstance(nested_pay_result, Mapping):
+                raise BillingActionInvalidResponseError(action)
+            sources.append(nested_pay_result)
+
+        result_fields = (
+            "status",
+            "pay_redirect_url",
+            "pay_session_id",
+            "pay_client_secret",
+            "product_code",
+            "bundle_code",
+            "plan_code",
+            "billing_interval",
+            "payment_rail",
+            "effective_at",
+            "valid",
+            "promo_code",
+            "normalized_code",
+            "discount_type",
+            "discount_percent",
+            "discount_amount_cents",
+            "discount_months",
+            "currency",
+            "expires_at",
+        )
+
+        result_data: dict[str, object] = {}
+        for source in sources:
+            for field_name in result_fields:
+                value = source.get(field_name)
+                if value is not None:
+                    result_data[field_name] = value
+
+        if not result_data:
             return None
 
-        return BillingActionResult(**safe_string_fields)
+        try:
+            return BillingActionResult(**result_data)
+        except ValidationError as exc:
+            raise BillingActionInvalidResponseError(action) from exc
+
+    @staticmethod
+    def _build_action_rejected_error(
+        action: str,
+        exc: PayClientInvalidResponseError,
+    ) -> BillingActionRejectedError:
+        status_code = exc.status_code or 400
+        code = "billing_action_rejected"
+        message = "Billing action request was rejected."
+        details: dict[str, object] = {"action": action}
+
+        response_body = exc.response_body
+        if isinstance(response_body, Mapping):
+            detail = response_body.get("detail")
+            if isinstance(detail, Mapping):
+                raw_code = detail.get("code")
+                raw_message = detail.get("message")
+
+                if isinstance(raw_code, str) and raw_code.strip():
+                    code = raw_code.strip().lower()
+                    details["pay_error_code"] = raw_code.strip()
+
+                if isinstance(raw_message, str) and raw_message.strip():
+                    message = raw_message.strip()
+
+                for key, value in detail.items():
+                    if key not in {"code", "message"}:
+                        details[str(key)] = value
+            elif isinstance(detail, str) and detail.strip():
+                message = detail.strip()
+            else:
+                details["pay_response"] = dict(response_body)
+        elif response_body is not None:
+            details["pay_response"] = response_body
+
+        return BillingActionRejectedError(
+            action=action,
+            status_code=status_code,
+            code=code,
+            message=message,
+            details=details,
+        )
 
 
 def canonical_product_code(product_code: str | None) -> str:

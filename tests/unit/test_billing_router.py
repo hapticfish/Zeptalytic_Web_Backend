@@ -57,7 +57,7 @@ class StubBillingSummaryService:
                         product_name="Zepta",
                         plan_code="zepta_lvl_1",
                         subscription_status="active",
-                        billing_interval="month",
+                        billing_interval="MONTHLY",
                         current_charge_amount_cents=5500,
                         currency="USD",
                         next_payment_at=datetime(2026, 7, 1, tzinfo=timezone.utc),
@@ -96,7 +96,8 @@ class StubBillingSummaryService:
                     product_name="Zepta",
                     plan_code="zepta_lvl_1",
                     subscription_status="active",
-                    billing_interval="month",
+                    billing_interval="MONTHLY"
+                                     "",
                     current_charge_amount_cents=5500,
                     currency="USD",
                     next_payment_at=datetime(2026, 7, 1, tzinfo=timezone.utc),
@@ -159,7 +160,7 @@ class StubBillingSummaryService:
             ),
         )
 
-    def initiate_checkout(self, account_id: UUID, payload) -> BillingActionInitiationResponse:
+    def initiate_checkout(self, account_id: UUID, payload) -> BillingActionInitiationResponse:  # noqa: ANN001
         self.checkout_calls.append(
             {
                 "account_id": account_id,
@@ -176,25 +177,65 @@ class StubBillingSummaryService:
             ),
         )
 
-    def initiate_subscription_change(self, account_id: UUID, payload) -> BillingActionInitiationResponse:
+    def initiate_subscription_change(
+        self,
+        account_id: UUID,
+        payload,  # noqa: ANN001
+    ) -> BillingActionInitiationResponse:
         self.subscription_change_calls.append({"account_id": account_id, "payload": payload})
-        raise AssertionError("Unsupported subscription-change route must not call service.")
+        return BillingActionInitiationResponse(
+            message="Subscription change initiated.",
+            action="subscription_change",
+            pay_result=None,
+        )
 
-    def initiate_subscription_cancel(self, account_id: UUID, payload) -> BillingActionInitiationResponse:
+    def initiate_subscription_cancel(
+        self,
+        account_id: UUID,
+        payload,  # noqa: ANN001
+    ) -> BillingActionInitiationResponse:
         self.subscription_cancel_calls.append({"account_id": account_id, "payload": payload})
-        raise AssertionError("Unsupported subscription-cancel route must not call service.")
+        return BillingActionInitiationResponse(
+            message="Subscription cancellation initiated.",
+            action="subscription_cancel",
+            pay_result=None,
+        )
 
-    def initiate_subscription_restart(self, account_id: UUID, payload) -> BillingActionInitiationResponse:
+    def initiate_subscription_restart(
+        self,
+        account_id: UUID,
+        payload,  # noqa: ANN001
+    ) -> BillingActionInitiationResponse:
         self.subscription_restart_calls.append({"account_id": account_id, "payload": payload})
-        raise AssertionError("Unsupported subscription-restart route must not call service.")
+        return BillingActionInitiationResponse(
+            message="Subscription restart initiated.",
+            action="subscription_restart",
+            pay_result=None,
+        )
 
-    def validate_promo_code(self, account_id: UUID, payload) -> BillingActionInitiationResponse:
+    def validate_promo_code(
+        self,
+        account_id: UUID,
+        payload,  # noqa: ANN001
+    ) -> BillingActionInitiationResponse:
         self.promo_validate_calls.append({"account_id": account_id, "payload": payload})
-        raise AssertionError("Unsupported promo validate route must not call service.")
+        return BillingActionInitiationResponse(
+            message="Promo code validated.",
+            action="promo_code_validation",
+            pay_result=None,
+        )
 
-    def apply_promo_code(self, account_id: UUID, payload) -> BillingActionInitiationResponse:
+    def apply_promo_code(
+        self,
+        account_id: UUID,
+        payload,  # noqa: ANN001
+    ) -> BillingActionInitiationResponse:
         self.promo_apply_calls.append({"account_id": account_id, "payload": payload})
-        raise AssertionError("Unsupported promo apply route must not call service.")
+        return BillingActionInitiationResponse(
+            message="Promo code applied.",
+            action="promo_code_apply",
+            pay_result=None,
+        )
 
 
 class StubRateLimiter:
@@ -349,7 +390,7 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
     payload = {
         "product_code": "ZEPTA",
         "plan_code": "zepta_lvl_1",
-        "billing_interval": "month",
+        "billing_interval": "MONTHLY",
         "success_url": "https://app.example.test/billing/success",
         "cancel_url": "https://app.example.test/billing/cancel",
         "promo_code": "SAVE20",
@@ -362,18 +403,16 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
     assert body["success"] is True
     assert body["message"] == "Checkout initiated."
     assert body["action"] == "checkout"
-    assert body["pay_result"] == {
-        "pay_redirect_url": "https://pay.example.test/session/checkout_123",
-        "pay_session_id": "checkout_123",
-        "pay_client_secret": None,
-    }
+    assert body["pay_result"]["pay_redirect_url"] == "https://pay.example.test/session/checkout_123"
+    assert body["pay_result"]["pay_session_id"] == "checkout_123"
+    assert body["pay_result"].get("pay_client_secret") is None
 
     assert len(service.checkout_calls) == 1
     checkout_call = service.checkout_calls[0]
     assert checkout_call["account_id"] == context.account_id
     assert checkout_call["payload"].product_code == "ZEPTA"
     assert checkout_call["payload"].plan_code == "zepta_lvl_1"
-    assert checkout_call["payload"].billing_interval == "month"
+    assert checkout_call["payload"].billing_interval == "MONTHLY"
     assert checkout_call["payload"].promo_code == "SAVE20"
 
     assert [call["action"] for call in rate_limiter.check_calls] == ["billing_checkout"]
@@ -385,7 +424,7 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
             "metadata": {
                 "product_code": "ZEPTA",
                 "plan_code": "zepta_lvl_1",
-                "billing_interval": "month",
+                "billing_interval": "MONTHLY",
             },
         },
         {
@@ -395,7 +434,7 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
             "metadata": {
                 "product_code": "ZEPTA",
                 "plan_code": "zepta_lvl_1",
-                "billing_interval": "month",
+                "billing_interval": "MONTHLY",
             },
         },
     ]
@@ -410,6 +449,7 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
         "expected_audit_action",
         "expected_metadata",
         "service_call_attribute",
+        "expected_payload_fields",
     ),
     [
         (
@@ -417,7 +457,7 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
             {
                 "product_code": "ZEPTA",
                 "target_plan_code": "zepta_lvl_2",
-                "target_billing_interval": "month",
+                "target_billing_interval": "MONTHLY",
                 "promo_code": "SAVE20",
             },
             "subscription_change",
@@ -426,9 +466,15 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
             {
                 "product_code": "ZEPTA",
                 "target_plan_code": "zepta_lvl_2",
-                "target_billing_interval": "month",
+                "target_billing_interval": "MONTHLY",
             },
             "subscription_change_calls",
+            {
+                "product_code": "ZEPTA",
+                "target_plan_code": "zepta_lvl_2",
+                "target_billing_interval": "MONTHLY",
+                "promo_code": "SAVE20",
+            },
         ),
         (
             "/api/v1/billing/subscription-cancel",
@@ -444,6 +490,10 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
                 "reason_provided": True,
             },
             "subscription_cancel_calls",
+            {
+                "product_code": "ZEPTA",
+                "reason": "Too expensive",
+            },
         ),
         (
             "/api/v1/billing/subscription-restart",
@@ -459,6 +509,10 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
                 "reason_provided": True,
             },
             "subscription_restart_calls",
+            {
+                "product_code": "ZEPTA",
+                "reason": "Restarting service",
+            },
         ),
         (
             "/api/v1/billing/promo-code/validate",
@@ -475,6 +529,11 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
                 "plan_code": "zepta_lvl_1",
             },
             "promo_validate_calls",
+            {
+                "promo_code": "SAVE20",
+                "product_code": "ZEPTA",
+                "plan_code": "zepta_lvl_1",
+            },
         ),
         (
             "/api/v1/billing/promo-code/apply",
@@ -491,10 +550,15 @@ def test_checkout_delegates_to_pay_service_and_emits_attempt_success_audit(route
                 "plan_code": "zepta_lvl_1",
             },
             "promo_apply_calls",
+            {
+                "promo_code": "SAVE20",
+                "product_code": "ZEPTA",
+                "plan_code": "zepta_lvl_1",
+            },
         ),
     ],
 )
-def test_unsupported_billing_actions_return_501_without_calling_pay_service(
+def test_billing_action_routes_delegate_to_pay_service_and_emit_attempt_success_audit(
     router_harness,  # noqa: ANN001
     path: str,
     payload: dict[str, object],
@@ -503,6 +567,7 @@ def test_unsupported_billing_actions_return_501_without_calling_pay_service(
     expected_audit_action: str,
     expected_metadata: dict[str, object],
     service_call_attribute: str,
+    expected_payload_fields: dict[str, object],
 ) -> None:
     client: TestClient = router_harness["client"]
     context: AuthenticatedSessionContext = router_harness["context"]
@@ -512,16 +577,21 @@ def test_unsupported_billing_actions_return_501_without_calling_pay_service(
 
     response = client.post(path, json=payload)
 
-    assert response.status_code == 501
-    assert response.json() == {
-        "detail": {
-            "code": "billing_action_not_supported",
-            "action": expected_action,
-            "message": f"Billing action '{expected_action}' is not supported by the Pay service yet.",
-        }
-    }
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["action"] == expected_action
+    assert body["pay_result"] is None
 
-    assert getattr(service, service_call_attribute) == []
+    service_calls = getattr(service, service_call_attribute)
+    assert len(service_calls) == 1
+    service_call = service_calls[0]
+    assert service_call["account_id"] == context.account_id
+
+    service_payload = service_call["payload"]
+    for field_name, expected_value in expected_payload_fields.items():
+        assert getattr(service_payload, field_name) == expected_value
+
     assert [call["action"] for call in rate_limiter.check_calls] == [expected_rate_limit_action]
     assert audit_events == [
         {
@@ -532,7 +602,7 @@ def test_unsupported_billing_actions_return_501_without_calling_pay_service(
         },
         {
             "action": expected_audit_action,
-            "outcome": "unsupported",
+            "outcome": "success",
             "account_id": context.account_id,
             "metadata": expected_metadata,
         },
@@ -555,7 +625,7 @@ def test_subscription_lifecycle_routes_reject_old_subscription_id_shape(router_h
     assert service.subscription_cancel_calls == []
 
 
-def test_unsupported_billing_action_rate_limit_blocks_before_audit_and_service(
+def test_billing_action_rate_limit_blocks_before_audit_and_service(
     router_harness,  # noqa: ANN001
 ) -> None:
     client: TestClient = router_harness["client"]

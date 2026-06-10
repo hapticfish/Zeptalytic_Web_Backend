@@ -210,7 +210,7 @@ def test_billing_checkout_emits_safe_audit_events() -> None:
             json={
                 "product_code": "zardbot",
                 "plan_code": "starter-monthly",
-                "billing_interval": "monthly",
+                "billing_interval": "MONTHLY",
                 "success_url": "https://app.example/success",
                 "cancel_url": "https://app.example/cancel",
             },
@@ -227,7 +227,7 @@ def test_billing_checkout_emits_safe_audit_events() -> None:
     assert audit_hook.events[0].metadata == {
         "product_code": "zardbot",
         "plan_code": "starter-monthly",
-        "billing_interval": "monthly",
+        "billing_interval": "MONTHLY",
     }
     assert audit_hook.events[0].account_id == str(context.account_id)
 
