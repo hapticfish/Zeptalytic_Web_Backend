@@ -88,6 +88,11 @@ class StubPayProjectionRepository:
             account_id=account_id,
             product_code=product_code,
             plan_code=str(summary_data["plan_code"]),
+            provider_subscription_id=summary_data.get("provider_subscription_id"),
+            provider_customer_reference=summary_data.get("provider_customer_reference"),
+            bundle_code=summary_data.get("bundle_code"),
+            commercial_subject_type=str(summary_data["commercial_subject_type"]),
+            commercial_subject_code=summary_data.get("commercial_subject_code"),
             billing_interval=str(summary_data["billing_interval"]),
             normalized_status=str(summary_data["normalized_status"]),
             provider_status_raw=str(summary_data["provider_status_raw"]),
@@ -226,6 +231,11 @@ def test_pay_projection_service_refreshes_and_returns_normalized_snapshot() -> N
                 {
                     "product_code": "zardbot",
                     "plan_code": "starter-monthly",
+                    "provider_subscription_id": "sub_zardbot_product_001",
+                    "provider_customer_reference": "cus_zardbot_001",
+                    "bundle_code": None,
+                    "commercial_subject_type": "product",
+                    "commercial_subject_code": "starter-monthly",
                     "billing_interval": "month",
                     "normalized_status": "active",
                     "provider_status_raw": "active",
@@ -302,6 +312,13 @@ def test_pay_projection_service_refreshes_and_returns_normalized_snapshot() -> N
     assert snapshot.sync.pay_status == "available"
     assert snapshot.sync.refreshed_from_pay is True
     assert snapshot.subscriptions[0].plan_code == "starter-monthly"
+    assert snapshot.subscriptions[0].provider_subscription_id == "sub_zardbot_product_001"
+    assert snapshot.subscriptions[0].provider_customer_reference == "cus_zardbot_001"
+    assert snapshot.subscriptions[0].commercial_subject_type == "product"
+    assert snapshot.subscriptions[0].commercial_subject_code == "starter-monthly"
+    assert repository.subscription_upserts[0]["summary_data"]["provider_subscription_id"] == "sub_zardbot_product_001"
+    assert repository.subscription_upserts[0]["summary_data"]["commercial_subject_type"] == "product"
+    assert repository.subscription_upserts[0]["summary_data"]["commercial_subject_code"] == "starter-monthly"
     assert snapshot.entitlements[0].status == "active"
     assert snapshot.payments[0].normalized_status == "succeeded"
     assert snapshot.payment_methods[0].last4 == "4242"
@@ -377,6 +394,11 @@ def test_pay_projection_service_returns_cached_snapshot_when_pay_is_unavailable(
             account_id=account_id,
             product_code="zardbot",
             plan_code="starter-annual",
+            provider_subscription_id="sub_zardbot_cached_001",
+            provider_customer_reference="cus_zardbot_cached_001",
+            bundle_code=None,
+            commercial_subject_type="product",
+            commercial_subject_code="starter-annual",
             billing_interval="year",
             normalized_status="past_due",
             provider_status_raw="past_due",

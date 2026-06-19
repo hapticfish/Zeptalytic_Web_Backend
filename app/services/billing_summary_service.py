@@ -13,6 +13,7 @@ from app.schemas.billing import (
     BillingAddressBookSummary,
     BillingAddressSummary,
     BillingCheckoutInitiationRequest,
+    BillingPaymentMethodSetupRequest,
     BillingPaymentMethodSummary,
     BillingPaymentMethodsResponse,
     BillingPromoCodeRequest,
@@ -158,6 +159,20 @@ class BillingSummaryService:
             default_message="Checkout initiated.",
         )
 
+    def initiate_payment_method_setup(
+        self,
+        account_id,  # noqa: ANN001
+        payload: BillingPaymentMethodSetupRequest,
+    ) -> BillingActionInitiationResponse:
+        return self._initiate_action(
+            account_id=account_id,
+            action="payment_method_setup",
+            path="/api/payment-methods/setup-session",
+            payload=self._build_payment_method_setup_payload(payload),
+            default_message="Payment method setup initiated.",
+            pay_scope="pay:payment_methods",
+        )
+
     def initiate_subscription_change(
         self,
         account_id,  # noqa: ANN001
@@ -250,10 +265,21 @@ class BillingSummaryService:
                 continue
             latest_payment_by_product[product_code] = payment
 
+        subscription_count_by_product: dict[str, int] = {}
+        for subscription in subscriptions:
+            product_code = canonical_product_code(subscription.product_code)
+            if not product_code:
+                continue
+            subscription_count_by_product[product_code] = subscription_count_by_product.get(product_code, 0) + 1
+
         summaries = []
         for subscription in subscriptions:
             product_code = canonical_product_code(subscription.product_code)
-            latest_payment = latest_payment_by_product.get(product_code)
+            latest_payment = BillingSummaryService._safe_latest_payment_for_subscription(
+                subscription=subscription,
+                latest_payment=latest_payment_by_product.get(product_code),
+                same_product_subscription_count=subscription_count_by_product.get(product_code, 0),
+            )
 
             summaries.append(
                 BillingSubscriptionSummary(
@@ -261,6 +287,9 @@ class BillingSummaryService:
                     product_code=product_code,
                     product_name=display_product_name(product_code),
                     plan_code=subscription.plan_code,
+                    bundle_code=optional_text(getattr(subscription, "bundle_code", None)),
+                    commercial_subject_type=optional_text(getattr(subscription, "commercial_subject_type", None)),
+                    commercial_subject_code=optional_text(getattr(subscription, "commercial_subject_code", None)),
                     subscription_status=subscription.normalized_status,
                     billing_interval=subscription.billing_interval,
                     current_charge_amount_cents=None
@@ -273,6 +302,52 @@ class BillingSummaryService:
             )
 
         return summaries
+
+    @staticmethod
+    def _safe_latest_payment_for_subscription(
+        *,
+        subscription,  # noqa: ANN001
+        latest_payment,  # noqa: ANN001
+        same_product_subscription_count: int,
+    ):  # noqa: ANN001
+        if latest_payment is None:
+            return None
+
+        subscription_provider_subscription_id = optional_text(
+            getattr(subscription, "provider_subscription_id", None)
+        )
+        payment_provider_subscription_id = optional_text(
+            getattr(latest_payment, "provider_subscription_id", None)
+        )
+        if (
+            subscription_provider_subscription_id is not None
+            and payment_provider_subscription_id is not None
+            and subscription_provider_subscription_id == payment_provider_subscription_id
+        ):
+            return latest_payment
+
+        subscription_subject_type = optional_text(
+            getattr(subscription, "commercial_subject_type", None)
+        )
+        subscription_subject_code = optional_text(
+            getattr(subscription, "commercial_subject_code", None)
+        )
+        payment_subject_type = optional_text(getattr(latest_payment, "commercial_subject_type", None))
+        payment_subject_code = optional_text(getattr(latest_payment, "commercial_subject_code", None))
+        if (
+            subscription_subject_type is not None
+            and subscription_subject_code is not None
+            and payment_subject_type is not None
+            and payment_subject_code is not None
+            and subscription_subject_type == payment_subject_type
+            and subscription_subject_code == payment_subject_code
+        ):
+            return latest_payment
+
+        if same_product_subscription_count <= 1:
+            return latest_payment
+
+        return None
 
     @staticmethod
     def _build_payment_method_summaries(payment_methods) -> list[BillingPaymentMethodSummary]:  # noqa: ANN001
@@ -324,11 +399,15 @@ class BillingSummaryService:
         path: str,
         payload: dict[str, object],
         default_message: str,
+        pay_scope: str | None = None,
     ) -> BillingActionInitiationResponse:
-        del account_id
-
         if self._pay_client is None:
             raise BillingActionUnavailableError(action)
+
+        request_kwargs: dict[str, object] = {}
+        if pay_scope is not None:
+            request_kwargs["account_id"] = account_id
+            request_kwargs["scope"] = pay_scope
 
         try:
             response_payload = self._pay_client.request_json(
@@ -336,6 +415,7 @@ class BillingSummaryService:
                 path,
                 json_body=payload,
                 expected_status_codes={200, 201, 202},
+                **request_kwargs,
             )
         except PayClientUnavailableError as exc:
             raise BillingActionUnavailableError(action) from exc
@@ -373,6 +453,21 @@ class BillingSummaryService:
         BillingSummaryService._copy_optional(result, "cancel_url", payload.cancel_url)
         BillingSummaryService._copy_optional(result, "promo_code", payload.promo_code)
         BillingSummaryService._copy_optional(result, "idempotency_key", payload.idempotency_key)
+
+        return result
+
+    @staticmethod
+    def _build_payment_method_setup_payload(payload: BillingPaymentMethodSetupRequest) -> dict[str, object]:
+        result: dict[str, object] = {
+            "success_url": payload.success_url,
+            "cancel_url": payload.cancel_url,
+        }
+
+        BillingSummaryService._copy_optional(result, "idempotency_key", payload.idempotency_key)
+        BillingSummaryService._copy_optional(result, "customer_email", payload.customer_email)
+        BillingSummaryService._copy_optional(result, "customer_name", payload.customer_name)
+        if payload.metadata is not None:
+            result["metadata"] = dict(payload.metadata)
 
         return result
 
@@ -451,6 +546,9 @@ class BillingSummaryService:
             "pay_redirect_url",
             "pay_session_id",
             "pay_client_secret",
+            "provider",
+            "provider_customer_id",
+            "created_customer",
             "product_code",
             "bundle_code",
             "plan_code",
@@ -474,6 +572,14 @@ class BillingSummaryService:
                 value = source.get(field_name)
                 if value is not None:
                     result_data[field_name] = value
+
+            checkout_url = source.get("checkout_url")
+            if checkout_url is not None and "pay_redirect_url" not in result_data:
+                result_data["pay_redirect_url"] = checkout_url
+
+            session_id = source.get("session_id")
+            if session_id is not None and "pay_session_id" not in result_data:
+                result_data["pay_session_id"] = session_id
 
         if not result_data:
             return None
@@ -536,6 +642,14 @@ def canonical_product_code(product_code: str | None) -> str:
 
     alias_key = normalized.lower().replace("-", "_")
     return PRODUCT_CODE_ALIASES.get(alias_key, normalized.upper().replace("-", "_"))
+
+
+def optional_text(value: object) -> str | None:
+    if value is None:
+        return None
+
+    normalized = str(value).strip()
+    return normalized or None
 
 
 def display_product_name(product_code: str | None) -> str:

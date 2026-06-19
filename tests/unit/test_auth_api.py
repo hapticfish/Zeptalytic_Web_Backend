@@ -104,20 +104,20 @@ class StubAuthService:
     def login(
         self,
         *,
-        email: str,
+        username: str,
         password: str,
         client_info: AuthClientInfo,
     ) -> AuthMutationResult:
         self.login_calls.append(
             {
-                "email": email,
+                "username": username,
                 "password": password,
                 "client_info": client_info,
             }
         )
         if password == "WrongPassword123":
             raise InvalidCredentialsError("Invalid credentials.")
-        if email == "closed@example.com":
+        if username == "closed-user":
             raise AccountAccessRestrictedError("closed")
         assert self._context is not None
         return AuthMutationResult(session_token="login-token", context=self._context)
@@ -565,7 +565,7 @@ def test_login_endpoint_sets_session_cookie_for_valid_credentials() -> None:
         response = client.post(
             "/api/v1/auth/login",
             json={
-                "email": "auth-user@example.com",
+                "username": "auth-user",
                 "password": "Password123",
             },
             headers={"user-agent": "login-client"},
@@ -807,7 +807,7 @@ def test_login_endpoint_returns_invalid_credentials_error() -> None:
         response = client.post(
             "/api/v1/auth/login",
             json={
-                "email": "auth-user@example.com",
+                "username": "auth-user",
                 "password": "WrongPassword123",
             },
         )
@@ -831,7 +831,7 @@ def test_login_endpoint_returns_account_access_restricted_for_closed_accounts() 
         response = client.post(
             "/api/v1/auth/login",
             json={
-                "email": "closed@example.com",
+                "username": "closed-user",
                 "password": "Password123",
             },
         )

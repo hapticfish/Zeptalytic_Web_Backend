@@ -80,6 +80,11 @@ def test_pay_projection_repository_upserts_current_projection_rows_by_account_an
         product_code="zardbot",
         summary_data={
             "plan_code": "starter-monthly",
+            "provider_subscription_id": "sub_zardbot_product_001",
+            "provider_customer_reference": "cus_zardbot_001",
+            "bundle_code": None,
+            "commercial_subject_type": "product",
+            "commercial_subject_code": "starter-monthly",
             "billing_interval": "month",
             "normalized_status": "active",
             "provider_status_raw": "active",
@@ -96,6 +101,11 @@ def test_pay_projection_repository_upserts_current_projection_rows_by_account_an
         product_code="zardbot",
         summary_data={
             "plan_code": "starter-annual",
+            "provider_subscription_id": "sub_zardbot_product_001",
+            "provider_customer_reference": "cus_zardbot_001",
+            "bundle_code": None,
+            "commercial_subject_type": "product",
+            "commercial_subject_code": "starter-annual",
             "billing_interval": "year",
             "normalized_status": "past_due",
             "provider_status_raw": "past_due",
@@ -103,6 +113,27 @@ def test_pay_projection_repository_upserts_current_projection_rows_by_account_an
             "current_period_end_at": updated_at,
             "cancel_at_period_end": True,
             "canceled_at": updated_at,
+            "next_billing_at": updated_at,
+            "last_synced_at": updated_at,
+        },
+    )
+    bundle_subscription = repository.upsert_subscription_summary(
+        account.id,
+        product_code="zardbot",
+        summary_data={
+            "plan_code": "BUNDLE_PRO",
+            "provider_subscription_id": "sub_zardbot_bundle_001",
+            "provider_customer_reference": "cus_zardbot_001",
+            "bundle_code": "bundle_pro",
+            "commercial_subject_type": "bundle",
+            "commercial_subject_code": "bundle_pro",
+            "billing_interval": "month",
+            "normalized_status": "active",
+            "provider_status_raw": "active",
+            "current_period_start_at": updated_at,
+            "current_period_end_at": updated_at,
+            "cancel_at_period_end": False,
+            "canceled_at": None,
             "next_billing_at": updated_at,
             "last_synced_at": updated_at,
         },
@@ -163,14 +194,27 @@ def test_pay_projection_repository_upserts_current_projection_rows_by_account_an
     access_rows = session.scalars(
         select(ProductAccessState).where(ProductAccessState.account_id == account.id)
     ).all()
+    subscription_records = repository.list_subscription_summaries_for_account(account.id)
 
     assert first_subscription.summary_id == replaced_subscription.summary_id
+    assert bundle_subscription.summary_id != replaced_subscription.summary_id
     assert first_entitlement.summary_id == replaced_entitlement.summary_id
     assert first_access_state.state_id == replaced_access_state.state_id
-    assert len(subscription_rows) == 1
+    assert len(subscription_rows) == 2
+    assert len(subscription_records) == 2
     assert len(entitlement_rows) == 1
     assert len(access_rows) == 1
-    assert repository.list_subscription_summaries_for_account(account.id)[0].plan_code == "starter-annual"
+    assert {record.plan_code for record in subscription_records} == {"starter-annual", "BUNDLE_PRO"}
+    assert {record.provider_subscription_id for record in subscription_records} == {
+        "sub_zardbot_product_001",
+        "sub_zardbot_bundle_001",
+    }
+    assert any(
+        record.bundle_code == "bundle_pro"
+        and record.commercial_subject_type == "bundle"
+        and record.commercial_subject_code == "bundle_pro"
+        for record in subscription_records
+    )
     assert repository.list_entitlement_summaries_for_account(account.id)[0].status == "grace_period"
     assert repository.list_product_access_states_for_account(account.id)[0].access_state == "active"
 

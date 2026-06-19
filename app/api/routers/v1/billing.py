@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.schemas.billing import (
     BillingActionInitiationResponse,
     BillingCheckoutInitiationRequest,
+    BillingPaymentMethodSetupRequest,
     BillingPaymentMethodsResponse,
     BillingPromoCodeRequest,
     BillingSnapshotResponse,
@@ -67,6 +68,50 @@ def list_billing_payment_methods(
     service: BillingSummaryService = Depends(get_billing_summary_service),
 ) -> BillingPaymentMethodsResponse:
     return service.list_payment_methods(context.account_id)
+
+
+@router.post("/payment-method-setup", response_model=BillingActionInitiationResponse)
+def initiate_billing_payment_method_setup(
+    payload: BillingPaymentMethodSetupRequest,
+    request: Request,
+    context: AuthenticatedSessionContext = Depends(require_authenticated_session_context),
+    service: BillingSummaryService = Depends(get_billing_summary_service),
+    rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
+    audit_hook: AuditHook = Depends(get_audit_hook),
+) -> BillingActionInitiationResponse:
+    _enforce_billing_rate_limit(
+        request=request,
+        context=context,
+        rate_limiter=rate_limiter,
+        action="billing_payment_method_setup",
+    )
+
+    metadata = {
+        "has_customer_email": payload.customer_email is not None,
+        "has_customer_name": payload.customer_name is not None,
+    }
+
+    emit_audit_event(
+        audit_hook,
+        request=request,
+        action="billing.payment_method_setup",
+        outcome="attempt",
+        account_id=context.account_id,
+        metadata=metadata,
+    )
+
+    result = service.initiate_payment_method_setup(context.account_id, payload)
+
+    emit_audit_event(
+        audit_hook,
+        request=request,
+        action="billing.payment_method_setup",
+        outcome="success",
+        account_id=context.account_id,
+        metadata=metadata,
+    )
+
+    return result
 
 
 @router.get("/transactions", response_model=BillingTransactionsResponse)

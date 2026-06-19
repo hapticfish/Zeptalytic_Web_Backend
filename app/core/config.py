@@ -62,6 +62,17 @@ class Settings(BaseSettings):
 
     frontend_base_url: str = "http://localhost:5173"
 
+    # Parent-owned product launch destinations.
+    #
+    # Pay owns entitlement/access state. Parent owns where entitled users launch products.
+    # In production these should normally point at independently hosted product apps:
+    #   ZEPTA   -> https://zepta.zeptalytic.com
+    #   ZARDBOT -> https://zardbot.zeptalytic.com
+    #   ALTRA   -> https://altra.zeptalytic.com
+    zepta_launch_url: str | None = None
+    zardbot_launch_url: str | None = None
+    altra_launch_url: str | None = None
+
     email_from_address: str = "hello@zeptalytic.com"
     email_from_name: str = "Zeptalytic"
     email_reply_to_address: str = "support@zeptalytic.com"
@@ -152,6 +163,20 @@ class Settings(BaseSettings):
         if key is None:
             return None
         return key.replace("\\n", "\n")
+
+    def product_launch_url_for(self, product_code: str | None) -> str | None:
+        """Return the Parent-owned launch URL for a canonical product code."""
+
+        if product_code is None:
+            return None
+
+        normalized = product_code.strip().upper().replace("-", "_")
+        launch_urls = {
+            "ZEPTA": self.zepta_launch_url,
+            "ZARDBOT": self.zardbot_launch_url,
+            "ALTRA": self.altra_launch_url,
+        }
+        return self._normalize_optional_secret(launch_urls.get(normalized))
 
     model_config = SettingsConfigDict(
         env_file=".env",

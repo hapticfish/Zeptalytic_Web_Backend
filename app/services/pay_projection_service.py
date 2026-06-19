@@ -8,6 +8,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.repositories.pay_projection_repository import (
     EntitlementSummaryRecord,
     PayProjectionRepository,
@@ -29,6 +30,8 @@ PRODUCT_CODE_ALIASES = {
     "zepta": "ZEPTA",
 }
 
+ACTIVE_PRODUCT_ACCESS_STATES = {"active"}
+
 
 @dataclass(slots=True)
 class PayProjectionSyncMetadata:
@@ -49,6 +52,11 @@ class PayProjectionSubscriptionSummary:
     canceled_at: datetime | None
     next_billing_at: datetime | None
     last_synced_at: datetime
+    provider_subscription_id: str | None = None
+    provider_customer_reference: str | None = None
+    bundle_code: str | None = None
+    commercial_subject_type: str = "product"
+    commercial_subject_code: str | None = None
 
 
 @dataclass(slots=True)
@@ -154,11 +162,29 @@ class PayProjectionService:
         payload: Mapping[str, list[Mapping[str, Any]]],
     ) -> None:
         for subscription in payload["subscriptions"]:
+            plan_code = str(subscription["plan_code"])
+            bundle_code = canonical_bundle_code_or_none(subscription.get("bundle_code"))
+            commercial_subject_type = normalize_commercial_subject_type(
+                subscription.get("commercial_subject_type"),
+                bundle_code=bundle_code,
+            )
+            commercial_subject_code = normalize_commercial_subject_code(
+                subscription.get("commercial_subject_code"),
+                commercial_subject_type=commercial_subject_type,
+                bundle_code=bundle_code,
+                plan_code=plan_code,
+            )
+
             self._repository.upsert_subscription_summary(
                 account_id,
                 product_code=canonical_product_code(str(subscription["product_code"])),
                 summary_data={
-                    "plan_code": str(subscription["plan_code"]),
+                    "plan_code": plan_code,
+                    "provider_subscription_id": optional_str(subscription.get("provider_subscription_id")),
+                    "provider_customer_reference": optional_str(subscription.get("provider_customer_reference")),
+                    "bundle_code": bundle_code,
+                    "commercial_subject_type": commercial_subject_type,
+                    "commercial_subject_code": commercial_subject_code,
                     "billing_interval": str(subscription["billing_interval"]),
                     "normalized_status": str(subscription["normalized_status"]),
                     "provider_status_raw": str(subscription["provider_status_raw"]),
@@ -226,13 +252,22 @@ class PayProjectionService:
             )
 
         for product_access_state in payload["product_access_states"]:
+            product_code = canonical_product_code(str(product_access_state["product_code"]))
+            access_state = str(product_access_state["access_state"])
+            launch_url = self._parent_owned_launch_url(product_code, access_state)
+            disabled_reason = self._parent_owned_disabled_reason(
+                product_access_state,
+                access_state=access_state,
+                launch_url=launch_url,
+            )
+
             self._repository.upsert_product_access_state(
                 account_id,
-                product_code=canonical_product_code(str(product_access_state["product_code"])),
+                product_code=product_code,
                 state_data={
-                    "access_state": str(product_access_state["access_state"]),
-                    "launch_url": optional_str(product_access_state.get("launch_url")),
-                    "disabled_reason": optional_str(product_access_state.get("disabled_reason")),
+                    "access_state": access_state,
+                    "launch_url": launch_url,
+                    "disabled_reason": disabled_reason,
                     "external_account_reference": optional_str(
                         product_access_state.get("external_account_reference")
                     ),
@@ -316,6 +351,11 @@ class PayProjectionService:
         return PayProjectionSubscriptionSummary(
             product_code=canonical_product_code(summary.product_code),
             plan_code=summary.plan_code,
+            provider_subscription_id=summary.provider_subscription_id,
+            provider_customer_reference=summary.provider_customer_reference,
+            bundle_code=summary.bundle_code,
+            commercial_subject_type=summary.commercial_subject_type,
+            commercial_subject_code=summary.commercial_subject_code,
             billing_interval=summary.billing_interval,
             normalized_status=summary.normalized_status,
             provider_status_raw=summary.provider_status_raw,
@@ -381,6 +421,27 @@ class PayProjectionService:
             updated_at=summary.updated_at,
         )
 
+    @staticmethod
+    def _parent_owned_launch_url(product_code: str, access_state: str) -> str | None:
+        if access_state.strip().lower() not in ACTIVE_PRODUCT_ACCESS_STATES:
+            return None
+
+        return settings.product_launch_url_for(product_code)
+
+    @staticmethod
+    def _parent_owned_disabled_reason(
+        product_access_state: Mapping[str, Any],
+        *,
+        access_state: str,
+        launch_url: str | None,
+    ) -> str | None:
+        if access_state.strip().lower() in ACTIVE_PRODUCT_ACCESS_STATES:
+            if launch_url:
+                return None
+            return "launch_url_not_configured"
+
+        return optional_str(product_access_state.get("disabled_reason"))
+
 
 def canonical_product_code(product_code: str | None) -> str:
     if product_code is None:
@@ -400,6 +461,46 @@ def canonical_product_code_or_none(product_code: object) -> str | None:
 
     normalized = canonical_product_code(str(product_code))
     return normalized or None
+
+
+def canonical_bundle_code_or_none(bundle_code: object) -> str | None:
+    if bundle_code is None:
+        return None
+
+    normalized = str(bundle_code).strip().lower()
+    return normalized or None
+
+
+def normalize_commercial_subject_type(value: object, *, bundle_code: str | None) -> str:
+    normalized = optional_str(value)
+    if normalized is not None:
+        normalized = normalized.lower()
+        if normalized in {"bundle", "product"}:
+            return normalized
+
+    if bundle_code:
+        return "bundle"
+
+    return "product"
+
+
+def normalize_commercial_subject_code(
+    value: object,
+    *,
+    commercial_subject_type: str,
+    bundle_code: str | None,
+    plan_code: object,
+) -> str | None:
+    normalized = optional_str(value)
+    if normalized is not None:
+        if commercial_subject_type == "bundle":
+            return normalized.lower()
+        return normalized
+
+    if commercial_subject_type == "bundle":
+        return bundle_code
+
+    return optional_str(plan_code)
 
 
 def optional_str(value: object) -> str | None:

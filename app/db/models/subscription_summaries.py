@@ -15,6 +15,13 @@ class SubscriptionSummary(Base):
     __table_args__ = (
         Index("ix_subscription_summaries_account_id", "account_id"),
         Index("ix_subscription_summaries_product_code", "product_code"),
+        Index("ix_subscription_summaries_provider_subscription_id", "provider_subscription_id"),
+        Index(
+            "ix_subscription_summaries_commercial_subject",
+            "account_id",
+            "commercial_subject_type",
+            "commercial_subject_code",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
@@ -23,13 +30,28 @@ class SubscriptionSummary(Base):
         ForeignKey("accounts.id", ondelete="CASCADE"),
         nullable=False,
     )
+
     product_code: Mapped[str] = mapped_column(String(64), nullable=False)
     plan_code: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    provider_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_customer_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    bundle_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    commercial_subject_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="product",
+        server_default=text("'product'"),
+    )
+    commercial_subject_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
     # TODO(john): Lock the billing-interval vocabulary in the Pay integration contract/spec.
     billing_interval: Mapped[str] = mapped_column(String(32), nullable=False)
     # TODO(john): Lock the normalized subscription-status vocabulary in the Pay integration contract/spec.
     normalized_status: Mapped[str] = mapped_column(String(32), nullable=False)
     provider_status_raw: Mapped[str] = mapped_column(String(64), nullable=False)
+
     current_period_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     current_period_end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_at_period_end: Mapped[bool] = mapped_column(

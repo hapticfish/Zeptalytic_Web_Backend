@@ -105,6 +105,29 @@ def test_launcher_service_returns_launchable_product_when_context_and_projection
     assert zardbot.launch_url == "https://launcher.example.com/zardbot"
     assert zardbot.blocked_reason is None
 
+def test_launcher_service_prefers_pay_product_access_state_over_stale_off_entitlement() -> None:
+    context = _build_context()
+    projection = _build_snapshot(access_state="active")
+    projection.account_id = context.account_id
+
+    projection.entitlements[0].status = "OFF"
+    projection.product_access_states[0].access_state = "active"
+    projection.product_access_states[0].launch_url = "https://launcher.example.com/zardbot"
+
+    service = LauncherService(StubPayProjectionService(projection))
+
+    response = service.get_products(context)
+
+    zardbot = next(product for product in response.products if product.product_code == "ZARDBOT")
+    assert zardbot.pay_projection is not None
+    assert zardbot.pay_projection.entitlement_status == "OFF"
+    assert zardbot.pay_projection.product_access_state == "active"
+    assert zardbot.pay_projection.provisioning_state == "ready"
+    assert zardbot.access_state == "active"
+    assert zardbot.can_launch is True
+    assert zardbot.launch_url == "https://launcher.example.com/zardbot"
+    assert zardbot.blocked_reason is None
+
 
 def test_launcher_service_blocks_when_email_is_not_verified() -> None:
     context = _build_context(email_verified=False)

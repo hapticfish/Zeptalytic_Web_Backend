@@ -28,6 +28,11 @@ class SubscriptionSummaryRecord:
     account_id: UUID
     product_code: str
     plan_code: str
+    provider_subscription_id: str | None
+    provider_customer_reference: str | None
+    bundle_code: str | None
+    commercial_subject_type: str
+    commercial_subject_code: str | None
     billing_interval: str
     normalized_status: str
     provider_status_raw: str
@@ -115,35 +120,55 @@ class PayProjectionRepository:
             .where(SubscriptionSummary.account_id == account_id)
             .order_by(
                 SubscriptionSummary.product_code.asc(),
+                SubscriptionSummary.commercial_subject_type.asc(),
+                SubscriptionSummary.commercial_subject_code.asc().nullslast(),
                 SubscriptionSummary.last_synced_at.desc(),
                 SubscriptionSummary.id.desc(),
             )
         ).all()
-        return self._dedupe_product_records([self._to_subscription_record(row) for row in rows])
+        return [self._to_subscription_record(row) for row in rows]
 
     def upsert_subscription_summary(
-        self,
-        account_id: UUID,
-        *,
-        product_code: str,
-        summary_data: dict[str, object],
+            self,
+            account_id: UUID,
+            *,
+            product_code: str,
+            summary_data: dict[str, object],
     ) -> SubscriptionSummaryRecord:
         canonical_code = canonical_product_code(product_code)
-        summary = self._get_current_subscription_summary(account_id, canonical_code)
+        normalized_summary_data = self._normalize_subscription_summary_data(summary_data)
+        summary = self._get_current_subscription_summary(
+            account_id,
+            canonical_code,
+            normalized_summary_data,
+        )
+
         if summary is None:
             summary = SubscriptionSummary(
                 account_id=account_id,
                 product_code=canonical_code,
-                **summary_data,
+                **normalized_summary_data,
             )
             self._db.add(summary)
+            self._db.flush()
+            self._delete_duplicate_subscription_summaries(
+                account_id,
+                canonical_code,
+                normalized_summary_data,
+                keep_id=summary.id,
+            )
             self._db.flush()
             return self._to_subscription_record(summary)
 
         summary.product_code = canonical_code
-        self._apply_updates(summary, summary_data)
+        self._apply_updates(summary, normalized_summary_data)
         self._db.flush()
-        self._delete_duplicate_subscription_summaries(account_id, canonical_code, keep_id=summary.id)
+        self._delete_duplicate_subscription_summaries(
+            account_id,
+            canonical_code,
+            normalized_summary_data,
+            keep_id=summary.id,
+        )
         self._db.flush()
         return self._to_subscription_record(summary)
 
@@ -318,17 +343,112 @@ class PayProjectionRepository:
         return self._to_product_access_record(state)
 
     def _get_current_subscription_summary(
-        self, account_id: UUID, product_code: str
+            self,
+            account_id: UUID,
+            product_code: str,
+            summary_data: dict[str, object],
     ) -> SubscriptionSummary | None:
+        provider_subscription_id = optional_str(summary_data.get("provider_subscription_id"))
+        plan_code = optional_str(summary_data.get("plan_code"))
+
+        if provider_subscription_id is not None:
+            existing = self._db.scalar(
+                select(SubscriptionSummary)
+                .where(
+                    SubscriptionSummary.account_id == account_id,
+                    SubscriptionSummary.provider_subscription_id == provider_subscription_id,
+                )
+                .order_by(SubscriptionSummary.last_synced_at.desc(), SubscriptionSummary.id.desc())
+                .limit(1)
+            )
+            if existing is not None:
+                return existing
+
+            if plan_code is not None:
+                stale_product_plan_row = self._db.scalar(
+                    select(SubscriptionSummary)
+                    .where(
+                        SubscriptionSummary.account_id == account_id,
+                        SubscriptionSummary.product_code.in_(candidate_product_codes(product_code)),
+                        SubscriptionSummary.plan_code == plan_code,
+                        SubscriptionSummary.provider_subscription_id.is_(None),
+                    )
+                    .order_by(SubscriptionSummary.last_synced_at.desc(), SubscriptionSummary.id.desc())
+                    .limit(1)
+                )
+                if stale_product_plan_row is not None:
+                    return stale_product_plan_row
+
+        commercial_subject_type = optional_str(summary_data.get("commercial_subject_type"))
+        commercial_subject_code = optional_str(summary_data.get("commercial_subject_code"))
+        if commercial_subject_type is not None and commercial_subject_code is not None:
+            return self._db.scalar(
+                select(SubscriptionSummary)
+                .where(
+                    SubscriptionSummary.account_id == account_id,
+                    SubscriptionSummary.product_code.in_(candidate_product_codes(product_code)),
+                    SubscriptionSummary.commercial_subject_type == commercial_subject_type,
+                    SubscriptionSummary.commercial_subject_code == commercial_subject_code,
+                )
+                .order_by(SubscriptionSummary.last_synced_at.desc(), SubscriptionSummary.id.desc())
+                .limit(1)
+            )
+
         return self._db.scalar(
             select(SubscriptionSummary)
             .where(
                 SubscriptionSummary.account_id == account_id,
                 SubscriptionSummary.product_code.in_(candidate_product_codes(product_code)),
+                SubscriptionSummary.provider_subscription_id.is_(None),
+                SubscriptionSummary.commercial_subject_code.is_(None),
             )
             .order_by(SubscriptionSummary.last_synced_at.desc(), SubscriptionSummary.id.desc())
             .limit(1)
         )
+
+    def _delete_duplicate_subscription_summaries(
+            self,
+            account_id: UUID,
+            product_code: str,
+            summary_data: dict[str, object],
+            *,
+            keep_id: UUID,
+    ) -> None:
+        provider_subscription_id = optional_str(summary_data.get("provider_subscription_id"))
+        plan_code = optional_str(summary_data.get("plan_code"))
+        commercial_subject_type = optional_str(summary_data.get("commercial_subject_type"))
+        commercial_subject_code = optional_str(summary_data.get("commercial_subject_code"))
+
+        if provider_subscription_id is not None:
+            self._db.execute(
+                delete(SubscriptionSummary).where(
+                    SubscriptionSummary.account_id == account_id,
+                    SubscriptionSummary.provider_subscription_id == provider_subscription_id,
+                    SubscriptionSummary.id != keep_id,
+                )
+            )
+
+            if plan_code is not None:
+                self._db.execute(
+                    delete(SubscriptionSummary).where(
+                        SubscriptionSummary.account_id == account_id,
+                        SubscriptionSummary.product_code.in_(candidate_product_codes(product_code)),
+                        SubscriptionSummary.plan_code == plan_code,
+                        SubscriptionSummary.provider_subscription_id.is_(None),
+                        SubscriptionSummary.id != keep_id,
+                    )
+                )
+
+        if commercial_subject_type is not None and commercial_subject_code is not None:
+            self._db.execute(
+                delete(SubscriptionSummary).where(
+                    SubscriptionSummary.account_id == account_id,
+                    SubscriptionSummary.product_code.in_(candidate_product_codes(product_code)),
+                    SubscriptionSummary.commercial_subject_type == commercial_subject_type,
+                    SubscriptionSummary.commercial_subject_code == commercial_subject_code,
+                    SubscriptionSummary.id != keep_id,
+                )
+            )
 
     def _get_current_entitlement_summary(
         self, account_id: UUID, product_code: str
@@ -393,17 +513,6 @@ class PayProjectionRepository:
             .limit(1)
         )
 
-    def _delete_duplicate_subscription_summaries(
-        self, account_id: UUID, product_code: str, *, keep_id: UUID
-    ) -> None:
-        self._db.execute(
-            delete(SubscriptionSummary).where(
-                SubscriptionSummary.account_id == account_id,
-                SubscriptionSummary.product_code.in_(candidate_product_codes(product_code)),
-                SubscriptionSummary.id != keep_id,
-            )
-        )
-
     def _delete_duplicate_entitlement_summaries(
         self, account_id: UUID, product_code: str, *, keep_id: UUID
     ) -> None:
@@ -425,6 +534,24 @@ class PayProjectionRepository:
                 ProductAccessState.id != keep_id,
             )
         )
+
+    @staticmethod
+    def _normalize_subscription_summary_data(summary_data: dict[str, object]) -> dict[str, object]:
+        normalized = dict(summary_data)
+        normalized["provider_subscription_id"] = optional_str(normalized.get("provider_subscription_id"))
+        normalized["provider_customer_reference"] = optional_str(normalized.get("provider_customer_reference"))
+        normalized["bundle_code"] = canonical_bundle_code_or_none(normalized.get("bundle_code"))
+        normalized["commercial_subject_type"] = normalize_commercial_subject_type(
+            normalized.get("commercial_subject_type"),
+            bundle_code=normalized["bundle_code"],
+        )
+        normalized["commercial_subject_code"] = normalize_commercial_subject_code(
+            normalized.get("commercial_subject_code"),
+            commercial_subject_type=str(normalized["commercial_subject_type"]),
+            bundle_code=normalized["bundle_code"],
+            plan_code=normalized.get("plan_code"),
+        )
+        return normalized
 
     @staticmethod
     def _apply_updates(model: object, updates: dict[str, object]) -> None:
@@ -453,6 +580,11 @@ class PayProjectionRepository:
             account_id=summary.account_id,
             product_code=canonical_product_code(summary.product_code),
             plan_code=summary.plan_code,
+            provider_subscription_id=summary.provider_subscription_id,
+            provider_customer_reference=summary.provider_customer_reference,
+            bundle_code=summary.bundle_code,
+            commercial_subject_type=summary.commercial_subject_type,
+            commercial_subject_code=summary.commercial_subject_code,
             billing_interval=summary.billing_interval,
             normalized_status=summary.normalized_status,
             provider_status_raw=summary.provider_status_raw,
@@ -547,6 +679,54 @@ def canonical_product_code_or_none(product_code: object) -> str | None:
 
     normalized = canonical_product_code(str(product_code))
     return normalized or None
+
+
+def canonical_bundle_code_or_none(bundle_code: object) -> str | None:
+    if bundle_code is None:
+        return None
+
+    normalized = str(bundle_code).strip().lower()
+    return normalized or None
+
+
+def optional_str(value: object) -> str | None:
+    if value is None:
+        return None
+
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def normalize_commercial_subject_type(value: object, *, bundle_code: str | None) -> str:
+    normalized = optional_str(value)
+    if normalized is not None:
+        normalized = normalized.lower()
+        if normalized in {"bundle", "product"}:
+            return normalized
+
+    if bundle_code:
+        return "bundle"
+
+    return "product"
+
+
+def normalize_commercial_subject_code(
+    value: object,
+    *,
+    commercial_subject_type: str,
+    bundle_code: str | None,
+    plan_code: object,
+) -> str | None:
+    normalized = optional_str(value)
+    if normalized is not None:
+        if commercial_subject_type == "bundle":
+            return normalized.lower()
+        return normalized
+
+    if commercial_subject_type == "bundle":
+        return bundle_code
+
+    return optional_str(plan_code)
 
 
 def candidate_product_codes(product_code: str | None) -> tuple[str, ...]:

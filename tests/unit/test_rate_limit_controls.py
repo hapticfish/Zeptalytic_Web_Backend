@@ -57,13 +57,13 @@ class StubAuthService:
     def login(
         self,
         *,
-        email: str,
+        username: str,
         password: str,
         client_info: AuthClientInfo,
     ) -> AuthMutationResult:
         self.login_calls.append(
             {
-                "email": email,
+                "username": username,
                 "password": password,
                 "client_info": client_info,
             }
@@ -164,13 +164,13 @@ def test_login_endpoint_rate_limits_after_repeated_attempts() -> None:
         for _ in range(5):
             response = client.post(
                 "/api/v1/auth/login",
-                json={"email": "security-user@example.com", "password": "Password123"},
+                json={"username": "security-user", "password": "Password123"},
             )
             assert response.status_code == 200
 
         blocked_response = client.post(
             "/api/v1/auth/login",
-            json={"email": "security-user@example.com", "password": "Password123"},
+            json={"username": "security-user", "password": "Password123"},
         )
     finally:
         client.cookies.clear()

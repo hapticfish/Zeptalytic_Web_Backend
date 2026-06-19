@@ -158,11 +158,11 @@ class LauncherService:
 
     @staticmethod
     def _decide_access(
-        *,
-        context: AuthenticatedSessionContext,
-        pay_status: str,
-        entitlement: PayProjectionEntitlementSummary | None,
-        access_state: PayProjectionProductAccessState | None,
+            *,
+            context: AuthenticatedSessionContext,
+            pay_status: str,
+            entitlement: PayProjectionEntitlementSummary | None,
+            access_state: PayProjectionProductAccessState | None,
     ) -> LauncherProductDecision:
         if context.status == "suspended":
             return LauncherProductDecision(
@@ -212,6 +212,39 @@ class LauncherService:
                 status_message="Pay-derived entitlement state is unavailable.",
             )
 
+        if access_state is not None:
+            if access_state.access_state == "provision_pending":
+                return LauncherProductDecision(
+                    access_state="provision_pending",
+                    can_launch=False,
+                    launch_url=None,
+                    blocked_reason=LauncherBlockingReason(
+                        code="provision_pending",
+                        message="Your subscription is active, but product setup is still being completed.",
+                    ),
+                    status_message="Provisioning is still in progress.",
+                )
+
+            if access_state.access_state == "active" and access_state.launch_url:
+                return LauncherProductDecision(
+                    access_state="active",
+                    can_launch=True,
+                    launch_url=access_state.launch_url,
+                    blocked_reason=None,
+                    status_message="Ready to launch.",
+                )
+
+            return LauncherProductDecision(
+                access_state=access_state.access_state,
+                can_launch=False,
+                launch_url=None,
+                blocked_reason=LauncherBlockingReason(
+                    code="launch_blocked",
+                    message=access_state.disabled_reason or "Product launch is currently unavailable.",
+                ),
+                status_message=access_state.disabled_reason,
+            )
+
         entitlement_status = "" if entitlement is None else entitlement.status.lower()
         if entitlement is None or entitlement_status not in ACTIVE_ENTITLEMENT_STATUSES:
             return LauncherProductDecision(
@@ -225,48 +258,15 @@ class LauncherService:
                 status_message="Subscribe to unlock launcher access.",
             )
 
-        if access_state is None:
-            return LauncherProductDecision(
-                access_state="blocked",
-                can_launch=False,
-                launch_url=None,
-                blocked_reason=LauncherBlockingReason(
-                    code="product_access_unavailable",
-                    message="Product access details are still being prepared.",
-                ),
-                status_message="Product access is not ready yet.",
-            )
-
-        if access_state.access_state == "provision_pending":
-            return LauncherProductDecision(
-                access_state="provision_pending",
-                can_launch=False,
-                launch_url=None,
-                blocked_reason=LauncherBlockingReason(
-                    code="provision_pending",
-                    message="Your subscription is active, but product setup is still being completed.",
-                ),
-                status_message="Provisioning is still in progress.",
-            )
-
-        if access_state.access_state != "active" or not access_state.launch_url:
-            return LauncherProductDecision(
-                access_state=access_state.access_state,
-                can_launch=False,
-                launch_url=None,
-                blocked_reason=LauncherBlockingReason(
-                    code="launch_blocked",
-                    message=access_state.disabled_reason or "Product launch is currently unavailable.",
-                ),
-                status_message=access_state.disabled_reason,
-            )
-
         return LauncherProductDecision(
-            access_state="active",
-            can_launch=True,
-            launch_url=access_state.launch_url,
-            blocked_reason=None,
-            status_message="Ready to launch.",
+            access_state="blocked",
+            can_launch=False,
+            launch_url=None,
+            blocked_reason=LauncherBlockingReason(
+                code="product_access_unavailable",
+                message="Product access details are still being prepared.",
+            ),
+            status_message="Product access is not ready yet.",
         )
 
     @staticmethod

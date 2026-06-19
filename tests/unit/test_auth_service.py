@@ -572,7 +572,7 @@ def test_login_creates_session_and_records_login_success() -> None:
     service = _build_service(session)
 
     result = service.login(
-        email="LOGIN@example.com",
+        username="login-user",
         password="Password123",
         client_info=_client_info(),
     )
@@ -596,7 +596,7 @@ def test_login_rejects_invalid_credentials_and_records_failure_for_known_account
 
     with pytest.raises(InvalidCredentialsError):
         service.login(
-            email="known@example.com",
+            username="known-user",
             password="WrongPassword123",
             client_info=_client_info(),
         )
@@ -619,7 +619,7 @@ def test_login_rejects_closed_account_and_records_failure() -> None:
 
     with pytest.raises(AccountAccessRestrictedError) as exc:
         service.login(
-            email="closed@example.com",
+            username="closed-user",
             password="Password123",
             client_info=_client_info(),
         )
@@ -644,7 +644,7 @@ def test_logout_revokes_current_session_and_records_event() -> None:
     assert current_context is not None
 
     service.login(
-        email="logout@example.com",
+        username="logout-user",
         password="Password123",
         client_info=_client_info(),
     )
@@ -1170,7 +1170,7 @@ def test_reset_password_updates_password_revokes_sessions_and_marks_token_used()
     account = session.scalar(select(Account).where(Account.email == "reset@example.com"))
     assert account is not None
     service.login(
-        email="reset@example.com",
+        username="reset-user",
         password="Password123",
         client_info=_client_info(),
     )
@@ -1476,7 +1476,7 @@ def test_change_password_validates_current_password_and_rotates_session() -> Non
     context = service.get_authenticated_session_context(signup_result.session_token)
     assert context is not None
     service.login(
-        email="change@example.com",
+        username="change-user",
         password="Password123",
         client_info=_client_info(),
     )
@@ -1639,7 +1639,7 @@ def test_session_listing_and_revocation_behaviors() -> None:
     current_context = service.get_authenticated_session_context(signup_result.session_token)
     assert current_context is not None
     second_login = service.login(
-        email="device@example.com",
+        username="device-user",
         password="Password123",
         client_info=AuthClientInfo(ip_address="10.0.0.2", user_agent="other-device"),
     )
@@ -1676,7 +1676,7 @@ def test_account_closure_revokes_sessions_and_blocks_future_login() -> None:
     current_context = service.get_authenticated_session_context(signup_result.session_token)
     assert current_context is not None
     service.login(
-        email="close@example.com",
+        username="close-user",
         password="Password123",
         client_info=AuthClientInfo(ip_address="10.0.0.3", user_agent="tablet"),
     )
@@ -1700,7 +1700,7 @@ def test_account_closure_revokes_sessions_and_blocks_future_login() -> None:
 
     with pytest.raises(AccountAccessRestrictedError) as exc:
         service.login(
-            email="close@example.com",
+            username="close-user",
             password="Password123",
             client_info=_client_info(),
         )
@@ -1721,14 +1721,14 @@ def test_cleanup_stale_sessions_deletes_expired_and_revoked_rows_only() -> None:
     assert current_context is not None
 
     second_login = service.login(
-        email="cleanup@example.com",
+        username="cleanup-user",
         password="Password123",
         client_info=AuthClientInfo(ip_address="10.0.0.20", user_agent="cleanup-other"),
     )
     second_context = service.get_authenticated_session_context(second_login.session_token)
     assert second_context is not None
     third_login = service.login(
-        email="cleanup@example.com",
+        username="cleanup-user",
         password="Password123",
         client_info=AuthClientInfo(ip_address="10.0.0.21", user_agent="cleanup-active"),
     )

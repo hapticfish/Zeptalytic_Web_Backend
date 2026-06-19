@@ -137,6 +137,9 @@ class BillingSubscriptionSummary(BaseModel):
     product_code: str
     product_name: str
     plan_code: str
+    bundle_code: str | None = None
+    commercial_subject_type: Literal["product", "bundle"] | None = None
+    commercial_subject_code: str | None = None
     subscription_status: str
     billing_interval: str
     current_charge_amount_cents: int | None = None
@@ -181,6 +184,27 @@ class BillingPaymentMethodsResponse(BaseModel):
     pay_payment_methods: list[BillingPaymentMethodSummary] = Field(default_factory=list)
 
 
+class BillingPaymentMethodSetupRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    success_url: str = Field(min_length=1, max_length=2048)
+    cancel_url: str = Field(min_length=1, max_length=2048)
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=256)
+    customer_email: str | None = Field(default=None, min_length=3, max_length=320)
+    customer_name: str | None = Field(default=None, min_length=1, max_length=256)
+    metadata: dict[str, object] | None = None
+
+    @field_validator("success_url", "cancel_url", mode="before")
+    @classmethod
+    def _normalize_required_text_fields(cls, value: object) -> str:
+        return _normalize_required_text(value)
+
+    @field_validator("idempotency_key", "customer_email", "customer_name", mode="before")
+    @classmethod
+    def _normalize_optional_text_fields(cls, value: object) -> str | None:
+        return _normalize_optional_text(value)
+
+
 class BillingTransactionsResponse(BaseModel):
     pay_integration_status: Literal["available", "projection_only", "unavailable"]
     pay_transactions: BillingTransactionsPage
@@ -192,6 +216,8 @@ class BillingActionResult(BaseModel):
     pay_redirect_url: str | None = None
     pay_session_id: str | None = None
     pay_client_secret: str | None = None
+    provider: str | None = None
+    created_customer: bool | None = None
 
     product_code: str | None = None
     bundle_code: str | None = None
@@ -214,6 +240,7 @@ class BillingActionResult(BaseModel):
 class BillingActionInitiationResponse(MutationSuccessResponse):
     action: Literal[
         "checkout",
+        "payment_method_setup",
         "subscription_change",
         "subscription_cancel",
         "subscription_restart",

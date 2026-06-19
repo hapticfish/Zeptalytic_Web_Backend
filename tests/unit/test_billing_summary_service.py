@@ -68,6 +68,11 @@ def _build_snapshot(*, pay_status: str = "available") -> PayProjectionSnapshot:
             PayProjectionSubscriptionSummary(
                 product_code="zardbot",
                 plan_code="starter-monthly",
+                provider_subscription_id="sub_zardbot_product_001",
+                provider_customer_reference="cus_zardbot_001",
+                bundle_code=None,
+                commercial_subject_type="product",
+                commercial_subject_code="starter-monthly",
                 billing_interval="monthly",
                 normalized_status="active",
                 provider_status_raw="active",
@@ -650,3 +655,90 @@ def test_billing_summary_service_rejects_non_mapping_nested_pay_result() -> None
         assert exc.action == "checkout"
     else:
         raise AssertionError("Expected BillingActionInvalidResponseError")
+
+
+def test_billing_summary_service_does_not_pair_product_only_payments_to_ambiguous_same_product_subscriptions() -> None:
+    synced_at = datetime(2026, 4, 18, 22, 0, tzinfo=timezone.utc)
+    account_id = uuid4()
+    snapshot = PayProjectionSnapshot(
+        account_id=account_id,
+        sync=PayProjectionSyncMetadata(pay_status="available", refreshed_from_pay=True),
+        subscriptions=[
+            PayProjectionSubscriptionSummary(
+                product_code="zardbot",
+                plan_code="zardbot_analytics_pro",
+                provider_subscription_id="sub_product_001",
+                provider_customer_reference="cus_zardbot_001",
+                bundle_code=None,
+                commercial_subject_type="product",
+                commercial_subject_code="zardbot_analytics_pro",
+                billing_interval="monthly",
+                normalized_status="active",
+                provider_status_raw="active",
+                current_period_start_at=synced_at,
+                current_period_end_at=synced_at,
+                cancel_at_period_end=False,
+                canceled_at=None,
+                next_billing_at=synced_at,
+                last_synced_at=synced_at,
+            ),
+            PayProjectionSubscriptionSummary(
+                product_code="zardbot",
+                plan_code="BUNDLE_PRO",
+                provider_subscription_id="sub_bundle_001",
+                provider_customer_reference="cus_zardbot_001",
+                bundle_code="bundle_pro",
+                commercial_subject_type="bundle",
+                commercial_subject_code="bundle_pro",
+                billing_interval="monthly",
+                normalized_status="active",
+                provider_status_raw="active",
+                current_period_start_at=synced_at,
+                current_period_end_at=synced_at,
+                cancel_at_period_end=False,
+                canceled_at=None,
+                next_billing_at=synced_at,
+                last_synced_at=synced_at,
+            ),
+        ],
+        entitlements=[],
+        payments=[
+            PayProjectionPaymentSummary(
+                product_code="zardbot",
+                payment_rail="card",
+                normalized_status="succeeded",
+                amount_cents=12000,
+                currency="USD",
+                paid_at=synced_at,
+                updated_at=synced_at,
+            )
+        ],
+        payment_methods=[],
+        product_access_states=[],
+    )
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+    )
+
+    response = service.list_subscriptions(account_id)
+
+    assert len(response.pay_subscriptions) == 2
+
+    product_subscription = next(
+        item for item in response.pay_subscriptions if item.commercial_subject_type == "product"
+    )
+    bundle_subscription = next(
+        item for item in response.pay_subscriptions if item.commercial_subject_type == "bundle"
+    )
+
+    assert product_subscription.plan_code == "zardbot_analytics_pro"
+    assert product_subscription.commercial_subject_code == "zardbot_analytics_pro"
+    assert product_subscription.current_charge_amount_cents is None
+    assert product_subscription.currency is None
+
+    assert bundle_subscription.plan_code == "BUNDLE_PRO"
+    assert bundle_subscription.bundle_code == "bundle_pro"
+    assert bundle_subscription.commercial_subject_code == "bundle_pro"
+    assert bundle_subscription.current_charge_amount_cents is None
+    assert bundle_subscription.currency is None
