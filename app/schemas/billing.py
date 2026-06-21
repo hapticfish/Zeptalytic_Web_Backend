@@ -348,14 +348,10 @@ class BillingSubscriptionChangeRequest(BaseModel):
             bundle_code=self.bundle_code,
         )
 
-        if self.product_code is not None:
-            if not self.target_plan_code:
-                raise ValueError("product subscription changes require target_plan_code")
-            if self.target_bundle_code is not None:
-                raise ValueError("product subscription changes do not allow target_bundle_code")
-
-        if self.bundle_code is not None and self.target_plan_code is not None:
-            raise ValueError("bundle subscription changes do not allow target_plan_code")
+        has_target_plan = self.target_plan_code is not None
+        has_target_bundle = self.target_bundle_code is not None
+        if has_target_plan == has_target_bundle:
+            raise ValueError("Exactly one of target_plan_code or target_bundle_code is required")
 
         return self
 
