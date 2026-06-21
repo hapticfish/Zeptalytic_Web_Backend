@@ -14,6 +14,7 @@ from app.services.pay_projection_service import (
     PayProjectionProductAccessState,
     PayProjectionService,
     PayProjectionSnapshot,
+    PayProjectionSubscriptionSummary,
 )
 
 PRODUCT_CODE_ALIASES = {
@@ -36,6 +37,7 @@ PRODUCT_DISPLAY_ORDER = {
 }
 
 ACTIVE_ENTITLEMENT_STATUSES = {"active", "granted", "on"}
+TERMINAL_SUBSCRIPTION_STATUSES = {"canceled", "cancelled", "ended", "expired"}
 
 
 @dataclass(slots=True)
@@ -64,7 +66,11 @@ class LauncherService:
         snapshot: PayProjectionSnapshot,
     ) -> LauncherProductsResponse:
         entitlements_by_product = self._index_by_canonical_product(snapshot.entitlements)
-        subscriptions_by_product = self._index_by_canonical_product(snapshot.subscriptions)
+        subscriptions_by_product = self._index_by_canonical_product(
+            subscription
+            for subscription in snapshot.subscriptions
+            if not self._is_terminal_subscription(subscription)
+        )
         access_states_by_product = self._index_by_canonical_product(snapshot.product_access_states)
 
         product_codes = sorted(
@@ -98,7 +104,7 @@ class LauncherService:
         context: AuthenticatedSessionContext,
         pay_status: str,
         entitlement: PayProjectionEntitlementSummary | None,
-        subscription,
+        subscription: PayProjectionSubscriptionSummary | None,
         access_state: PayProjectionProductAccessState | None,
     ) -> LauncherProductSummary:
         metadata = self._product_metadata(product_code)
@@ -124,7 +130,7 @@ class LauncherService:
     @staticmethod
     def _build_projection_summary(
         entitlement: PayProjectionEntitlementSummary | None,
-        subscription,
+        subscription: PayProjectionSubscriptionSummary | None,
         access_state: PayProjectionProductAccessState | None,
     ) -> LauncherPayProjectionSummary | None:
         if entitlement is None and subscription is None and access_state is None:
@@ -158,11 +164,11 @@ class LauncherService:
 
     @staticmethod
     def _decide_access(
-            *,
-            context: AuthenticatedSessionContext,
-            pay_status: str,
-            entitlement: PayProjectionEntitlementSummary | None,
-            access_state: PayProjectionProductAccessState | None,
+        *,
+        context: AuthenticatedSessionContext,
+        pay_status: str,
+        entitlement: PayProjectionEntitlementSummary | None,
+        access_state: PayProjectionProductAccessState | None,
     ) -> LauncherProductDecision:
         if context.status == "suspended":
             return LauncherProductDecision(
@@ -282,6 +288,11 @@ class LauncherService:
                 indexed[product_code] = item
 
         return indexed
+
+    @staticmethod
+    def _is_terminal_subscription(subscription: PayProjectionSubscriptionSummary) -> bool:
+        normalized_status = subscription.normalized_status.strip().lower()
+        return normalized_status in TERMINAL_SUBSCRIPTION_STATUSES
 
     @staticmethod
     def _product_metadata(product_code: str) -> dict[str, str | None]:

@@ -129,6 +129,32 @@ def test_launcher_service_prefers_pay_product_access_state_over_stale_off_entitl
     assert zardbot.blocked_reason is None
 
 
+def test_launcher_service_omits_terminal_subscription_status_from_projection() -> None:
+    context = _build_context()
+    projection = _build_snapshot(access_state="inactive")
+    projection.account_id = context.account_id
+
+    projection.subscriptions[0].normalized_status = "canceled"
+    projection.subscriptions[0].provider_status_raw = "canceled"
+    projection.subscriptions[0].canceled_at = projection.subscriptions[0].last_synced_at
+
+    projection.entitlements[0].status = "OFF"
+    projection.product_access_states[0].access_state = "inactive"
+    projection.product_access_states[0].launch_url = None
+    projection.product_access_states[0].disabled_reason = None
+
+    service = LauncherService(StubPayProjectionService(projection))
+
+    response = service.get_products(context)
+
+    zardbot = next(product for product in response.products if product.product_code == "ZARDBOT")
+    assert zardbot.pay_projection is not None
+    assert zardbot.pay_projection.subscription_status is None
+    assert zardbot.pay_projection.entitlement_status == "OFF"
+    assert zardbot.pay_projection.product_access_state == "inactive"
+    assert zardbot.access_state == "inactive"
+    assert zardbot.can_launch is False
+
 def test_launcher_service_blocks_when_email_is_not_verified() -> None:
     context = _build_context(email_verified=False)
     projection = _build_snapshot()
