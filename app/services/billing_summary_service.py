@@ -52,6 +52,13 @@ TERMINAL_SUBSCRIPTION_STATUSES = {
     "expired",
 }
 
+PAY_ERROR_USER_MESSAGES = {
+    "SUBSCRIPTION_CHECKOUT_CONFLICT": (
+        "Unable to complete that action. "
+        "You already have an active subscription for this product or bundle. "
+        "Use Manage Subscription to make changes."
+    ),
+}
 
 class BillingActionUnavailableError(Exception):
     """Raised when a delegated billing action cannot reach Pay."""
@@ -631,7 +638,13 @@ class BillingSummaryService:
                     code = raw_code.strip().lower()
                     details["pay_error_code"] = raw_code.strip()
 
-                if isinstance(raw_message, str) and raw_message.strip():
+                if (
+                    isinstance(raw_code, str)
+                    and raw_code.strip()
+                    and raw_code.strip() in PAY_ERROR_USER_MESSAGES
+                ):
+                    message = PAY_ERROR_USER_MESSAGES[raw_code.strip()]
+                elif isinstance(raw_message, str) and raw_message.strip():
                     message = raw_message.strip()
 
                 for key, value in detail.items():

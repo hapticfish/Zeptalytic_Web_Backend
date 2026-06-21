@@ -21,7 +21,7 @@ from app.schemas.billing import (
     BillingTransactionsResponse,
 )
 from app.schemas.common import CursorPageInfo
-from app.services.billing_summary_service import BillingActionUnavailableError
+from app.services.billing_summary_service import BillingActionRejectedError, BillingActionUnavailableError
 from app.services.auth_service import AuthenticatedSessionContext
 from tests.unit.assertions import assert_standard_error_response
 
@@ -325,3 +325,58 @@ def test_billing_checkout_endpoint_returns_standard_error_when_pay_is_unavailabl
         message="Billing action is temporarily unavailable.",
         details={"action": "checkout"},
     )
+
+
+
+def test_billing_checkout_endpoint_returns_safe_error_when_duplicate_checkout_is_rejected() -> None:
+    auth_service = StubAuthService(_build_context(status="suspended"))
+    billing_service = _build_billing_service()
+    billing_service.checkout_error = BillingActionRejectedError(
+        "checkout",
+        status_code=409,
+        code="subscription_checkout_conflict",
+        message=(
+            "Unable to complete that action. "
+            "You already have an active subscription for this product or bundle. "
+            "Use Manage Subscription to make changes."
+        ),
+        details={
+            "action": "checkout",
+            "pay_error_code": "SUBSCRIPTION_CHECKOUT_CONFLICT",
+        },
+    )
+    app.dependency_overrides[get_auth_service] = lambda: auth_service
+    app.dependency_overrides[get_billing_summary_service] = lambda: billing_service
+
+    try:
+        client.cookies.set("zeptalytic_session", "billing-token")
+        response = client.post(
+            "/api/v1/billing/checkout",
+            json={
+                "product_code": "zardbot",
+                "plan_code": "starter-monthly",
+                "billing_interval": "MONTHLY",
+                "success_url": "https://app.example/success",
+                "cancel_url": "https://app.example/cancel",
+            },
+        )
+    finally:
+        client.cookies.clear()
+        app.dependency_overrides.clear()
+
+    assert_standard_error_response(
+        response,
+        status_code=409,
+        code="subscription_checkout_conflict",
+        message=(
+            "Unable to complete that action. "
+            "You already have an active subscription for this product or bundle. "
+            "Use Manage Subscription to make changes."
+        ),
+        details={
+            "action": "checkout",
+            "pay_error_code": "SUBSCRIPTION_CHECKOUT_CONFLICT",
+        },
+    )
+
+

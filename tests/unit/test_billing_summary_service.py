@@ -13,6 +13,7 @@ from app.schemas.billing import (
 )
 from app.services.billing_summary_service import (
     BillingActionInvalidResponseError,
+    BillingActionRejectedError,
     BillingActionUnavailableError,
     BillingSummaryService,
 )
@@ -597,6 +598,58 @@ def test_billing_summary_service_raises_unavailable_error_when_pay_action_cannot
         assert exc.action == "checkout"
     else:
         raise AssertionError("Expected BillingActionUnavailableError")
+
+
+
+def test_billing_summary_service_maps_subscription_checkout_conflict_to_safe_user_message() -> None:
+    snapshot = _build_snapshot()
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+        StubPayClient(
+            error=PayClientInvalidResponseError(
+                "Pay service returned unexpected status 409.",
+                status_code=409,
+                response_body={
+                    "detail": {
+                        "code": "SUBSCRIPTION_CHECKOUT_CONFLICT",
+                        "message": (
+                            "An active subscription already exists for this billing subject. "
+                            "Use subscription-change instead."
+                        ),
+                    }
+                },
+            )
+        ),
+    )
+
+    try:
+        service.initiate_checkout(
+            snapshot.account_id,
+            BillingCheckoutInitiationRequest(
+                product_code="zardbot",
+                plan_code="starter-monthly",
+                billing_interval="monthly",
+                payment_rail="STRIPE",
+                success_url="https://app.example/success",
+                cancel_url="https://app.example/cancel",
+            ),
+        )
+    except BillingActionRejectedError as exc:
+        assert exc.action == "checkout"
+        assert exc.status_code == 409
+        assert exc.code == "subscription_checkout_conflict"
+        assert exc.message == (
+            "Unable to complete that action. "
+            "You already have an active subscription for this product or bundle. "
+            "Use Manage Subscription to make changes."
+        )
+        assert exc.details == {
+            "action": "checkout",
+            "pay_error_code": "SUBSCRIPTION_CHECKOUT_CONFLICT",
+        }
+    else:
+        raise AssertionError("Expected BillingActionRejectedError")
 
 
 def test_billing_summary_service_rejects_invalid_pay_action_payload() -> None:
