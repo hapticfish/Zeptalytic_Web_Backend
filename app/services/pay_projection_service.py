@@ -31,6 +31,20 @@ PRODUCT_CODE_ALIASES = {
 }
 
 ACTIVE_PRODUCT_ACCESS_STATES = {"active"}
+CURRENT_SUBSCRIPTION_STATUSES = {
+    "active",
+    "trialing",
+    "past_due",
+    "incomplete",
+    "payment_failed",
+    "unpaid",
+}
+TERMINAL_SUBSCRIPTION_STATUSES = {
+    "canceled",
+    "cancelled",
+    "ended",
+    "expired",
+}
 
 
 @dataclass(slots=True)
@@ -161,7 +175,7 @@ class PayProjectionService:
         account_id: UUID,
         payload: Mapping[str, list[Mapping[str, Any]]],
     ) -> None:
-        for subscription in payload["subscriptions"]:
+        for subscription in self._select_current_subscription_projection_rows(payload["subscriptions"]):
             plan_code = str(subscription["plan_code"])
             bundle_code = canonical_bundle_code_or_none(subscription.get("bundle_code"))
             commercial_subject_type = normalize_commercial_subject_type(
@@ -273,6 +287,66 @@ class PayProjectionService:
                     ),
                 },
             )
+
+    @staticmethod
+    def _select_current_subscription_projection_rows(
+        subscriptions: list[Mapping[str, Any]],
+    ) -> list[Mapping[str, Any]]:
+        selected_by_subject: dict[tuple[str, str, str | None], Mapping[str, Any]] = {}
+
+        for subscription in subscriptions:
+            subject_key = PayProjectionService._subscription_projection_subject_key(subscription)
+            selected = selected_by_subject.get(subject_key)
+            if selected is None or PayProjectionService._subscription_projection_is_preferred(
+                candidate=subscription,
+                current=selected,
+            ):
+                selected_by_subject[subject_key] = subscription
+
+        return list(selected_by_subject.values())
+
+    @staticmethod
+    def _subscription_projection_subject_key(
+        subscription: Mapping[str, Any],
+    ) -> tuple[str, str, str | None]:
+        plan_code = str(subscription["plan_code"])
+        product_code = canonical_product_code(str(subscription["product_code"]))
+        bundle_code = canonical_bundle_code_or_none(subscription.get("bundle_code"))
+        commercial_subject_type = normalize_commercial_subject_type(
+            subscription.get("commercial_subject_type"),
+            bundle_code=bundle_code,
+        )
+        commercial_subject_code = normalize_commercial_subject_code(
+            subscription.get("commercial_subject_code"),
+            commercial_subject_type=commercial_subject_type,
+            bundle_code=bundle_code,
+            plan_code=plan_code,
+        )
+
+        if commercial_subject_type == "bundle":
+            return ("bundle", commercial_subject_code or bundle_code or plan_code, None)
+
+        return ("product", commercial_subject_code or plan_code, product_code)
+
+    @staticmethod
+    def _subscription_projection_is_preferred(
+        *,
+        candidate: Mapping[str, Any],
+        current: Mapping[str, Any],
+    ) -> bool:
+        return PayProjectionService._subscription_projection_selection_key(
+            candidate
+        ) > PayProjectionService._subscription_projection_selection_key(current)
+
+    @staticmethod
+    def _subscription_projection_selection_key(subscription: Mapping[str, Any]) -> tuple[int, str, str, str, str]:
+        return (
+            subscription_status_priority(subscription.get("normalized_status")),
+            projection_sort_value(subscription.get("last_synced_at")),
+            projection_sort_value(subscription.get("current_period_end_at")),
+            projection_sort_value(subscription.get("current_period_start_at")),
+            optional_str(subscription.get("provider_subscription_id")) or "",
+        )
 
     def _build_snapshot(
         self,
@@ -501,6 +575,27 @@ def normalize_commercial_subject_code(
         return bundle_code
 
     return optional_str(plan_code)
+
+
+def subscription_status_priority(value: object) -> int:
+    normalized = optional_str(value)
+    if normalized is None:
+        return 2
+
+    normalized = normalized.lower()
+    if normalized in CURRENT_SUBSCRIPTION_STATUSES:
+        return 3
+    if normalized in TERMINAL_SUBSCRIPTION_STATUSES:
+        return 1
+    return 2
+
+
+def projection_sort_value(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
 
 
 def optional_str(value: object) -> str | None:

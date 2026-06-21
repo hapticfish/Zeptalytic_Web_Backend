@@ -325,6 +325,71 @@ def test_pay_projection_service_refreshes_and_returns_normalized_snapshot() -> N
     assert snapshot.product_access_states[0].access_state == "active"
 
 
+def test_pay_projection_service_prefers_active_subscription_for_duplicate_commercial_subjects() -> None:
+    account_id = uuid4()
+    active_synced_at = datetime(2026, 6, 20, 2, 45, tzinfo=timezone.utc)
+    canceled_synced_at = datetime(2026, 6, 21, 3, 20, tzinfo=timezone.utc)
+    repository = StubPayProjectionRepository()
+    client = StubPayClient(
+        payload={
+            "subscriptions": [
+                {
+                    "product_code": "zardbot",
+                    "plan_code": "BUNDLE_PRO",
+                    "provider_subscription_id": "sub_active_bundle",
+                    "provider_customer_reference": "cus_current",
+                    "bundle_code": "bundle_pro",
+                    "commercial_subject_type": "bundle",
+                    "commercial_subject_code": "bundle_pro",
+                    "billing_interval": "MONTHLY",
+                    "normalized_status": "active",
+                    "provider_status_raw": "ACTIVE",
+                    "current_period_start_at": active_synced_at,
+                    "current_period_end_at": datetime(2026, 7, 14, 23, 39, tzinfo=timezone.utc),
+                    "cancel_at_period_end": False,
+                    "canceled_at": None,
+                    "next_billing_at": datetime(2026, 7, 14, 23, 39, tzinfo=timezone.utc),
+                    "last_synced_at": active_synced_at,
+                },
+                {
+                    "product_code": "zardbot",
+                    "plan_code": "BUNDLE_PRO",
+                    "provider_subscription_id": "sub_old_canceled_bundle",
+                    "provider_customer_reference": "cus_old",
+                    "bundle_code": "bundle_pro",
+                    "commercial_subject_type": "bundle",
+                    "commercial_subject_code": "bundle_pro",
+                    "billing_interval": "MONTHLY",
+                    "normalized_status": "canceled",
+                    "provider_status_raw": "CANCELED",
+                    "current_period_start_at": datetime(2026, 6, 19, 20, 51, tzinfo=timezone.utc),
+                    "current_period_end_at": datetime(2026, 7, 19, 20, 51, tzinfo=timezone.utc),
+                    "cancel_at_period_end": False,
+                    "canceled_at": canceled_synced_at,
+                    "next_billing_at": datetime(2026, 7, 19, 20, 51, tzinfo=timezone.utc),
+                    "last_synced_at": canceled_synced_at,
+                },
+            ],
+            "entitlements": [],
+            "payments": [],
+            "payment_methods": [],
+            "product_access_states": [],
+        }
+    )
+    service = PayProjectionService(repository, client)
+
+    snapshot = service.refresh_account_snapshot(account_id)
+
+    assert repository.commits == 1
+    assert len(repository.subscription_upserts) == 1
+    assert repository.subscription_upserts[0]["summary_data"]["provider_subscription_id"] == "sub_active_bundle"
+    assert repository.subscription_upserts[0]["summary_data"]["normalized_status"] == "active"
+    assert repository.subscription_upserts[0]["summary_data"]["commercial_subject_type"] == "bundle"
+    assert repository.subscription_upserts[0]["summary_data"]["commercial_subject_code"] == "bundle_pro"
+    assert snapshot.subscriptions[0].provider_subscription_id == "sub_active_bundle"
+    assert snapshot.subscriptions[0].normalized_status == "active"
+
+
 def test_pay_projection_service_snapshot_uses_safe_service_owned_types() -> None:
     account_id = uuid4()
     repository = StubPayProjectionRepository()
