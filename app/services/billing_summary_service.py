@@ -45,6 +45,13 @@ PRODUCT_NAMES = {
 
 _PAY_DOMAIN_ERROR_STATUS_CODES = {400, 404, 409, 422}
 
+TERMINAL_SUBSCRIPTION_STATUSES = {
+    "canceled",
+    "cancelled",
+    "ended",
+    "expired",
+}
+
 
 class BillingActionUnavailableError(Exception):
     """Raised when a delegated billing action cannot reach Pay."""
@@ -258,6 +265,12 @@ class BillingSummaryService:
 
     @staticmethod
     def _build_subscription_summaries(subscriptions, payments):  # noqa: ANN001
+        current_subscriptions = [
+            subscription
+            for subscription in subscriptions
+            if BillingSummaryService._is_current_subscription_summary(subscription)
+        ]
+
         latest_payment_by_product = {}
         for payment in payments:
             product_code = canonical_product_code(payment.product_code)
@@ -266,14 +279,14 @@ class BillingSummaryService:
             latest_payment_by_product[product_code] = payment
 
         subscription_count_by_product: dict[str, int] = {}
-        for subscription in subscriptions:
+        for subscription in current_subscriptions:
             product_code = canonical_product_code(subscription.product_code)
             if not product_code:
                 continue
             subscription_count_by_product[product_code] = subscription_count_by_product.get(product_code, 0) + 1
 
         summaries = []
-        for subscription in subscriptions:
+        for subscription in current_subscriptions:
             product_code = canonical_product_code(subscription.product_code)
             latest_payment = BillingSummaryService._safe_latest_payment_for_subscription(
                 subscription=subscription,
@@ -302,6 +315,14 @@ class BillingSummaryService:
             )
 
         return summaries
+
+    @staticmethod
+    def _is_current_subscription_summary(subscription) -> bool:  # noqa: ANN001
+        normalized_status = optional_text(getattr(subscription, "normalized_status", None))
+        if normalized_status is None:
+            return True
+
+        return normalized_status.lower() not in TERMINAL_SUBSCRIPTION_STATUSES
 
     @staticmethod
     def _safe_latest_payment_for_subscription(

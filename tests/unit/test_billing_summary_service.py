@@ -657,6 +657,86 @@ def test_billing_summary_service_rejects_non_mapping_nested_pay_result() -> None
         raise AssertionError("Expected BillingActionInvalidResponseError")
 
 
+
+
+def test_billing_summary_service_filters_terminal_subscriptions_from_current_view() -> None:
+    synced_at = datetime(2026, 4, 18, 22, 0, tzinfo=timezone.utc)
+    account_id = uuid4()
+    snapshot = PayProjectionSnapshot(
+        account_id=account_id,
+        sync=PayProjectionSyncMetadata(pay_status="available", refreshed_from_pay=True),
+        subscriptions=[
+            PayProjectionSubscriptionSummary(
+                product_code="zardbot",
+                plan_code="BUNDLE_PRO",
+                provider_subscription_id="sub_old_bundle",
+                provider_customer_reference="cus_current_view",
+                bundle_code="bundle_pro",
+                commercial_subject_type="bundle",
+                commercial_subject_code="bundle_pro",
+                billing_interval="monthly",
+                normalized_status="canceled",
+                provider_status_raw="canceled",
+                current_period_start_at=synced_at,
+                current_period_end_at=synced_at,
+                cancel_at_period_end=False,
+                canceled_at=synced_at,
+                next_billing_at=synced_at,
+                last_synced_at=synced_at,
+            ),
+            PayProjectionSubscriptionSummary(
+                product_code="zepta",
+                plan_code="ZEPTA_LVL_2",
+                provider_subscription_id="sub_current_zepta",
+                provider_customer_reference="cus_current_view",
+                bundle_code=None,
+                commercial_subject_type="product",
+                commercial_subject_code="ZEPTA_LVL_2",
+                billing_interval="monthly",
+                normalized_status="active",
+                provider_status_raw="active",
+                current_period_start_at=synced_at,
+                current_period_end_at=synced_at,
+                cancel_at_period_end=False,
+                canceled_at=None,
+                next_billing_at=synced_at,
+                last_synced_at=synced_at,
+            ),
+        ],
+        entitlements=[],
+        payments=[
+            PayProjectionPaymentSummary(
+                product_code="zepta",
+                payment_rail="card",
+                normalized_status="succeeded",
+                amount_cents=7500,
+                currency="USD",
+                paid_at=synced_at,
+                updated_at=synced_at,
+            )
+        ],
+        payment_methods=[],
+        product_access_states=[],
+    )
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+    )
+
+    response = service.list_subscriptions(account_id)
+
+    assert len(response.pay_subscriptions) == 1
+    subscription = response.pay_subscriptions[0]
+    assert subscription.product_code == "ZEPTA"
+    assert subscription.plan_code == "ZEPTA_LVL_2"
+    assert subscription.bundle_code is None
+    assert subscription.commercial_subject_type == "product"
+    assert subscription.commercial_subject_code == "ZEPTA_LVL_2"
+    assert subscription.subscription_status == "active"
+    assert subscription.current_charge_amount_cents == 7500
+    assert subscription.currency == "USD"
+
+
 def test_billing_summary_service_does_not_pair_product_only_payments_to_ambiguous_same_product_subscriptions() -> None:
     synced_at = datetime(2026, 4, 18, 22, 0, tzinfo=timezone.utc)
     account_id = uuid4()
