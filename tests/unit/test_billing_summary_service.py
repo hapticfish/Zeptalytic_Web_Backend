@@ -7,6 +7,7 @@ from app.db.repositories.address_repository import AddressRecord
 from app.integrations import PayClientInvalidResponseError, PayClientUnavailableError
 from app.schemas.billing import (
     BillingCheckoutInitiationRequest,
+    BillingDiscountOfferClaimRequest,
     BillingPromoCodeRequest,
     BillingSubscriptionChangeRequest,
     BillingSubscriptionLifecycleRequest,
@@ -568,6 +569,65 @@ def test_billing_summary_service_delegates_promo_apply_to_pay_client() -> None:
                 "billing_interval": "MONTHLY",
                 "payment_rail": "STRIPE",
                 "idempotency_key": "promo-123",
+            },
+            "expected_status_codes": {200, 201, 202},
+        }
+    ]
+
+
+def test_billing_summary_service_delegates_discount_offer_claim_to_pay_client() -> None:
+    snapshot = _build_snapshot()
+    account_id = snapshot.account_id
+    pay_client = StubPayClient(
+        payload={
+            "action": "discount_offer_claim",
+            "status": "applied",
+            "message": "Discount offer applied.",
+            "product_code": "zardbot",
+            "offer_code": "RETENTION_10_NEXT_MONTH",
+            "source_type": "RETENTION_OFFER",
+            "source_key": "RETENTION_10_NEXT_MONTH",
+            "provider_subscription_id": "sub_zardbot_product_001",
+            "provider_discount_id": "di_retention_123",
+            "discount_amount_cents": 490,
+            "payment_rail": "STRIPE",
+        }
+    )
+    service = BillingSummaryService(
+        StubAddressRepository([]),
+        StubPayProjectionService(snapshot),
+        pay_client,
+    )
+
+    response = service.claim_discount_offer(
+        account_id,
+        BillingDiscountOfferClaimRequest(
+            product_code="zardbot",
+            idempotency_key="retention-123",
+        ),
+    )
+
+    assert response.action == "discount_offer_claim"
+    assert response.message == "Discount offer applied."
+    assert response.pay_result is not None
+    assert response.pay_result.status == "applied"
+    assert response.pay_result.product_code == "zardbot"
+    assert response.pay_result.offer_code == "RETENTION_10_NEXT_MONTH"
+    assert response.pay_result.source_type == "RETENTION_OFFER"
+    assert response.pay_result.source_key == "RETENTION_10_NEXT_MONTH"
+    assert response.pay_result.provider_subscription_id == "sub_zardbot_product_001"
+    assert response.pay_result.provider_discount_id == "di_retention_123"
+    assert response.pay_result.discount_amount_cents == 490
+    assert pay_client.calls == [
+        {
+            "method": "POST",
+            "path": f"/internal/accounts/{account_id}/billing/discount-offer/claim",
+            "json_body": {
+                "offer_code": "RETENTION_10_NEXT_MONTH",
+                "source_type": "RETENTION_OFFER",
+                "source_key": "RETENTION_10_NEXT_MONTH",
+                "product_code": "zardbot",
+                "idempotency_key": "retention-123",
             },
             "expected_status_codes": {200, 201, 202},
         }

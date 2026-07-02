@@ -229,6 +229,11 @@ class BillingActionResult(BaseModel):
     valid: bool | None = None
     promo_code: str | None = None
     normalized_code: str | None = None
+    offer_code: str | None = None
+    source_type: str | None = None
+    source_key: str | None = None
+    provider_subscription_id: str | None = None
+    provider_discount_id: str | None = None
     discount_type: str | None = None
     discount_percent: int | None = None
     discount_amount_cents: int | None = None
@@ -246,6 +251,7 @@ class BillingActionInitiationResponse(MutationSuccessResponse):
         "subscription_restart",
         "promo_code_validation",
         "promo_code_apply",
+        "discount_offer_claim",
     ]
     pay_result: BillingActionResult | None = None
 
@@ -412,6 +418,35 @@ class BillingPromoCodeRequest(BaseModel):
 
     @model_validator(mode="after")
     def _validate_contract(self) -> "BillingPromoCodeRequest":
+        _validate_exactly_one_billing_subject(
+            product_code=self.product_code,
+            bundle_code=self.bundle_code,
+        )
+        return self
+
+
+class BillingDiscountOfferClaimRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    product_code: str | None = Field(default=None, min_length=1, max_length=128)
+    bundle_code: str | None = Field(default=None, min_length=1, max_length=128)
+    offer_code: str = Field(default="RETENTION_10_NEXT_MONTH", min_length=1, max_length=128)
+    source_type: str = Field(default="RETENTION_OFFER", min_length=1, max_length=128)
+    source_key: str = Field(default="RETENTION_10_NEXT_MONTH", min_length=1, max_length=128)
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=256)
+
+    @field_validator("product_code", "bundle_code", "idempotency_key", mode="before")
+    @classmethod
+    def _normalize_optional_text_fields(cls, value: object) -> str | None:
+        return _normalize_optional_text(value)
+
+    @field_validator("offer_code", "source_type", "source_key", mode="before")
+    @classmethod
+    def _normalize_required_text_fields(cls, value: object) -> str:
+        return _normalize_required_text(value)
+
+    @model_validator(mode="after")
+    def _validate_contract(self) -> "BillingDiscountOfferClaimRequest":
         _validate_exactly_one_billing_subject(
             product_code=self.product_code,
             bundle_code=self.bundle_code,

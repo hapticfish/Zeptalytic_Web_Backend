@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.schemas.billing import (
     BillingActionInitiationResponse,
     BillingCheckoutInitiationRequest,
+    BillingDiscountOfferClaimRequest,
     BillingPaymentMethodSetupRequest,
     BillingPaymentMethodsResponse,
     BillingPromoCodeRequest,
@@ -382,6 +383,53 @@ def apply_billing_promo_code(
         audit_hook,
         request=request,
         action="billing.promo_apply",
+        outcome="success",
+        account_id=context.account_id,
+        metadata=metadata,
+    )
+
+    return result
+
+
+@router.post("/discount-offer/claim", response_model=BillingActionInitiationResponse)
+def claim_billing_discount_offer(
+    payload: BillingDiscountOfferClaimRequest,
+    request: Request,
+    context: AuthenticatedSessionContext = Depends(require_authenticated_session_context),
+    service: BillingSummaryService = Depends(get_billing_summary_service),
+    rate_limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
+    audit_hook: AuditHook = Depends(get_audit_hook),
+) -> BillingActionInitiationResponse:
+    _enforce_billing_rate_limit(
+        request=request,
+        context=context,
+        rate_limiter=rate_limiter,
+        action="billing_discount_offer_claim",
+    )
+
+    metadata = {
+        "product_code": payload.product_code,
+        "bundle_code": payload.bundle_code,
+        "offer_code": payload.offer_code,
+        "source_type": payload.source_type,
+        "source_key": payload.source_key,
+    }
+
+    emit_audit_event(
+        audit_hook,
+        request=request,
+        action="billing.discount_offer_claim",
+        outcome="attempt",
+        account_id=context.account_id,
+        metadata=metadata,
+    )
+
+    result = service.claim_discount_offer(context.account_id, payload)
+
+    emit_audit_event(
+        audit_hook,
+        request=request,
+        action="billing.discount_offer_claim",
         outcome="success",
         account_id=context.account_id,
         metadata=metadata,

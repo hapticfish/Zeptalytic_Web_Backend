@@ -44,6 +44,7 @@ class StubBillingSummaryService:
         self.subscription_restart_calls: list[dict[str, object]] = []
         self.promo_validate_calls: list[dict[str, object]] = []
         self.promo_apply_calls: list[dict[str, object]] = []
+        self.discount_offer_claim_calls: list[dict[str, object]] = []
 
     def get_snapshot(self, account_id: UUID) -> BillingSnapshotResponse:
         self.snapshot_calls.append(account_id)
@@ -235,6 +236,30 @@ class StubBillingSummaryService:
             message="Promo code applied.",
             action="promo_code_apply",
             pay_result=None,
+        )
+
+
+    def claim_discount_offer(
+        self,
+        account_id: UUID,
+        payload,  # noqa: ANN001
+    ) -> BillingActionInitiationResponse:
+        self.discount_offer_claim_calls.append({"account_id": account_id, "payload": payload})
+        return BillingActionInitiationResponse(
+            message="Discount offer applied.",
+            action="discount_offer_claim",
+            pay_result=BillingActionResult(
+                status="applied",
+                product_code=payload.product_code,
+                bundle_code=payload.bundle_code,
+                offer_code=payload.offer_code,
+                source_type=payload.source_type,
+                source_key=payload.source_key,
+                provider_subscription_id="sub_retention_123",
+                provider_discount_id="di_retention_123",
+                discount_amount_cents=550,
+                payment_rail="STRIPE",
+            ),
         )
 
 
@@ -605,6 +630,75 @@ def test_billing_action_routes_delegate_to_pay_service_and_emit_attempt_success_
             "outcome": "success",
             "account_id": context.account_id,
             "metadata": expected_metadata,
+        },
+    ]
+
+
+def test_discount_offer_claim_delegates_to_service_and_emits_attempt_success_audit(router_harness) -> None:  # noqa: ANN001
+    client: TestClient = router_harness["client"]
+    context: AuthenticatedSessionContext = router_harness["context"]
+    service: StubBillingSummaryService = router_harness["service"]
+    rate_limiter: StubRateLimiter = router_harness["rate_limiter"]
+    audit_events: list[dict[str, object]] = router_harness["audit_events"]
+
+    payload = {
+        "product_code": "ZEPTA",
+        "idempotency_key": "retention-claim-123",
+    }
+
+    response = client.post("/api/v1/billing/discount-offer/claim", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["message"] == "Discount offer applied."
+    assert body["action"] == "discount_offer_claim"
+    assert body["pay_result"]["status"] == "applied"
+    assert body["pay_result"]["product_code"] == "ZEPTA"
+    assert body["pay_result"]["offer_code"] == "RETENTION_10_NEXT_MONTH"
+    assert body["pay_result"]["source_type"] == "RETENTION_OFFER"
+    assert body["pay_result"]["source_key"] == "RETENTION_10_NEXT_MONTH"
+    assert body["pay_result"]["provider_subscription_id"] == "sub_retention_123"
+    assert body["pay_result"]["provider_discount_id"] == "di_retention_123"
+    assert body["pay_result"]["discount_amount_cents"] == 550
+
+    assert len(service.discount_offer_claim_calls) == 1
+    call = service.discount_offer_claim_calls[0]
+    assert call["account_id"] == context.account_id
+    claim_payload = call["payload"]
+    assert claim_payload.product_code == "ZEPTA"
+    assert claim_payload.bundle_code is None
+    assert claim_payload.offer_code == "RETENTION_10_NEXT_MONTH"
+    assert claim_payload.source_type == "RETENTION_OFFER"
+    assert claim_payload.source_key == "RETENTION_10_NEXT_MONTH"
+    assert claim_payload.idempotency_key == "retention-claim-123"
+
+    assert [call["action"] for call in rate_limiter.check_calls] == ["billing_discount_offer_claim"]
+
+    assert audit_events == [
+        {
+            "action": "billing.discount_offer_claim",
+            "outcome": "attempt",
+            "account_id": context.account_id,
+            "metadata": {
+                "product_code": "ZEPTA",
+                "bundle_code": None,
+                "offer_code": "RETENTION_10_NEXT_MONTH",
+                "source_type": "RETENTION_OFFER",
+                "source_key": "RETENTION_10_NEXT_MONTH",
+            },
+        },
+        {
+            "action": "billing.discount_offer_claim",
+            "outcome": "success",
+            "account_id": context.account_id,
+            "metadata": {
+                "product_code": "ZEPTA",
+                "bundle_code": None,
+                "offer_code": "RETENTION_10_NEXT_MONTH",
+                "source_type": "RETENTION_OFFER",
+                "source_key": "RETENTION_10_NEXT_MONTH",
+            },
         },
     ]
 

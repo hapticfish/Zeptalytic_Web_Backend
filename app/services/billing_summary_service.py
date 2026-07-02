@@ -13,6 +13,7 @@ from app.schemas.billing import (
     BillingAddressBookSummary,
     BillingAddressSummary,
     BillingCheckoutInitiationRequest,
+    BillingDiscountOfferClaimRequest,
     BillingPaymentMethodSetupRequest,
     BillingPaymentMethodSummary,
     BillingPaymentMethodsResponse,
@@ -58,6 +59,9 @@ PAY_ERROR_USER_MESSAGES = {
         "You already have an active subscription for this product or bundle. "
         "Use Manage Subscription to make changes."
     ),
+    "DISCOUNT_OFFER_ALREADY_APPLIED": "This offer has already been applied.",
+    "DISCOUNT_OFFER_NOT_ELIGIBLE": "Unable to apply that offer.",
+    "DISCOUNT_PROVIDER_UNSUPPORTED": "Unable to apply that offer.",
 }
 
 class BillingActionUnavailableError(Exception):
@@ -227,9 +231,9 @@ class BillingSummaryService:
         )
 
     def validate_promo_code(
-        self,
-        account_id,  # noqa: ANN001
-        payload: BillingPromoCodeRequest,
+            self,
+            account_id,  # noqa: ANN001
+            payload: BillingPromoCodeRequest,
     ) -> BillingActionInitiationResponse:
         return self._initiate_action(
             account_id=account_id,
@@ -240,9 +244,9 @@ class BillingSummaryService:
         )
 
     def apply_promo_code(
-        self,
-        account_id,  # noqa: ANN001
-        payload: BillingPromoCodeRequest,
+            self,
+            account_id,  # noqa: ANN001
+            payload: BillingPromoCodeRequest,
     ) -> BillingActionInitiationResponse:
         return self._initiate_action(
             account_id=account_id,
@@ -250,6 +254,19 @@ class BillingSummaryService:
             path=f"/internal/accounts/{account_id}/billing/promo-code/apply",
             payload=self._build_promo_apply_payload(payload),
             default_message="Promo code applied.",
+        )
+
+    def claim_discount_offer(
+            self,
+            account_id,  # noqa: ANN001
+            payload: BillingDiscountOfferClaimRequest,
+    ) -> BillingActionInitiationResponse:
+        return self._initiate_action(
+            account_id=account_id,
+            action="discount_offer_claim",
+            path=f"/internal/accounts/{account_id}/billing/discount-offer/claim",
+            payload=self._build_discount_offer_claim_payload(payload),
+            default_message="Retention discount applied. Your next eligible Stripe invoice will include 10% off.",
         )
 
     def _build_address_book(self, account_id) -> BillingAddressBookSummary:  # noqa: ANN001
@@ -550,6 +567,20 @@ class BillingSummaryService:
         return result
 
     @staticmethod
+    def _build_discount_offer_claim_payload(payload: BillingDiscountOfferClaimRequest) -> dict[str, object]:
+        result: dict[str, object] = {
+            "offer_code": payload.offer_code,
+            "source_type": payload.source_type,
+            "source_key": payload.source_key,
+        }
+
+        BillingSummaryService._copy_optional(result, "product_code", payload.product_code)
+        BillingSummaryService._copy_optional(result, "bundle_code", payload.bundle_code)
+        BillingSummaryService._copy_optional(result, "idempotency_key", payload.idempotency_key)
+
+        return result
+
+    @staticmethod
     def _copy_optional(result: dict[str, object], key: str, value: object | None) -> None:
         if value is not None:
             result[key] = value
@@ -575,7 +606,6 @@ class BillingSummaryService:
             "pay_session_id",
             "pay_client_secret",
             "provider",
-            "provider_customer_id",
             "created_customer",
             "product_code",
             "bundle_code",
@@ -586,6 +616,11 @@ class BillingSummaryService:
             "valid",
             "promo_code",
             "normalized_code",
+            "offer_code",
+            "source_type",
+            "source_key",
+            "provider_subscription_id",
+            "provider_discount_id",
             "discount_type",
             "discount_percent",
             "discount_amount_cents",

@@ -153,6 +153,8 @@ def test_frontend_contract_regression_routes_lock_canonical_response_models() ->
         ("/billing/subscription-restart", ("POST",)): BillingActionInitiationResponse,
         ("/billing/promo-code/validate", ("POST",)): BillingActionInitiationResponse,
         ("/billing/promo-code/apply", ("POST",)): BillingActionInitiationResponse,
+        ("/billing/discount-offer/claim", ("POST",)): BillingActionInitiationResponse,
+
     }
     assert _route_response_models(support_router) == {
         ("/support/_contract", ("GET",)): SupportRouteContractResponse,

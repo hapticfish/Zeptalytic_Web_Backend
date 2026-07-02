@@ -155,6 +155,7 @@ def test_pay_client_mints_projection_scope_jwt_for_account_projection_route() ->
         "/billing/subscription-restart",
         "/billing/promo-code/validate",
         "/billing/promo-code/apply",
+        "/billing/discount-offer/claim",
     ],
 )
 def test_pay_client_mints_billing_scope_jwt_for_account_billing_routes(
